@@ -10,9 +10,11 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "studio": "remotion studio packages/remotion/src/entry.tsx --port=3210"
   },
   "devDependencies": {
+    "@remotion/cli": "4.0.525",
     "@types/node": "^22.20.3",
     "turbo": "^2.10.13",
     "typescript": "5.9.3",

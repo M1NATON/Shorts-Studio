@@ -1,0 +1,11 @@
+{
+  "//": "Нужен Remotion Studio (CLI ищет tsconfig.json в корне проекта). Сборка пакетов идёт по их собственным tsconfig через project references.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": ["remotion.config.ts"]
+}

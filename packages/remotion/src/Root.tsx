@@ -1,5 +1,5 @@
 import React from "react";
-import { Composition } from "remotion";
+import { Composition, staticFile } from "remotion";
 import { ManifestSchema, SHORTS_SIZE, type Manifest } from "@shorts/contracts";
 import { ShortsVideo } from "./ShortsVideo.js";
 
@@ -18,9 +18,15 @@ export const RemotionRoot: React.FC = () => (
     width={SHORTS_SIZE.width}
     height={SHORTS_SIZE.height}
     defaultProps={{} as Record<string, unknown>}
-    calculateMetadata={({ props }) => {
-      const manifest = ManifestSchema.parse((props as { manifest: Manifest }).manifest);
+    calculateMetadata={async ({ props }) => {
+      // В Studio пропсы пустые, поэтому манифест подхватывается из publicDir
+      // (storage/manifest.json) — так превью открывает последний собранный ролик
+      // без ручной передачи props. Рендер продолжает передавать манифест явно.
+      const provided = (props as { manifest?: unknown }).manifest;
+      const raw = provided ?? (await fetch(staticFile("manifest.json")).then((r) => r.json()));
+      const manifest: Manifest = ManifestSchema.parse(raw);
       return {
+        props: { manifest } as unknown as Record<string, unknown>,
         durationInFrames: manifest.totalDurationInFrames,
         fps: manifest.fps,
         width: manifest.width,

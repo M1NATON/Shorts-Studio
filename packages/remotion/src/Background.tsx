@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { theme } from "./theme.js";
+import { useTheme } from "./theme.js";
 
 /**
  * Непрерывный фон всего видео.
@@ -10,6 +10,7 @@ import { theme } from "./theme.js";
  * Ни один кадр не является статичным — это дешёвый способ убрать ощущение «презентации».
  */
 export const Background: React.FC = () => {
+  const theme = useTheme();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const t = frame / fps;
@@ -26,7 +27,7 @@ export const Background: React.FC = () => {
       <AbsoluteFill
         style={{
           background: `radial-gradient(${width * 0.9}px ${height * 0.5}px at ${x1}% ${y1}%, ${theme.accentSoft} 0%, transparent 62%),
-            radial-gradient(${width * 0.8}px ${height * 0.45}px at ${x2}% ${y2}%, ${theme.surface3} 0%, transparent 60%)`,
+            radial-gradient(${width * 0.8}px ${height * 0.45}px at ${x2}% ${y2}%, ${theme.surfaceStrong} 0%, transparent 60%)`,
           opacity: 0.85,
         }}
       />

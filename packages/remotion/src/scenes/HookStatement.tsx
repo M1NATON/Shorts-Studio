@@ -1,9 +1,9 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { HookStatementSpec } from "@shorts/contracts";
-import { theme } from "../theme.js";
-import { stagger, useSceneMotion } from "../motion.js";
-import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
+import { useTheme, useThemeFont } from "../theme.js";
+import { useSceneMotion, useStagger } from "../motion.js";
+import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 
 /** Нормализация для сравнения с emphasisWords: регистр и пунктуация не должны мешать. */
 const normalize = (value: string): string => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
@@ -27,6 +27,10 @@ const fontSizeFor = (length: number): number => {
  * по-разному без второго компонента.
  */
 const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const stagger = useStagger();
+  const motionStyle = useMotionStyle();
   const { frame } = useSceneMotion();
   const accent = useAccent();
   const words = spec.text.split(/\s+/);
@@ -62,9 +66,9 @@ const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
           gap: `${Math.round(fontSize * 0.18)}px ${Math.round(fontSize * 0.26)}px`,
           justifyContent: spec.layout === "left" ? "flex-start" : "center",
           fontSize,
-          fontWeight: 800,
+          fontWeight: font.headingWeight,
           lineHeight: 1.08,
-          letterSpacing: "-0.03em",
+          letterSpacing: `${theme.letterSpacing}em`,
         }}
       >
         {words.map((word, index) => (

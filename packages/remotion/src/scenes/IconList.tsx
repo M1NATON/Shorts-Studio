@@ -1,9 +1,9 @@
 import React from "react";
 
 import type { IconListSpec } from "@shorts/contracts";
-import { theme } from "../theme.js";
-import { stagger, useSceneMotion } from "../motion.js";
-import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
+import { useTheme, useThemeFont } from "../theme.js";
+import { useSceneMotion, useStagger } from "../motion.js";
+import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 import { Icon } from "../Icon.js";
 
 /**
@@ -14,6 +14,10 @@ import { Icon } from "../Icon.js";
  * поэтому взгляд держится на текущем, а не размазывается по списку.
  */
 const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const stagger = useStagger();
+  const motionStyle = useMotionStyle();
   const { frame, durationInFrames } = useSceneMotion();
   const accent = useAccent();
   const count = spec.items.length;
@@ -52,9 +56,9 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
                 alignItems: "center",
                 gap: 30,
                 padding: "22px 30px",
-                borderRadius: 28,
+                borderRadius: theme.cornerRadius,
                 textAlign: "left",
-                backgroundColor: isFocused ? theme.surface2 : theme.surface,
+                backgroundColor: isFocused ? theme.surfaceStrong : theme.surface,
                 border: `2px solid ${isFocused ? accent : theme.border}`,
                 ...motionStyle(spec.motion, appear, -1),
                 opacity: appear * (isFocused ? 1 : 0.62),
@@ -65,8 +69,8 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
                   width: 92,
                   height: 92,
                   flexShrink: 0,
-                  borderRadius: 22,
-                  backgroundColor: isFocused ? theme.accentSoft : theme.surface3,
+                  borderRadius: Math.round(theme.cornerRadius * 0.8),
+                  backgroundColor: isFocused ? theme.accentSoft : theme.surfaceStrong,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

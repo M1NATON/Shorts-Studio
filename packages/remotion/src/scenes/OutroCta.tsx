@@ -1,9 +1,9 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { OutroCtaSpec } from "@shorts/contracts";
-import { theme } from "../theme.js";
+import { useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion } from "../motion.js";
-import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
+import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 
 /**
  * Финальная сцена.
@@ -13,6 +13,9 @@ import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
  * последний кадр должен остаться читаемым на превью.
  */
 const Body: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const motionStyle = useMotionStyle();
   const { frame } = useSceneMotion();
   const accent = useAccent();
   const appear = interpolate(frame, [0, 16], [0, 1], { extrapolateRight: "clamp" });
@@ -22,10 +25,10 @@ const Body: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
       <div
         style={{
           fontSize: spec.text.length <= 40 ? 96 : 76,
-          fontWeight: 800,
+          fontWeight: font.headingWeight,
           color: theme.text,
           lineHeight: 1.1,
-          letterSpacing: "-0.03em",
+          letterSpacing: `${theme.letterSpacing}em`,
           ...motionStyle(spec.motion, appear),
         }}
       >

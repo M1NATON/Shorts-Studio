@@ -2,8 +2,8 @@ import React, { createContext, useContext } from "react";
 import { interpolate } from "remotion";
 import type { Presentation, SceneMotionKind } from "@shorts/contracts";
 import { Backdrop } from "./Backdrop.js";
-import { CONTENT_INSET, theme } from "./theme.js";
-import { EASE_OUT, useSceneMotion } from "./motion.js";
+import { CONTENT_INSET, useTheme } from "./theme.js";
+import { EASE_OUT, useMotionProfile, useSceneMotion } from "./motion.js";
 
 /** hex → HSL и обратно: нужен только сдвиг тона, поэтому без внешней цветовой библиотеки. */
 function shiftHue(hex: string, degrees: number): string {
@@ -48,7 +48,7 @@ function shiftHue(hex: string, degrees: number): string {
   return `#${toHex(rp)}${toHex(gp)}${toHex(bp)}`;
 }
 
-const AccentContext = createContext<string>(theme.accent);
+const AccentContext = createContext<string>("#DCA268");
 
 /** Акцент текущей сцены: базовый цвет темы со сдвигом из спеки. */
 export const useAccent = (): string => useContext(AccentContext);
@@ -59,15 +59,26 @@ export const useAccent = (): string => useContext(AccentContext);
  * Один и тот же шаблон с motion "slide" и "pop" читается как две разные сцены,
  * поэтому разнообразие не требует новых компонентов.
  */
+export function useMotionStyle(): (
+  motion: SceneMotionKind,
+  progress: number,
+  direction?: 1 | -1,
+) => React.CSSProperties {
+  const { travelPx } = useMotionProfile();
+  return (motion, progress, direction = 1) => motionStyle(motion, progress, direction, travelPx);
+}
+
 export function motionStyle(
   motion: SceneMotionKind,
   progress: number,
   direction: 1 | -1 = 1,
+  travelPx = 34,
 ): React.CSSProperties {
   const remaining = 1 - progress;
   switch (motion) {
     case "slide":
-      return { opacity: progress, translate: `${remaining * 90 * direction}px 0px` };
+      // Боковой выезд заметнее вертикального, поэтому дистанция больше.
+      return { opacity: progress, translate: `${remaining * travelPx * 2.6 * direction}px 0px` };
     case "pop":
       return {
         opacity: progress,
@@ -77,7 +88,7 @@ export function motionStyle(
       return { opacity: progress };
     case "rise":
     default:
-      return { opacity: progress, translate: `0px ${remaining * 34}px` };
+      return { opacity: progress, translate: `0px ${remaining * travelPx}px` };
   }
 }
 
@@ -107,6 +118,7 @@ export const SceneFrame: React.FC<{
   children: React.ReactNode;
   gap?: number;
 }> = ({ presentation, children, gap = 28 }) => {
+  const theme = useTheme();
   const { visible } = useSceneMotion();
   const accent = shiftHue(theme.accent, presentation.accentShift);
   const isLeft = presentation.layout === "left";

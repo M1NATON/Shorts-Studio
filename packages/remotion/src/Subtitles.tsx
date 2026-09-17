@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { buildCaptionPages, findActivePageIndex, findActiveWordIndex, type WordTiming } from "@shorts/contracts";
-import { SAFE, theme } from "./theme.js";
+import { SAFE, useTheme, useThemeFont } from "./theme.js";
 
 /** Высота бокса под 2 строки — зарезервирована всегда, поэтому блок не прыгает. */
 const BOX_HEIGHT = 230;
@@ -24,6 +24,8 @@ const FONT_SIZE = 68;
  * Sequence этой сцены, поэтому useCurrentFrame() здесь уже локальный.
  */
 export const Subtitles: React.FC<{ words: WordTiming[] }> = ({ words }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const timeSec = frame / fps;

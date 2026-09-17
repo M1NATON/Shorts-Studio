@@ -1,10 +1,26 @@
 import { Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { useTheme } from "./theme.js";
 
-/** Кривая входа: быстрый старт, мягкая остановка. Одна на все сцены — так видео читается цельно. */
+/** Запасная кривая, когда компонент рендерится вне темы (Studio, изолированный тест). */
 export const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
 
-const ENTER_FRAMES = 12;
 const EXIT_FRAMES = 8;
+
+/**
+ * Профиль движения ролика: кривая, длительность входа, шаг каскада и дистанция.
+ * Всё это задаёт модель под тему видео, поэтому спокойный разбор и срочная новость
+ * двигаются по-разному, хотя компоненты одни и те же.
+ */
+export function useMotionProfile() {
+  const { motion } = useTheme();
+  const [x1, y1, x2, y2] = motion.easing;
+  return {
+    easing: Easing.bezier(x1, y1, x2, y2),
+    enterFrames: motion.enterFrames,
+    staggerFrames: motion.staggerFrames,
+    travelPx: motion.travelPx,
+  };
+}
 
 export interface SceneMotion {
   /** 0→1 на входе в сцену. */
@@ -32,9 +48,10 @@ export interface SceneMotion {
 export function useSceneMotion(): SceneMotion {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
+  const profile = useMotionProfile();
 
-  const enter = interpolate(frame, [0, ENTER_FRAMES], [0, 1], {
-    easing: EASE_OUT,
+  const enter = interpolate(frame, [0, profile.enterFrames], [0, 1], {
+    easing: profile.easing,
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -52,8 +69,23 @@ export function useSceneMotion(): SceneMotion {
  * Шаг небольшой (3 кадра): на коротких сценах длинный каскад не успевает закончиться
  * до того, как диктор уже произнёс весь текст.
  */
+export function useStagger(): (frame: number, index: number, stepFrames?: number) => number {
+  const profile = useMotionProfile();
+  return (frame, index, stepFrames = 3) => {
+    // Шаг каскада из темы масштабирует то, что компонент просит семантически:
+    // «слова подряд» (2) и «карточки» (7) сохраняют пропорцию друг к другу.
+    const step = Math.max(1, Math.round((stepFrames * profile.staggerFrames) / 3));
+    return interpolate(frame, [index * step, index * step + profile.enterFrames], [0, 1], {
+      easing: profile.easing,
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+  };
+}
+
+/** Оставлено для компонентов вне темы: фиксированный каскад. */
 export function stagger(frame: number, index: number, stepFrames = 3): number {
-  return interpolate(frame, [index * stepFrames, index * stepFrames + ENTER_FRAMES], [0, 1], {
+  return interpolate(frame, [index * stepFrames, index * stepFrames + 12], [0, 1], {
     easing: EASE_OUT,
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",

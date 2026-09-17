@@ -1,17 +1,23 @@
-/** Токены тёмной темы из Plan.md §«Дизайн-токены тем». Один акцент на композицию. */
-export const theme = {
-  canvas: "#171817",
-  surface: "#222421",
-  surface2: "#2B2E2A",
-  surface3: "#353934",
-  border: "#424740",
-  text: "#EEECE6",
-  muted: "#A2A49B",
-  accent: "#DCA268",
-  accentSoft: "#44372B",
-  success: "#91B59A",
-  danger: "#E07A75",
-} as const;
+import { createContext, useContext } from "react";
+import { DEFAULT_VIDEO_THEME, type VideoTheme } from "@shorts/contracts";
+
+/**
+ * Тема ролика приходит из манифеста: её генерирует модель под конкретную тему
+ * видео, а не выбирает из пресетов. Компоненты читают её через контекст, поэтому
+ * ни один цвет не зашит в сцену.
+ *
+ * Значение по умолчанию нужно для Studio и для сцен, отрисованных вне ShortsVideo.
+ */
+export const ThemeContext = createContext<VideoTheme>(DEFAULT_VIDEO_THEME);
+export const useTheme = (): VideoTheme => useContext(ThemeContext);
+
+/** Шрифтовые данные считаются один раз в ShortsVideo и раздаются сюда. */
+export const FontContext = createContext<{ fontFamily: string; headingWeight: number; bodyWeight: number }>({
+  fontFamily: "Inter, system-ui, sans-serif",
+  headingWeight: 800,
+  bodyWeight: 400,
+});
+export const useThemeFont = () => useContext(FontContext);
 
 /** Safe zone для вертикального видео: элементы UI платформ не перекрывают контент. */
 export const SAFE = { top: 220, bottom: 380, side: 80 } as const;

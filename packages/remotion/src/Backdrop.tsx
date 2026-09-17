@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import type { SceneBackdrop } from "@shorts/contracts";
-import { theme } from "./theme.js";
+import { useTheme } from "./theme.js";
 
 /**
  * Фактура фона сцены: слой между общим фоном ролика и контентом.
@@ -17,6 +17,7 @@ export const Backdrop: React.FC<{ backdrop: SceneBackdrop; accent: string }> = (
   backdrop,
   accent,
 }) => {
+  const theme = useTheme();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const t = frame / fps;
@@ -30,7 +31,7 @@ export const Backdrop: React.FC<{ backdrop: SceneBackdrop; accent: string }> = (
     return (
       <AbsoluteFill
         style={{
-          opacity: 0.16,
+          opacity: theme.backdropOpacity,
           backgroundImage: `repeating-linear-gradient(0deg, ${theme.border} 0 2px, transparent 2px ${cell}px),
             repeating-linear-gradient(90deg, ${theme.border} 0 2px, transparent 2px ${cell}px)`,
           backgroundPosition: `${shift}px ${shift}px`,
@@ -46,8 +47,8 @@ export const Backdrop: React.FC<{ backdrop: SceneBackdrop; accent: string }> = (
     return (
       <AbsoluteFill
         style={{
-          opacity: 0.22,
-          backgroundImage: `radial-gradient(${theme.surface3} 3px, transparent 3px)`,
+          opacity: theme.backdropOpacity * 1.2,
+          backgroundImage: `radial-gradient(${theme.surfaceStrong} 3px, transparent 3px)`,
           backgroundSize: `${cell}px ${cell}px`,
           backgroundPosition: `${drift}px ${-drift}px`,
           maskImage: "radial-gradient(100% 70% at 50% 50%, black 10%, transparent 80%)",
@@ -78,7 +79,7 @@ export const Backdrop: React.FC<{ backdrop: SceneBackdrop; accent: string }> = (
   return (
     <AbsoluteFill
       style={{
-        opacity: 0.14,
+        opacity: theme.backdropOpacity * 0.8,
         backgroundImage: `repeating-linear-gradient(${angle}deg, ${accent} 0 6px, transparent 6px 90px)`,
         backgroundPosition: `${t * 14}px 0px`,
         maskImage: "linear-gradient(180deg, transparent 0%, black 35%, black 65%, transparent 100%)",

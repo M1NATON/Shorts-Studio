@@ -1,9 +1,9 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { ComparisonSpec } from "@shorts/contracts";
-import { theme } from "../theme.js";
-import { stagger, useSceneMotion } from "../motion.js";
-import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
+import { useTheme, useThemeFont } from "../theme.js";
+import { useSceneMotion, useStagger } from "../motion.js";
+import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 import { Icon } from "../Icon.js";
 
 /**
@@ -14,6 +14,10 @@ import { Icon } from "../Icon.js";
  * противопоставление читается как движение, а не как таблица.
  */
 const Body: React.FC<{ spec: ComparisonSpec }> = ({ spec }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const stagger = useStagger();
+  const motionStyle = useMotionStyle();
   const { frame } = useSceneMotion();
   const accent = useAccent();
   const showVersus = spec.items.length === 2;
@@ -43,7 +47,7 @@ const Body: React.FC<{ spec: ComparisonSpec }> = ({ spec }) => {
                 style={{
                   alignSelf: "center",
                   fontSize: 38,
-                  fontWeight: 800,
+                  fontWeight: font.headingWeight,
                   color: accent,
                   letterSpacing: "0.1em",
                   padding: "10px 26px",
@@ -69,11 +73,11 @@ const Body: React.FC<{ spec: ComparisonSpec }> = ({ spec }) => {
                 flexDirection: "column",
                 gap: 14,
                 padding: "34px 36px",
-                borderRadius: 32,
+                borderRadius: theme.cornerRadius,
                 textAlign: "left",
                 backgroundColor: theme.surface,
                 border: `2px solid ${theme.border}`,
-                borderLeft: `10px solid ${index === 0 ? accent : theme.surface3}`,
+                borderLeft: `10px solid ${index === 0 ? accent : theme.surfaceStrong}`,
                 ...motionStyle(spec.motion, stagger(frame, index, 7), index % 2 === 0 ? -1 : 1),
               }}
             >
@@ -91,7 +95,7 @@ const Body: React.FC<{ spec: ComparisonSpec }> = ({ spec }) => {
                   {item.label}
                 </div>
               </div>
-              <div style={{ fontSize: 62, fontWeight: 800, color: theme.text, lineHeight: 1.1 }}>
+              <div style={{ fontSize: 62, fontWeight: font.headingWeight, color: theme.text, lineHeight: 1.1 }}>
                 {item.value}
               </div>
             </div>

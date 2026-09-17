@@ -1,9 +1,9 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { StatCounterSpec } from "@shorts/contracts";
-import { theme } from "../theme.js";
+import { useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion } from "../motion.js";
-import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
+import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 import { Icon } from "../Icon.js";
 
 /**
@@ -15,6 +15,9 @@ import { Icon } from "../Icon.js";
  * и остаток сцены будет статичной картинкой.
  */
 const Body: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const motionStyle = useMotionStyle();
   const { frame, fps, durationInFrames } = useSceneMotion();
   const accent = useAccent();
 
@@ -56,9 +59,9 @@ const Body: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
         <span
           style={{
             fontSize: 200,
-            fontWeight: 800,
+            fontWeight: font.headingWeight,
             color: theme.text,
-            letterSpacing: "-0.04em",
+            letterSpacing: `${theme.letterSpacing}em`,
             fontVariantNumeric: "tabular-nums",
             lineHeight: 1,
           }}

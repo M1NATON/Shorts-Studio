@@ -1,9 +1,9 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { KineticTextSpec } from "@shorts/contracts";
-import { theme } from "../theme.js";
+import { useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion } from "../motion.js";
-import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
+import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 
 /**
  * Кинетическая типографика: строки выходят по очереди и занимают весь кадр.
@@ -16,6 +16,9 @@ import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
  * всю фразу целиком, но взгляд держится на текущей строке.
  */
 const Body: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const motionStyle = useMotionStyle();
   const { frame, durationInFrames } = useSceneMotion();
   const accent = useAccent();
   const count = spec.lines.length;
@@ -41,9 +44,9 @@ const Body: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => {
             key={`${index}-${line}`}
             style={{
               fontSize,
-              fontWeight: 800,
+              fontWeight: font.headingWeight,
               lineHeight: 1.02,
-              letterSpacing: "-0.035em",
+              letterSpacing: `${theme.letterSpacing}em`,
               color: isEmphasized ? accent : theme.text,
               textAlign: spec.layout === "left" ? "left" : "center",
               ...motionStyle(spec.motion, appear, index % 2 === 0 ? 1 : -1),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { VideoThemeSchema } from "./video-theme.js";
 import { FpsSchema } from "./script.js";
 import { SceneVisualSpecSchema } from "./scene-visual-spec.js";
 
@@ -52,6 +53,12 @@ export const ManifestSchema = z.object({
   height: z.number().int().positive(),
   totalDurationInFrames: z.number().int().min(1),
   scenes: z.array(ManifestSceneSchema).min(1),
+  /**
+   * Дизайн-система ролика: её генерирует модель под тему видео. Хранится в
+   * манифесте, а не в коде, поэтому один и тот же манифест всегда отрендерится
+   * одинаково, даже когда дефолтная тема в репозитории поменяется.
+   */
+  theme: VideoThemeSchema.optional(),
   /**
    * Источники, на которых построен сценарий. Хранятся, чтобы цифру из кадра можно
    * было проверить по ссылке спустя время. Поле с дефолтом — старые манифесты

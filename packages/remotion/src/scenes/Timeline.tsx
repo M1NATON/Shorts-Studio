@@ -1,9 +1,9 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { TimelineSpec } from "@shorts/contracts";
-import { theme } from "../theme.js";
-import { stagger, useSceneMotion } from "../motion.js";
-import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
+import { useTheme, useThemeFont } from "../theme.js";
+import { useSceneMotion, useStagger } from "../motion.js";
+import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 
 /**
  * Последовательность шагов с соединительной линией.
@@ -13,6 +13,10 @@ import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
  * таймлайн отличается от icon-list, где пункты равноправны.
  */
 const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const stagger = useStagger();
+  const motionStyle = useMotionStyle();
   const { frame, durationInFrames } = useSceneMotion();
   const accent = useAccent();
   const count = spec.steps.length;
@@ -63,7 +67,7 @@ const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
             top: 12,
             bottom: 12,
             width: 4,
-            backgroundColor: theme.surface3,
+            backgroundColor: theme.surfaceStrong,
             borderRadius: 999,
           }}
         />
@@ -105,9 +109,9 @@ const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: Math.round(nodeSize / 3),
-                  fontWeight: 800,
+                  fontWeight: font.headingWeight,
                   color: isActive ? theme.canvas : theme.muted,
-                  backgroundColor: isActive ? accent : theme.surface2,
+                  backgroundColor: isActive ? accent : theme.surfaceStrong,
                   border: `3px solid ${isActive ? accent : theme.border}`,
                 }}
               >

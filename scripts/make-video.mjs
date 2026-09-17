@@ -51,7 +51,7 @@ async function synthesize(scene) {
 }
 
 console.log(`\n1/4 Сценарий: "${TOPIC}"`);
-const { script, sources } = await generateScript(TOPIC);
+const { script, sources, theme } = await generateScript(TOPIC);
 console.log(
   `  «${script.title}» — ${script.scenes.length} сцен: ${script.scenes
     .map((s) => `${s.visual.kind}/${s.visual.layout}/${s.visual.motion}`)
@@ -81,6 +81,7 @@ const manifest = ManifestSchema.parse({
   fps: FPS,
   ...SHORTS_SIZE,
   totalDurationInFrames,
+  theme,
   sources: sources.map(({ url, title }) => ({ url, title })),
   scenes: script.scenes.map((scene, i) => ({
     sceneId: scene.id,

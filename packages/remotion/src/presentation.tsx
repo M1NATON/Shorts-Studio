@@ -91,7 +91,7 @@ export function motionStyle(
  */
 const ZONE_PADDING: Record<Presentation["layout"], React.CSSProperties> = {
   center: {},
-  top: { paddingBottom: 340 },
+  top: { paddingBottom: 240 },
   stacked: { paddingTop: 300 },
   left: {},
 };

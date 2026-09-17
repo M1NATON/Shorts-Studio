@@ -16,6 +16,10 @@ const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
   const { frame, durationInFrames } = useSceneMotion();
   const accent = useAccent();
   const count = spec.steps.length;
+  // Два шага не должны занимать пятую часть кадра: масштаб растёт, когда шагов мало.
+  const nodeSize = count <= 2 ? 118 : count === 3 ? 102 : 90;
+  const stepFontSize = count <= 2 ? 62 : count === 3 ? 56 : 50;
+  const stepGap = count <= 2 ? 64 : count === 3 ? 44 : 34;
   const perStep = (durationInFrames * 0.75) / count;
   const reached = Math.min(count - 1, Math.floor(frame / perStep));
   // Линия идёт чуть впереди узлов, иначе кажется, что она догоняет текст.
@@ -42,12 +46,20 @@ const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
         </div>
       ) : null}
 
-      <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 34, width: "100%" }}>
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          gap: stepGap,
+          width: "100%",
+        }}
+      >
         {/* Рельс: серая подложка на всю высоту и акцентная часть, растущая по времени. */}
         <div
           style={{
             position: "absolute",
-            left: 43,
+            left: nodeSize / 2 - 2,
             top: 12,
             bottom: 12,
             width: 4,
@@ -58,7 +70,7 @@ const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
         <div
           style={{
             position: "absolute",
-            left: 43,
+            left: nodeSize / 2 - 2,
             top: 12,
             width: 4,
             height: `${lineProgress * 100}%`,
@@ -84,15 +96,15 @@ const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
             >
               <div
                 style={{
-                  width: 90,
-                  height: 90,
+                  width: nodeSize,
+                  height: nodeSize,
                   flexShrink: 0,
                   borderRadius: 999,
                   zIndex: 1,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 30,
+                  fontSize: Math.round(nodeSize / 3),
                   fontWeight: 800,
                   color: isActive ? theme.canvas : theme.muted,
                   backgroundColor: isActive ? accent : theme.surface2,
@@ -107,7 +119,7 @@ const Body: React.FC<{ spec: TimelineSpec }> = ({ spec }) => {
                     {step.label}
                   </div>
                 ) : null}
-                <div style={{ fontSize: 52, fontWeight: 700, color: theme.text, lineHeight: 1.12 }}>
+                <div style={{ fontSize: stepFontSize, fontWeight: 700, color: theme.text, lineHeight: 1.12 }}>
                   {step.text}
                 </div>
               </div>

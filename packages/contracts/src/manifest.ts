@@ -52,6 +52,14 @@ export const ManifestSchema = z.object({
   height: z.number().int().positive(),
   totalDurationInFrames: z.number().int().min(1),
   scenes: z.array(ManifestSceneSchema).min(1),
+  /**
+   * Источники, на которых построен сценарий. Хранятся, чтобы цифру из кадра можно
+   * было проверить по ссылке спустя время. Поле с дефолтом — старые манифесты
+   * остаются валидными без смены версии формата.
+   */
+  sources: z
+    .array(z.object({ url: z.string().url(), title: z.string().min(1) }))
+    .default([]),
 });
 export type Manifest = z.infer<typeof ManifestSchema>;
 

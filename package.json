@@ -24,6 +24,7 @@
     "@shorts/contracts": "workspace:*",
     "@shorts/media-core": "workspace:*",
     "@shorts/remotion": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@shorts/llm-core": "workspace:*"
   }
 }

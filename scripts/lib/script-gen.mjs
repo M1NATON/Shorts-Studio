@@ -20,6 +20,7 @@ import {
   ScriptSchema,
   SPEECH_CHARS_PER_SEC,
 } from "@shorts/contracts";
+import { buildResearchBrief, searchSources } from "@shorts/llm-core";
 import { askJson, mapLimited } from "./llm.mjs";
 
 const SCENE_COUNT = 8;
@@ -27,6 +28,29 @@ const SCENE_COUNT = 8;
 const CONCURRENCY = 2;
 
 const INTENTS = ["hook", "fact", "number", "contrast", "list", "takeaway"];
+
+/**
+ * Поиск источников. Без ключа этап пропускается — пайплайн продолжает работать,
+ * но модель опирается только на свои знания, и числам в кадре верить нельзя.
+ */
+async function research(topic) {
+  if (!process.env.FIRECRAWL_API_KEY) {
+    console.log("  research: FIRECRAWL_API_KEY не задан, факты только из модели");
+    return { sources: [], brief: "" };
+  }
+  try {
+    const sources = await searchSources({
+      query: topic,
+      apiKey: process.env.FIRECRAWL_API_KEY,
+      limit: 4,
+    });
+    console.log(`  research: ${sources.length} источников`);
+    return { sources, brief: buildResearchBrief(sources) };
+  } catch (error) {
+    console.log(`  research: пропущен (${error.message})`);
+    return { sources: [], brief: "" };
+  }
+}
 
 const OUTLINE_SYSTEM = [
   "You plan informative vertical short videos (9:16), in English.",
@@ -92,6 +116,17 @@ const LAYOUTS = ["center", "top", "left", "stacked"];
 const MOTIONS = ["rise", "slide", "pop", "fade"];
 const ACCENT_SHIFTS = [0, 12, -10, 16, -14, 8, -6, 14];
 
+/** Фактура фона по типу сцены: смысл кадра и его материал должны совпадать. */
+const BACKDROP_BY_KIND = {
+  "hook-statement": "rays",
+  "stat-counter": "spotlight",
+  "icon-list": "dots",
+  comparison: "grid",
+  "outro-cta": "spotlight",
+};
+/** Чем заменить фактуру, если соседняя сцена уже её использует. */
+const BACKDROP_FALLBACK = ["grid", "dots", "rays", "plain", "spotlight"];
+
 /**
  * Раскладка: типы сцен, композиция, движение и оттенок акцента.
  *
@@ -123,9 +158,19 @@ export function planScenes(beats) {
     textCount--;
   }
 
+  const backdrops = kinds.map((kind) => BACKDROP_BY_KIND[kind] ?? "plain");
+  // Две соседние сцены с одинаковой фактурой сливаются в одну длинную сцену.
+  for (let i = 1; i < backdrops.length; i++) {
+    if (backdrops[i] !== backdrops[i - 1]) continue;
+    backdrops[i] =
+      BACKDROP_FALLBACK.find((option) => option !== backdrops[i - 1] && option !== backdrops[i + 1]) ??
+      "plain";
+  }
+
   return kinds.map((kind, index) => ({
     kind,
     presentation: {
+      backdrop: backdrops[index],
       // Смещаем циклы друг относительно друга, чтобы соседние сцены не совпали
       // сразу по композиции и по движению.
       layout: LAYOUTS[index % LAYOUTS.length],
@@ -151,7 +196,14 @@ async function fillVisual(beat, plan, index) {
     .filter(Boolean)
     .join("\n");
 
-  const user = [`Video topic: ${beat.topic}`, `Scene narration: ${beat.narration}`].join("\n");
+  const user = [
+    `Video topic: ${beat.topic}`,
+    `Scene narration: ${beat.narration}`,
+    // Источники нужны только там, где на экране появляется число.
+    plan.kind === "stat-counter" && beat.brief ? `\nSOURCES:\n${beat.brief}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -178,9 +230,18 @@ async function fillVisual(beat, plan, index) {
 }
 
 export async function generateScript(topic) {
+  const { sources, brief } = await research(topic);
+  const sourceBlock = brief
+    ? [
+        "",
+        "SOURCES (use only facts and numbers that appear here; do not invent figures):",
+        brief,
+      ].join("\n")
+    : "";
+
   const outline = await askJson({
     system: OUTLINE_SYSTEM,
-    user: `Topic: ${topic}`,
+    user: `Topic: ${topic}${sourceBlock}`,
     maxTokens: 1600,
     timeoutMs: 180000,
   });
@@ -191,10 +252,10 @@ export async function generateScript(topic) {
   console.log(`  план: ${plans.map((p) => p.kind).join(", ")}`);
 
   const visuals = await mapLimited(beats, CONCURRENCY, (beat, index) =>
-    fillVisual(beat, plans[index], index),
+    fillVisual({ ...beat, brief }, plans[index], index),
   );
 
-  return ScriptSchema.parse({
+  const script = ScriptSchema.parse({
     title: (outline.title ?? topic).slice(0, 120),
     fps: 30,
     scenes: beats.map((beat, index) => ({
@@ -203,4 +264,6 @@ export async function generateScript(topic) {
       visual: visuals[index],
     })),
   });
+
+  return { script, sources };
 }

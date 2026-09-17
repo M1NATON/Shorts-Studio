@@ -39,12 +39,34 @@ export const SceneMotionKindSchema = z.enum([
 export type SceneMotionKind = z.infer<typeof SceneMotionKindSchema>;
 
 /**
+ * Фактура фона сцены.
+ *
+ * Композиция и движение меняют то, КАК приходит контент, но кадр всё равно
+ * оставался одинаковым: тёмный фон плюс текст. Фактура меняет саму картинку,
+ * не трогая контент и не требуя новых типов сцен.
+ */
+export const SceneBackdropSchema = z.enum([
+  /** Чистый фон — когда важен только текст. */
+  "plain",
+  /** Техническая сетка: данные, инфраструктура, инженерия. */
+  "grid",
+  /** Точечный растр: перечисления и списки. */
+  "dots",
+  /** Световое пятно за объектом: одно число, один акцент. */
+  "spotlight",
+  /** Диагональные полосы: сравнение и противопоставление. */
+  "rays",
+]);
+export type SceneBackdrop = z.infer<typeof SceneBackdropSchema>;
+
+/**
  * Поля подачи, общие для всех базовых типов сцен.
  * Все с дефолтами: старые спеки и фикстуры остаются валидными.
  */
 export const presentationFields = {
   layout: SceneLayoutSchema.default("center"),
   motion: SceneMotionKindSchema.default("rise"),
+  backdrop: SceneBackdropSchema.default("plain"),
   /**
    * Сдвиг акцентного тона в градусах. Диапазон узкий: сцены различаются оттенком,
    * но не превращаются в набор разных брендов.

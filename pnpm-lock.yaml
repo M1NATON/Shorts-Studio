@@ -11,6 +11,9 @@ importers:
       '@shorts/contracts':
         specifier: workspace:*
         version: link:packages/contracts
+      '@shorts/llm-core':
+        specifier: workspace:*
+        version: link:packages/llm-core
       '@shorts/media-core':
         specifier: workspace:*
         version: link:packages/media-core

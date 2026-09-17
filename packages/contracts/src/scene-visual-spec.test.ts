@@ -17,6 +17,7 @@ describe("SceneVisualSpec", () => {
       variant: "statement",
       layout: "center",
       motion: "rise",
+      backdrop: "plain",
       accentShift: 0,
     });
   });

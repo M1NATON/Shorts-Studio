@@ -1,6 +1,7 @@
 import React, { createContext, useContext } from "react";
 import { interpolate } from "remotion";
 import type { Presentation, SceneMotionKind } from "@shorts/contracts";
+import { Backdrop } from "./Backdrop.js";
 import { CONTENT_INSET, theme } from "./theme.js";
 import { EASE_OUT, useSceneMotion } from "./motion.js";
 
@@ -112,6 +113,7 @@ export const SceneFrame: React.FC<{
 
   return (
     <AccentContext.Provider value={accent}>
+      <Backdrop backdrop={presentation.backdrop} accent={accent} />
       <div
         style={{
           position: "absolute",

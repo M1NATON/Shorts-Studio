@@ -117,6 +117,45 @@ export const ComparisonSpecSchema = z.object({
   ...presentationFields,
 });
 
+/**
+ * Кинетическая типографика: фраза разбита на строки, которые выходят по очереди
+ * и занимают весь кадр.
+ *
+ * Отличие от hook-statement: там фраза видна целиком и работает как заголовок,
+ * здесь текст разворачивается во времени и держит внимание сам по себе. По замеру
+ * (docs/scene-kinds-measurement.md) такой подаче соответствовало 12% сцен.
+ */
+export const KineticTextSpecSchema = z.object({
+  kind: z.literal("kinetic-text"),
+  /** 2–4 короткие строки: каждая должна читаться за секунду. */
+  lines: z.array(text(1, 28)).min(2).max(4),
+  /** Индекс строки, которая получает акцентный цвет и остаётся крупной. */
+  emphasisLine: z.number().int().min(0).max(3).optional(),
+  ...presentationFields,
+});
+
+/**
+ * Последовательность шагов или этапов с соединительной линией.
+ *
+ * Отличие от icon-list: список — это параллельные тезисы, а таймлайн — порядок,
+ * где важно «сначала это, потом то».
+ */
+export const TimelineSpecSchema = z.object({
+  kind: z.literal("timeline"),
+  title: text(1, 48).optional(),
+  steps: z
+    .array(
+      z.object({
+        /** Метка шага: год, номер, короткое имя этапа. */
+        label: text(1, 18),
+        text: text(1, 44),
+      }),
+    )
+    .min(2)
+    .max(4),
+  ...presentationFields,
+});
+
 /** Финальный экран: вывод + призыв к действию. */
 export const OutroCtaSpecSchema = z.object({
   kind: z.literal("outro-cta"),
@@ -130,6 +169,8 @@ export const SceneVisualSpecSchema = z.discriminatedUnion("kind", [
   StatCounterSpecSchema,
   IconListSpecSchema,
   ComparisonSpecSchema,
+  KineticTextSpecSchema,
+  TimelineSpecSchema,
   OutroCtaSpecSchema,
 ]);
 
@@ -140,6 +181,8 @@ export type HookStatementSpec = z.infer<typeof HookStatementSpecSchema>;
 export type StatCounterSpec = z.infer<typeof StatCounterSpecSchema>;
 export type IconListSpec = z.infer<typeof IconListSpecSchema>;
 export type ComparisonSpec = z.infer<typeof ComparisonSpecSchema>;
+export type KineticTextSpec = z.infer<typeof KineticTextSpecSchema>;
+export type TimelineSpec = z.infer<typeof TimelineSpecSchema>;
 export type OutroCtaSpec = z.infer<typeof OutroCtaSpecSchema>;
 
 /** Порядок веток union — источник истины для промпта и для UI-селектора типа сцены. */
@@ -148,6 +191,8 @@ export const SCENE_VISUAL_KINDS = [
   "stat-counter",
   "icon-list",
   "comparison",
+  "kinetic-text",
+  "timeline",
   "outro-cta",
 ] as const satisfies readonly SceneVisualKind[];
 

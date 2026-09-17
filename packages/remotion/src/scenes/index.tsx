@@ -3,6 +3,8 @@ import { assertNever, type SceneVisualSpec } from "@shorts/contracts";
 import { Comparison } from "./Comparison.js";
 import { HookStatement } from "./HookStatement.js";
 import { IconList } from "./IconList.js";
+import { KineticText } from "./KineticText.js";
+import { Timeline } from "./Timeline.js";
 import { OutroCta } from "./OutroCta.js";
 import { StatCounter } from "./StatCounter.js";
 
@@ -24,6 +26,10 @@ export const SceneVisual: React.FC<{ spec: SceneVisualSpec }> = ({ spec }) => {
       return <IconList spec={spec} />;
     case "comparison":
       return <Comparison spec={spec} />;
+    case "kinetic-text":
+      return <KineticText spec={spec} />;
+    case "timeline":
+      return <Timeline spec={spec} />;
     case "outro-cta":
       return <OutroCta spec={spec} />;
     default:

@@ -27,7 +27,7 @@ const SCENE_COUNT = 8;
 /** Прокси отдавал 504 на трёх одновременных запросах. */
 const CONCURRENCY = 2;
 
-const INTENTS = ["hook", "fact", "number", "contrast", "list", "takeaway"];
+const INTENTS = ["hook", "fact", "number", "contrast", "list", "sequence", "punch", "takeaway"];
 
 /**
  * Поиск источников. Без ключа этап пропускается — пайплайн продолжает работать,
@@ -65,7 +65,9 @@ const OUTLINE_SYSTEM = [
   `intent: one of ${INTENTS.join(", ")}.`,
   'The first beat is "hook", the last is "takeaway".',
   'Use "number" only for a real, widely documented figure worth animating; never invent one.',
-  'Use "contrast" for A-versus-B, "list" for two to four parallel points, "fact" otherwise.',
+  'Use "contrast" for A-versus-B, "list" for two to four parallel points,',
+  '"sequence" for ordered steps or a chronology, "punch" for a short emotional line',
+  'that works split across two or three lines, "fact" otherwise.',
   "Aim for a mix: at least one number or contrast, and at least two lists.",
 ].join("\n");
 
@@ -92,6 +94,23 @@ const KIND_CONTRACT = {
   "outro-cta": ['{ "text": string max 70, "subtext": string max 60 (optional) }'].join("\n"),
 };
 
+/**
+ * Пример ответа для каждого типа.
+ *
+ * Без примера модель на расплывчатом тезисе отвечала описанием вместо данных:
+ * {"visual": "1. Extract and prepare materials"} — валидация трижды падала, и сцена
+ * откатывалась на hook-statement. Пример снимает двусмысленность слова "visual".
+ */
+const KIND_EXAMPLE = {
+  "hook-statement": '{"variant":"statement","text":"Fusion has missed every deadline","emphasisWords":["every"]}',
+  "stat-counter": '{"label":"Median prompt energy","fromValue":0,"toValue":0.24,"unit":"Wh","decimals":2,"icon":"zap"}',
+  "icon-list": '{"title":"What drives cost","items":[{"icon":"cpu","text":"Chip supply"},{"icon":"factory","text":"Plant capacity"}]}',
+  comparison: '{"title":"Two approaches","items":[{"label":"Tokamak","value":"Magnetic confinement"},{"label":"Laser","value":"Inertial confinement"}]}',
+  "kinetic-text": '{"lines":["Ten years away","for fifty years"],"emphasisLine":1}',
+  timeline: '{"title":"Electrode line","steps":[{"label":"Coating","text":"Apply active material"},{"label":"Drying","text":"Remove solvent"}]}',
+  "outro-cta": '{"text":"Watch the energy, not the hype","subtext":"Numbers beat promises"}',
+};
+
 const NEEDS_ICONS = new Set(["stat-counter", "icon-list", "comparison"]);
 
 /** Тип сцены по замыслу тезиса. */
@@ -100,17 +119,29 @@ const KIND_BY_INTENT = {
   number: "stat-counter",
   contrast: "comparison",
   list: "icon-list",
+  sequence: "timeline",
+  punch: "kinetic-text",
   fact: "icon-list",
   takeaway: "outro-cta",
 };
 
 /** Чем заменить тип, если он повторяется подряд. */
 const ALTERNATIVES = {
-  "icon-list": ["comparison", "hook-statement"],
-  comparison: ["icon-list", "hook-statement"],
-  "hook-statement": ["icon-list", "comparison"],
-  "stat-counter": ["icon-list", "comparison"],
+  "icon-list": ["timeline", "comparison", "kinetic-text"],
+  comparison: ["icon-list", "kinetic-text", "timeline"],
+  "hook-statement": ["kinetic-text", "icon-list", "comparison"],
+  "stat-counter": ["icon-list", "comparison", "timeline"],
+  "kinetic-text": ["icon-list", "comparison", "timeline"],
+  timeline: ["icon-list", "comparison", "kinetic-text"],
 };
+
+/** Больше двух сцен одного типа на ролик — уже однообразие. */
+const MAX_PER_KIND = 2;
+/** Порядок замены: сначала типы, которых в ролике ещё не было. */
+const DIVERSIFY_ORDER = ["kinetic-text", "timeline", "comparison", "icon-list", "stat-counter"];
+
+/** Замыслы, где порядок шагов действительно есть. */
+const ORDERED_INTENTS = new Set(["sequence", "list"]);
 
 const LAYOUTS = ["center", "top", "left", "stacked"];
 const MOTIONS = ["rise", "slide", "pop", "fade"];
@@ -122,6 +153,8 @@ const BACKDROP_BY_KIND = {
   "stat-counter": "spotlight",
   "icon-list": "dots",
   comparison: "grid",
+  "kinetic-text": "plain",
+  timeline: "grid",
   "outro-cta": "spotlight",
 };
 /** Чем заменить фактуру, если соседняя сцена уже её использует. */
@@ -142,20 +175,55 @@ export function planScenes(beats) {
   });
 
   // Разводим соседей одного типа: подряд идущие одинаковые сцены и есть «всё одинаковое».
+  // timeline подставляем только там, где в тезисе есть порядок — иначе шаги будут выдуманными.
+  const isOrdered = (index) => ORDERED_INTENTS.has(beats[index]?.intent);
   for (let i = 1; i < kinds.length - 1; i++) {
     if (kinds[i] !== kinds[i - 1]) continue;
     const options = ALTERNATIVES[kinds[i]] ?? ["icon-list"];
-    kinds[i] = options.find((option) => option !== kinds[i - 1] && option !== kinds[i + 1]) ?? options[0];
+    kinds[i] =
+      options.find(
+        (option) =>
+          option !== kinds[i - 1] &&
+          option !== kinds[i + 1] &&
+          (option !== "timeline" || isOrdered(i)),
+      ) ?? options[0];
   }
 
   // Доля текстовых сцен: лишние переводим в список.
-  const textLimit = Math.max(1, Math.floor(beats.length * 0.4));
-  let textCount = kinds.filter((kind) => kind === "hook-statement").length;
+  const textLimit = Math.max(1, Math.floor(beats.length * 0.3));
+  const TEXT_KINDS = new Set(["hook-statement", "kinetic-text"]);
+  let textCount = kinds.filter((kind) => TEXT_KINDS.has(kind)).length;
   for (let i = kinds.length - 2; i > 0 && textCount > textLimit; i--) {
-    if (kinds[i] !== "hook-statement") continue;
+    if (!TEXT_KINDS.has(kinds[i])) continue;
     if (kinds[i - 1] === "icon-list" || kinds[i + 1] === "icon-list") continue;
     kinds[i] = "icon-list";
     textCount--;
+  }
+
+  /**
+   * Разнообразие типов как инвариант, а не как надежда на модель.
+   *
+   * Модель раздаёт замыслы неравномерно: на одном прогоне из восьми тезисов вышло
+   * три hook-statement и ни одного timeline или kinetic-text. Поэтому тип, занятый
+   * больше двух раз, переводится в неиспользованный. timeline берём только там, где
+   * в тезисе действительно есть порядок — иначе шаги будут выдуманными.
+   */
+  const usage = new Map();
+  for (const kind of kinds) usage.set(kind, (usage.get(kind) ?? 0) + 1);
+
+  for (let i = 1; i < kinds.length - 1; i++) {
+    if ((usage.get(kinds[i]) ?? 0) <= MAX_PER_KIND) continue;
+    const candidate = DIVERSIFY_ORDER.find(
+      (option) =>
+        (usage.get(option) ?? 0) < MAX_PER_KIND &&
+        option !== kinds[i - 1] &&
+        option !== kinds[i + 1] &&
+        (option !== "timeline" || isOrdered(i)),
+    );
+    if (!candidate) continue;
+    usage.set(kinds[i], usage.get(kinds[i]) - 1);
+    usage.set(candidate, (usage.get(candidate) ?? 0) + 1);
+    kinds[i] = candidate;
   }
 
   const backdrops = kinds.map((kind) => BACKDROP_BY_KIND[kind] ?? "plain");
@@ -182,12 +250,34 @@ export function planScenes(beats) {
 
 const iconList = IconNameSchema.options.join(", ");
 
+/**
+ * Достаёт полезную нагрузку из ответа модели.
+ *
+ * Модель периодически заворачивает объект: {"visual": {...}} или {"timeline": {...}}.
+ * Раньше это выглядело как «нет поля steps», сцена дважды не проходила валидацию и
+ * откатывалась на hook-statement — из-за чего в ролике снова оказывалось три
+ * текстовые сцены вместо запланированных timeline и kinetic-text.
+ */
+function unwrapContent(content, kind) {
+  if (!content || typeof content !== "object") return content;
+  if (content.error) throw new Error(`model returned error: ${String(content.error).slice(0, 120)}`);
+
+  for (const key of ["visual", "scene", "data", kind]) {
+    const nested = content[key];
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) return nested;
+  }
+  return content;
+}
+
 async function fillVisual(beat, plan, index) {
   const system = [
     `You fill the visual of one scene in an informative vertical short video.`,
     "",
-    `Scene kind: ${plan.kind}. Return JSON with exactly these fields:`,
+    `Scene kind: ${plan.kind}. Return a JSON object with exactly these fields:`,
     KIND_CONTRACT[plan.kind],
+    "",
+    `Example of a valid answer (shape, not content): ${KIND_EXAMPLE[plan.kind]}`,
+    "Return the object itself: no wrapper key, no prose, no description of the visual.",
     NEEDS_ICONS.has(plan.kind) ? `\nAllowed icon values: ${iconList}` : "",
     "",
     "The visual must show what the narration says, in fewer words than the narration.",
@@ -205,14 +295,29 @@ async function fillVisual(beat, plan, index) {
     .filter(Boolean)
     .join("\n");
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const feedback = [];
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const content = await askJson({ system, user, maxTokens: 700, timeoutMs: 90000 });
-      const candidate = { kind: plan.kind, ...content, ...plan.presentation };
+      // Замечания предыдущей попытки уходят обратно в промпт: без них модель три раза
+      // подряд присылала один шаг там, где схема требует минимум два.
+      const attemptUser =
+        feedback.length === 0
+          ? user
+          : `${user}\n\nYour previous answer was rejected:\n${feedback.map((f) => `- ${f}`).join("\n")}\nFix exactly these problems.`;
+      const raw = await askJson({ system, user: attemptUser, maxTokens: 700, timeoutMs: 180000 });
+      const content = unwrapContent(raw, plan.kind);
+      // kind и подача идут ПОСЛЕ содержимого: модель иногда возвращает своё поле
+      // kind, и оно перетирало запланированный тип — в ролике снова оказывались
+      // три hook-statement подряд, хотя план был другим.
+      const candidate = { ...content, kind: plan.kind, ...plan.presentation };
       const parsed = SceneVisualSpecSchema.safeParse(candidate);
       if (parsed.success) return parsed.data;
-      const issues = parsed.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`);
-      console.log(`  scene ${index + 1} (${plan.kind}) attempt ${attempt}: ${issues.join("; ")}`);
+      const issues = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`);
+      feedback.length = 0;
+      feedback.push(...issues);
+      console.log(
+        `  scene ${index + 1} (${plan.kind}) attempt ${attempt}: ${issues.join("; ")} | сырой ответ: ${JSON.stringify(raw).slice(0, 220)}`,
+      );
     } catch (error) {
       console.log(`  scene ${index + 1} (${plan.kind}) attempt ${attempt}: ${error.message}`);
     }

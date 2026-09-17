@@ -81,6 +81,8 @@ describe("SceneVisualSpec", () => {
         case "stat-counter":
         case "icon-list":
         case "comparison":
+        case "kinetic-text":
+        case "timeline":
         case "outro-cta":
           return spec.kind;
         default:

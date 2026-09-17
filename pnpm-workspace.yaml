@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# esbuild собирает нативный бинарь при установке — нужен @remotion/bundler.
+allowBuilds:
+  esbuild: true
+
+# Remotion-пакеты ссылаются друг на друга через ^, из-за чего подтягивается релиз
+# свежее, чем допускает политика minimumReleaseAge. Пиним всё дерево на выдержанную
+# версию, вместо того чтобы вносить пакеты в minimumReleaseAgeExclude.

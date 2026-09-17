@@ -1,23 +1,25 @@
 import React from "react";
-import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { interpolate } from "remotion";
 import type { StatCounterSpec } from "@shorts/contracts";
-import { CONTENT_INSET, theme } from "../theme.js";
+import { theme } from "../theme.js";
+import { useSceneMotion } from "../motion.js";
+import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
 import { Icon } from "../Icon.js";
 
 /**
  * Анимированный счётчик.
  *
- * Компонент durationInFrames-агностичен: короткая сцена (2с) и длинная (9с) должны
+ * Компонент durationInFrames-агностичен: короткая сцена (2 с) и длинная (9 с) должны
  * выглядеть одинаково осмысленно. Поэтому entrance фиксирован по кадрам, а счёт
  * занимает долю сцены — иначе на длинной озвучке число досчитает за секунду
  * и остаток сцены будет статичной картинкой.
  */
-export const StatCounter: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
-  const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
+const Body: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
+  const { frame, fps, durationInFrames } = useSceneMotion();
+  const accent = useAccent();
 
-  const enter = spring({ frame, fps, config: { damping: 200, mass: 0.6 } });
-  // Счёт идёт 55% сцены, но не дольше 2.5 с — дольше зритель теряет интерес к самому числу.
+  const enter = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
+  // Счёт идёт 55% сцены, но не дольше 2.5 с — дольше зритель теряет интерес к числу.
   const countFrames = Math.min(Math.round(durationInFrames * 0.55), Math.round(fps * 2.5));
   const progress = interpolate(frame, [6, 6 + countFrames], [0, 1], {
     extrapolateLeft: "clamp",
@@ -26,23 +28,18 @@ export const StatCounter: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
   });
 
   const value = spec.fromValue + (spec.toValue - spec.fromValue) * progress;
-  const display = value.toFixed(spec.decimals);
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: CONTENT_INSET,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 28,
-      }}
-    >
+    <>
       {spec.icon ? (
-        <div style={{ opacity: enter, transform: `scale(${0.7 + enter * 0.3})` }}>
-          <Icon name={spec.icon} size={96} color={theme.accent} />
+        <div
+          style={{
+            alignSelf: spec.layout === "left" ? "flex-start" : "center",
+            opacity: enter,
+            scale: interpolate(enter, [0, 1], [0.7, 1], { output: "perceptual-scale" }),
+          }}
+        >
+          <Icon name={spec.icon} size={96} color={accent} />
         </div>
       ) : null}
 
@@ -50,9 +47,10 @@ export const StatCounter: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
         style={{
           display: "flex",
           alignItems: "baseline",
-          gap: 12,
-          transform: `translateY(${(1 - enter) * 40}px)`,
-          opacity: enter,
+          justifyContent: spec.layout === "left" ? "flex-start" : "center",
+          // 200px кегль: при меньшем зазоре число и единица склеиваются в «70years».
+          gap: 28,
+          ...motionStyle(spec.motion, enter),
         }}
       >
         <span
@@ -65,10 +63,10 @@ export const StatCounter: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
             lineHeight: 1,
           }}
         >
-          {display}
+          {value.toFixed(spec.decimals)}
         </span>
         {spec.unit ? (
-          <span style={{ fontSize: 96, fontWeight: 700, color: theme.accent, lineHeight: 1 }}>
+          <span style={{ fontSize: 96, fontWeight: 700, color: accent, lineHeight: 1 }}>
             {spec.unit}
           </span>
         ) : null}
@@ -78,14 +76,19 @@ export const StatCounter: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
         style={{
           fontSize: 48,
           color: theme.muted,
-          textAlign: "center",
           maxWidth: 820,
+          alignSelf: spec.layout === "left" ? "flex-start" : "center",
           opacity: interpolate(frame, [10, 24], [0, 1], { extrapolateRight: "clamp" }),
-          transform: `translateY(${interpolate(frame, [10, 24], [20, 0], { extrapolateRight: "clamp" })}px)`,
         }}
       >
         {spec.label}
       </div>
-    </div>
+    </>
   );
 };
+
+export const StatCounter: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => (
+  <SceneFrame presentation={spec} gap={28}>
+    <Body spec={spec} />
+  </SceneFrame>
+);

@@ -1,11 +1,13 @@
 import { z } from "zod";
+import { presentationFields } from "./presentation.js";
 
 /**
  * Визуальная спецификация сцены — контракт между LLM, Remotion и инспектором.
  *
  * Принципы:
- * - LLM отвечает только за СМЫСЛ (что показать). Палитра, шрифты, тайминги анимации —
- *   зона приложения (VisualStyleConfig), иначе ролик разъедется по стилю от сцены к сцене.
+ * - LLM отвечает только за СМЫСЛ (что показать) и ПОДАЧУ из закрытых enum
+ *   (presentationFields). Палитра, шрифты, тайминги анимации — зона приложения,
+ *   иначе ролик разъедется по стилю от сцены к сцене.
  * - Лимиты жёсткие (без тихой обрезки): превышение → ошибка валидации → retry с уточнением.
  *   Тихий slice испортил бы смысл текста, а не спас бы кадр.
  * - Union расширяемый: добавление ветки не ломает существующие, а `assertNever` в switch
@@ -49,20 +51,34 @@ export const HookStatementSpecSchema = z.object({
   emphasisWords: z.array(text(1, 24)).max(3).default([]),
   /** Автор цитаты. Осмыслен только при variant: "quote"; для statement рендер его игнорирует. */
   attribution: text(1, 40).optional(),
+  ...presentationFields,
 });
 
-/** Одно число крупным планом с анимацией счёта. */
-export const StatCounterSpecSchema = z.object({
-  kind: z.literal("stat-counter"),
-  label: text(1, 48),
-  fromValue: z.number(),
-  toValue: z.number(),
-  /** "%", "x", "km", "$" — короткий суффикс. */
-  unit: text(1, 8).optional(),
-  /** Знаков после запятой при анимации счёта. */
-  decimals: z.number().int().min(0).max(2).default(0),
-  icon: IconNameSchema.optional(),
-});
+/**
+ * Одно число крупным планом с анимацией счёта.
+ *
+ * Проверка дельты — защита от фальшивой статистики: модель уже присылала счётчик
+ * «1 required» со счётом 0→1. Это и не факт, и анимировать там нечего. Дробная
+ * дельта разрешена: 0 → 0.24 Wh — нормальный замер.
+ */
+export const StatCounterSpecSchema = z
+  .object({
+    kind: z.literal("stat-counter"),
+    label: text(1, 48),
+    fromValue: z.number(),
+    toValue: z.number(),
+    /** "%", "x", "km", "$" — короткий суффикс. */
+    unit: text(1, 8).optional(),
+    /** Знаков после запятой при анимации счёта. */
+    decimals: z.number().int().min(0).max(2).default(0),
+    icon: IconNameSchema.optional(),
+    ...presentationFields,
+  })
+  .refine((spec) => Math.abs(spec.toValue - spec.fromValue) >= 2 || spec.decimals > 0, {
+    message:
+      "stat-counter needs a number worth animating: |toValue - fromValue| >= 2, or decimals > 0",
+    path: ["toValue"],
+  });
 
 /** 2–4 тезиса с иконками, появляются по очереди (stagger). */
 export const IconListSpecSchema = z.object({
@@ -72,6 +88,7 @@ export const IconListSpecSchema = z.object({
     .array(z.object({ icon: IconNameSchema, text: text(1, 48) }))
     .min(2)
     .max(4),
+  ...presentationFields,
 });
 
 /**
@@ -97,6 +114,7 @@ export const ComparisonSpecSchema = z.object({
     )
     .min(2)
     .max(3),
+  ...presentationFields,
 });
 
 /** Финальный экран: вывод + призыв к действию. */
@@ -104,6 +122,7 @@ export const OutroCtaSpecSchema = z.object({
   kind: z.literal("outro-cta"),
   text: text(1, 70),
   subtext: text(1, 60).optional(),
+  ...presentationFields,
 });
 
 export const SceneVisualSpecSchema = z.discriminatedUnion("kind", [

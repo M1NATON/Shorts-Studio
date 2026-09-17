@@ -1,44 +1,32 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { OutroCtaSpec } from "@shorts/contracts";
-import { CONTENT_INSET, theme } from "../theme.js";
+import { theme } from "../theme.js";
 import { useSceneMotion } from "../motion.js";
+import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
 
 /**
  * Финальная сцена.
  *
- * Здесь важно не «ещё одно движение», а остановка: текст приезжает один раз и
+ * Здесь важна не очередная анимация, а остановка: текст приезжает один раз и
  * фиксируется, под ним прочерчивается акцентная линия. Выход не затемняем —
  * последний кадр должен остаться читаемым на превью.
  */
-export const OutroCta: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
-  const { frame, enter } = useSceneMotion();
+const Body: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
+  const { frame } = useSceneMotion();
+  const accent = useAccent();
+  const appear = interpolate(frame, [0, 16], [0, 1], { extrapolateRight: "clamp" });
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: CONTENT_INSET,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 34,
-        opacity: enter,
-      }}
-    >
+    <>
       <div
         style={{
           fontSize: spec.text.length <= 40 ? 96 : 76,
           fontWeight: 800,
           color: theme.text,
-          textAlign: "center",
           lineHeight: 1.1,
           letterSpacing: "-0.03em",
-          scale: interpolate(frame, [0, 16], [0.88, 1], {
-            extrapolateRight: "clamp",
-            output: "perceptual-scale",
-          }),
+          ...motionStyle(spec.motion, appear),
         }}
       >
         {spec.text}
@@ -48,7 +36,8 @@ export const OutroCta: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
         style={{
           height: 8,
           borderRadius: 999,
-          backgroundColor: theme.accent,
+          backgroundColor: accent,
+          alignSelf: spec.layout === "left" ? "flex-start" : "center",
           width: interpolate(frame, [8, 30], [0, 260], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
@@ -62,21 +51,23 @@ export const OutroCta: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
             fontSize: 44,
             fontWeight: 500,
             color: theme.muted,
-            textAlign: "center",
             maxWidth: 780,
+            alignSelf: spec.layout === "left" ? "flex-start" : "center",
             opacity: interpolate(frame, [18, 34], [0, 1], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
             }),
-            translate: `0px ${interpolate(frame, [18, 34], [16, 0], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            })}px`,
           }}
         >
           {spec.subtext}
         </div>
       ) : null}
-    </div>
+    </>
   );
 };
+
+export const OutroCta: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => (
+  <SceneFrame presentation={spec} gap={34}>
+    <Body spec={spec} />
+  </SceneFrame>
+);

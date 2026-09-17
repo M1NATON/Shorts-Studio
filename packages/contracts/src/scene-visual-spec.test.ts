@@ -11,7 +11,14 @@ const hook = { kind: "hook-statement", text: "Ocean covers 71% of Earth" } as co
 describe("SceneVisualSpec", () => {
   it("разбирает валидную сцену и проставляет default для emphasisWords", () => {
     const parsed = SceneVisualSpecSchema.parse(hook);
-    expect(parsed).toEqual({ ...hook, emphasisWords: [], variant: "statement" });
+    expect(parsed).toEqual({
+      ...hook,
+      emphasisWords: [],
+      variant: "statement",
+      layout: "center",
+      motion: "rise",
+      accentShift: 0,
+    });
   });
 
   it("различает ветки по kind", () => {

@@ -1,8 +1,9 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { HookStatementSpec } from "@shorts/contracts";
-import { CONTENT_INSET, theme } from "../theme.js";
+import { theme } from "../theme.js";
 import { stagger, useSceneMotion } from "../motion.js";
+import { SceneFrame, motionStyle, useAccent } from "../presentation.js";
 
 /** Нормализация для сравнения с emphasisWords: регистр и пунктуация не должны мешать. */
 const normalize = (value: string): string => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
@@ -21,36 +22,28 @@ const fontSizeFor = (length: number): number => {
  * Главный текстовый тип сцены: заявление или цитата.
  *
  * Слова выезжают каскадом, а не появляются блоком — так кадр живёт всё время, пока
- * диктор произносит фразу. Акцентные слова подсвечиваются цветом и весом, поэтому
- * зритель видит смысловой центр фразы до того, как дослушает её.
+ * диктор произносит фразу. Направление каскада и композиция берутся из подачи
+ * (spec.motion / spec.layout), поэтому две текстовые сцены в одном ролике выглядят
+ * по-разному без второго компонента.
  */
-export const HookStatement: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
-  const { frame, visible } = useSceneMotion();
+const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
+  const { frame } = useSceneMotion();
+  const accent = useAccent();
   const words = spec.text.split(/\s+/);
   const emphasis = new Set(spec.emphasisWords.map(normalize));
   const fontSize = fontSizeFor(spec.text.length);
   const isQuote = spec.variant === "quote";
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: CONTENT_INSET,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: isQuote ? "flex-start" : "center",
-        justifyContent: "center",
-        gap: 32,
-        opacity: visible,
-      }}
-    >
+    <>
       {isQuote ? (
         <div
           style={{
-            fontSize: 220,
+            fontSize: 200,
             lineHeight: 0.7,
-            height: 120,
-            color: theme.accent,
+            height: 110,
+            color: accent,
+            alignSelf: spec.layout === "left" ? "flex-start" : "center",
             opacity: interpolate(frame, [0, 14], [0, 0.55], { extrapolateRight: "clamp" }),
             scale: interpolate(frame, [0, 14], [0.6, 1], {
               extrapolateRight: "clamp",
@@ -67,31 +60,25 @@ export const HookStatement: React.FC<{ spec: HookStatementSpec }> = ({ spec }) =
           display: "flex",
           flexWrap: "wrap",
           gap: `${Math.round(fontSize * 0.18)}px ${Math.round(fontSize * 0.26)}px`,
-          justifyContent: isQuote ? "flex-start" : "center",
-          textAlign: isQuote ? "left" : "center",
+          justifyContent: spec.layout === "left" ? "flex-start" : "center",
           fontSize,
           fontWeight: 800,
           lineHeight: 1.08,
           letterSpacing: "-0.03em",
         }}
       >
-        {words.map((word, index) => {
-          const appear = stagger(frame, index, 2);
-          const isEmphasized = emphasis.has(normalize(word));
-          return (
-            <span
-              key={`${index}-${word}`}
-              style={{
-                display: "inline-block",
-                color: isEmphasized ? theme.accent : theme.text,
-                opacity: appear,
-                translate: `0px ${(1 - appear) * 26}px`,
-              }}
-            >
-              {word}
-            </span>
-          );
-        })}
+        {words.map((word, index) => (
+          <span
+            key={`${index}-${word}`}
+            style={{
+              display: "inline-block",
+              color: emphasis.has(normalize(word)) ? accent : theme.text,
+              ...motionStyle(spec.motion, stagger(frame, index, 2), index % 2 === 0 ? 1 : -1),
+            }}
+          >
+            {word}
+          </span>
+        ))}
       </div>
 
       {spec.attribution ? (
@@ -109,6 +96,12 @@ export const HookStatement: React.FC<{ spec: HookStatementSpec }> = ({ spec }) =
           — {spec.attribution}
         </div>
       ) : null}
-    </div>
+    </>
   );
 };
+
+export const HookStatement: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => (
+  <SceneFrame presentation={spec} gap={32}>
+    <Body spec={spec} />
+  </SceneFrame>
+);

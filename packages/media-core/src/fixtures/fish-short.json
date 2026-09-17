@@ -1,0 +1,213 @@
+[
+ {
+  "audio_base64": "UklGRiT///9XQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQD///90AFUAQQANAN7/0f/n//v/5v+9/w==",
+  "content": "By 2026, AI systems still cannot set their own goals.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "By",
+     "start": 0,
+     "end": 0.08
+    }
+   ],
+   "audio_duration": 0.46439909297052157
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "OfwK/6gDEgPg/O348/o5AQ==",
+  "content": "By 2026, AI systems still cannot set their own goals.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "By",
+     "start": 0,
+     "end": 0.08
+    },
+    {
+     "text": "2026",
+     "start": 0.08,
+     "end": 0.72
+    }
+   ],
+   "audio_duration": 0.9287981859410431
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "aQSdBNkE/QTsBOgEBAX8BA==",
+  "content": "By 2026, AI systems still cannot set their own goals.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "By",
+     "start": 0,
+     "end": 0.08
+    },
+    {
+     "text": "2026",
+     "start": 0.08,
+     "end": 0.72
+    }
+   ],
+   "audio_duration": 1.486077097505669
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "/v/9/wAA/v////3/AQD9/w==",
+  "content": "By 2026, AI systems still cannot set their own goals.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "By",
+     "start": 0,
+     "end": 0.08
+    },
+    {
+     "text": "2026",
+     "start": 0.08,
+     "end": 0.72
+    },
+    {
+     "text": "AI",
+     "start": 1.76,
+     "end": 1.84
+    },
+    {
+     "text": "systems",
+     "start": 1.84,
+     "end": 2.4
+    },
+    {
+     "text": "still",
+     "start": 2.4,
+     "end": 2.72
+    }
+   ],
+   "audio_duration": 2.972154195011338
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "mQmcBukCMP98+7/3ZfQX8g==",
+  "content": "By 2026, AI systems still cannot set their own goals.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "By",
+     "start": 0,
+     "end": 0.08
+    },
+    {
+     "text": "2026",
+     "start": 0.08,
+     "end": 0.72
+    },
+    {
+     "text": "AI",
+     "start": 1.76,
+     "end": 1.84
+    },
+    {
+     "text": "systems",
+     "start": 1.84,
+     "end": 2.4
+    },
+    {
+     "text": "still",
+     "start": 2.4,
+     "end": 2.72
+    },
+    {
+     "text": "cannot",
+     "start": 2.72,
+     "end": 3.12
+    },
+    {
+     "text": "set",
+     "start": 3.12,
+     "end": 3.36
+    },
+    {
+     "text": "their",
+     "start": 3.36,
+     "end": 3.52
+    },
+    {
+     "text": "own",
+     "start": 3.52,
+     "end": 3.68
+    }
+   ],
+   "audio_duration": 4.365351473922902
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "",
+  "content": "By 2026, AI systems still cannot set their own goals.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "By",
+     "start": 0,
+     "end": 0.08
+    },
+    {
+     "text": "2026",
+     "start": 0.08,
+     "end": 1.6
+    },
+    {
+     "text": "AI",
+     "start": 1.76,
+     "end": 1.84
+    },
+    {
+     "text": "systems",
+     "start": 1.84,
+     "end": 2.32
+    },
+    {
+     "text": "still",
+     "start": 2.32,
+     "end": 2.72
+    },
+    {
+     "text": "cannot",
+     "start": 2.72,
+     "end": 3.12
+    },
+    {
+     "text": "set",
+     "start": 3.12,
+     "end": 3.36
+    },
+    {
+     "text": "their",
+     "start": 3.36,
+     "end": 3.52
+    },
+    {
+     "text": "own",
+     "start": 3.52,
+     "end": 3.68
+    },
+    {
+     "text": "goals",
+     "start": 3.68,
+     "end": 4.24
+    }
+   ],
+   "audio_duration": 4.365351473922902
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ }
+]

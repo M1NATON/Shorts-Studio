@@ -1,0 +1,2267 @@
+[
+ {
+  "audio_base64": "UklGRiT///9XQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQD////z//D/8v/o/+D/2f/u////AwABAA==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": null,
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "Xv4i/sD9ZP1s/fr9tf45/w==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    }
+   ],
+   "audio_duration": 0.9287981859410431
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "5gC9Ac8CFwPtAicDNwOfAg==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    }
+   ],
+   "audio_duration": 1.486077097505669
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "YwlrCVMJ9QhHCHAH2AZfBg==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    }
+   ],
+   "audio_duration": 2.972154195011338
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "JQMtAzcDNwM6A0ADRQNHAw==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    },
+    {
+     "text": "powerful",
+     "start": 2.24,
+     "end": 2.8
+    },
+    {
+     "text": "but",
+     "start": 2.8,
+     "end": 2.96
+    },
+    {
+     "text": "narrow",
+     "start": 2.96,
+     "end": 3.52
+    },
+    {
+     "text": "It",
+     "start": 3.92,
+     "end": 4.08
+    },
+    {
+     "text": "writes",
+     "start": 4.08,
+     "end": 4.4
+    },
+    {
+     "text": "code",
+     "start": 4.4,
+     "end": 4.8
+    },
+    {
+     "text": "drafts",
+     "start": 4.96,
+     "end": 5.28
+    }
+   ],
+   "audio_duration": 5.944308390022676
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "gwCYARD/iP4pAdUBVgAI/w==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    },
+    {
+     "text": "powerful",
+     "start": 2.24,
+     "end": 2.8
+    },
+    {
+     "text": "but",
+     "start": 2.8,
+     "end": 2.96
+    },
+    {
+     "text": "narrow",
+     "start": 2.96,
+     "end": 3.52
+    },
+    {
+     "text": "It",
+     "start": 3.92,
+     "end": 4.08
+    },
+    {
+     "text": "writes",
+     "start": 4.08,
+     "end": 4.4
+    },
+    {
+     "text": "code",
+     "start": 4.4,
+     "end": 4.8
+    },
+    {
+     "text": "drafts",
+     "start": 4.96,
+     "end": 5.28
+    },
+    {
+     "text": "contracts",
+     "start": 5.28,
+     "end": 6
+    },
+    {
+     "text": "and",
+     "start": 6,
+     "end": 6.08
+    },
+    {
+     "text": "diagnoses",
+     "start": 6.08,
+     "end": 6.72
+    },
+    {
+     "text": "scans",
+     "start": 6.72,
+     "end": 7.36
+    },
+    {
+     "text": "yet",
+     "start": 7.6,
+     "end": 7.76
+    },
+    {
+     "text": "it",
+     "start": 7.76,
+     "end": 7.84
+    },
+    {
+     "text": "has",
+     "start": 7.84,
+     "end": 8.08
+    },
+    {
+     "text": "no",
+     "start": 8.08,
+     "end": 8.32
+    }
+   ],
+   "audio_duration": 8.916462585034013
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "/wEKAon+8ftu/Hb9H/7d/w==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    },
+    {
+     "text": "powerful",
+     "start": 2.24,
+     "end": 2.8
+    },
+    {
+     "text": "but",
+     "start": 2.8,
+     "end": 2.96
+    },
+    {
+     "text": "narrow",
+     "start": 2.96,
+     "end": 3.52
+    },
+    {
+     "text": "It",
+     "start": 3.92,
+     "end": 4.08
+    },
+    {
+     "text": "writes",
+     "start": 4.08,
+     "end": 4.4
+    },
+    {
+     "text": "code",
+     "start": 4.4,
+     "end": 4.8
+    },
+    {
+     "text": "drafts",
+     "start": 4.96,
+     "end": 5.28
+    },
+    {
+     "text": "contracts",
+     "start": 5.28,
+     "end": 6
+    },
+    {
+     "text": "and",
+     "start": 6,
+     "end": 6.08
+    },
+    {
+     "text": "diagnoses",
+     "start": 6.08,
+     "end": 6.72
+    },
+    {
+     "text": "scans",
+     "start": 6.72,
+     "end": 7.36
+    },
+    {
+     "text": "yet",
+     "start": 7.6,
+     "end": 7.76
+    },
+    {
+     "text": "it",
+     "start": 7.76,
+     "end": 7.84
+    },
+    {
+     "text": "has",
+     "start": 7.84,
+     "end": 8.08
+    },
+    {
+     "text": "no",
+     "start": 8.08,
+     "end": 8.32
+    },
+    {
+     "text": "goals",
+     "start": 8.32,
+     "end": 8.72
+    },
+    {
+     "text": "of",
+     "start": 8.72,
+     "end": 8.8
+    },
+    {
+     "text": "its",
+     "start": 8.8,
+     "end": 8.96
+    },
+    {
+     "text": "own",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "Every",
+     "start": 10,
+     "end": 10.32
+    },
+    {
+     "text": "system",
+     "start": 10.32,
+     "end": 10.72
+    },
+    {
+     "text": "still",
+     "start": 10.72,
+     "end": 11.04
+    },
+    {
+     "text": "waits",
+     "start": 11.04,
+     "end": 11.36
+    },
+    {
+     "text": "for",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "a",
+     "start": 11.52,
+     "end": 11.6
+    }
+   ],
+   "audio_duration": 11.888616780045352
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "zws5C6UKNQqZCe0Ihwg1CA==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    },
+    {
+     "text": "powerful",
+     "start": 2.24,
+     "end": 2.8
+    },
+    {
+     "text": "but",
+     "start": 2.8,
+     "end": 2.96
+    },
+    {
+     "text": "narrow",
+     "start": 2.96,
+     "end": 3.52
+    },
+    {
+     "text": "It",
+     "start": 3.92,
+     "end": 4.08
+    },
+    {
+     "text": "writes",
+     "start": 4.08,
+     "end": 4.4
+    },
+    {
+     "text": "code",
+     "start": 4.4,
+     "end": 4.8
+    },
+    {
+     "text": "drafts",
+     "start": 4.96,
+     "end": 5.28
+    },
+    {
+     "text": "contracts",
+     "start": 5.28,
+     "end": 6
+    },
+    {
+     "text": "and",
+     "start": 6,
+     "end": 6.08
+    },
+    {
+     "text": "diagnoses",
+     "start": 6.08,
+     "end": 6.72
+    },
+    {
+     "text": "scans",
+     "start": 6.72,
+     "end": 7.36
+    },
+    {
+     "text": "yet",
+     "start": 7.6,
+     "end": 7.76
+    },
+    {
+     "text": "it",
+     "start": 7.76,
+     "end": 7.84
+    },
+    {
+     "text": "has",
+     "start": 7.84,
+     "end": 8.08
+    },
+    {
+     "text": "no",
+     "start": 8.08,
+     "end": 8.32
+    },
+    {
+     "text": "goals",
+     "start": 8.32,
+     "end": 8.72
+    },
+    {
+     "text": "of",
+     "start": 8.72,
+     "end": 8.8
+    },
+    {
+     "text": "its",
+     "start": 8.8,
+     "end": 8.96
+    },
+    {
+     "text": "own",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "Every",
+     "start": 10,
+     "end": 10.32
+    },
+    {
+     "text": "system",
+     "start": 10.32,
+     "end": 10.72
+    },
+    {
+     "text": "still",
+     "start": 10.72,
+     "end": 11.04
+    },
+    {
+     "text": "waits",
+     "start": 11.04,
+     "end": 11.36
+    },
+    {
+     "text": "for",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "a",
+     "start": 11.52,
+     "end": 11.6
+    },
+    {
+     "text": "human",
+     "start": 11.6,
+     "end": 12
+    },
+    {
+     "text": "prompt",
+     "start": 12,
+     "end": 12.48
+    },
+    {
+     "text": "a",
+     "start": 12.64,
+     "end": 12.72
+    },
+    {
+     "text": "budget",
+     "start": 12.8,
+     "end": 13.2
+    },
+    {
+     "text": "and",
+     "start": 13.44,
+     "end": 13.6
+    },
+    {
+     "text": "an",
+     "start": 13.6,
+     "end": 13.68
+    },
+    {
+     "text": "operator",
+     "start": 13.68,
+     "end": 14.16
+    },
+    {
+     "text": "who",
+     "start": 14.16,
+     "end": 14.32
+    }
+   ],
+   "audio_duration": 14.86077097505669
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "Ze+R78Xv4e8x8LHwMfGf8Q==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    },
+    {
+     "text": "powerful",
+     "start": 2.24,
+     "end": 2.8
+    },
+    {
+     "text": "but",
+     "start": 2.8,
+     "end": 2.96
+    },
+    {
+     "text": "narrow",
+     "start": 2.96,
+     "end": 3.52
+    },
+    {
+     "text": "It",
+     "start": 3.92,
+     "end": 4.08
+    },
+    {
+     "text": "writes",
+     "start": 4.08,
+     "end": 4.4
+    },
+    {
+     "text": "code",
+     "start": 4.4,
+     "end": 4.8
+    },
+    {
+     "text": "drafts",
+     "start": 4.96,
+     "end": 5.28
+    },
+    {
+     "text": "contracts",
+     "start": 5.28,
+     "end": 6
+    },
+    {
+     "text": "and",
+     "start": 6,
+     "end": 6.08
+    },
+    {
+     "text": "diagnoses",
+     "start": 6.08,
+     "end": 6.72
+    },
+    {
+     "text": "scans",
+     "start": 6.72,
+     "end": 7.36
+    },
+    {
+     "text": "yet",
+     "start": 7.6,
+     "end": 7.76
+    },
+    {
+     "text": "it",
+     "start": 7.76,
+     "end": 7.84
+    },
+    {
+     "text": "has",
+     "start": 7.84,
+     "end": 8.08
+    },
+    {
+     "text": "no",
+     "start": 8.08,
+     "end": 8.32
+    },
+    {
+     "text": "goals",
+     "start": 8.32,
+     "end": 8.72
+    },
+    {
+     "text": "of",
+     "start": 8.72,
+     "end": 8.8
+    },
+    {
+     "text": "its",
+     "start": 8.8,
+     "end": 8.96
+    },
+    {
+     "text": "own",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "Every",
+     "start": 10,
+     "end": 10.32
+    },
+    {
+     "text": "system",
+     "start": 10.32,
+     "end": 10.72
+    },
+    {
+     "text": "still",
+     "start": 10.72,
+     "end": 11.04
+    },
+    {
+     "text": "waits",
+     "start": 11.04,
+     "end": 11.36
+    },
+    {
+     "text": "for",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "a",
+     "start": 11.52,
+     "end": 11.6
+    },
+    {
+     "text": "human",
+     "start": 11.6,
+     "end": 12
+    },
+    {
+     "text": "prompt",
+     "start": 12,
+     "end": 12.48
+    },
+    {
+     "text": "a",
+     "start": 12.64,
+     "end": 12.72
+    },
+    {
+     "text": "budget",
+     "start": 12.8,
+     "end": 13.2
+    },
+    {
+     "text": "and",
+     "start": 13.44,
+     "end": 13.6
+    },
+    {
+     "text": "an",
+     "start": 13.6,
+     "end": 13.68
+    },
+    {
+     "text": "operator",
+     "start": 13.68,
+     "end": 14.16
+    },
+    {
+     "text": "who",
+     "start": 14.16,
+     "end": 14.32
+    },
+    {
+     "text": "decides",
+     "start": 14.32,
+     "end": 14.8
+    },
+    {
+     "text": "what",
+     "start": 14.8,
+     "end": 14.96
+    },
+    {
+     "text": "matters",
+     "start": 14.96,
+     "end": 15.52
+    }
+   ],
+   "audio_duration": 17.832925170068027
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "IQH+APgA8gDWAOkALwFKAQ==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    },
+    {
+     "text": "powerful",
+     "start": 2.24,
+     "end": 2.8
+    },
+    {
+     "text": "but",
+     "start": 2.8,
+     "end": 2.96
+    },
+    {
+     "text": "narrow",
+     "start": 2.96,
+     "end": 3.52
+    },
+    {
+     "text": "It",
+     "start": 3.92,
+     "end": 4.08
+    },
+    {
+     "text": "writes",
+     "start": 4.08,
+     "end": 4.4
+    },
+    {
+     "text": "code",
+     "start": 4.4,
+     "end": 4.8
+    },
+    {
+     "text": "drafts",
+     "start": 4.96,
+     "end": 5.28
+    },
+    {
+     "text": "contracts",
+     "start": 5.28,
+     "end": 6
+    },
+    {
+     "text": "and",
+     "start": 6,
+     "end": 6.08
+    },
+    {
+     "text": "diagnoses",
+     "start": 6.08,
+     "end": 6.72
+    },
+    {
+     "text": "scans",
+     "start": 6.72,
+     "end": 7.36
+    },
+    {
+     "text": "yet",
+     "start": 7.6,
+     "end": 7.76
+    },
+    {
+     "text": "it",
+     "start": 7.76,
+     "end": 7.84
+    },
+    {
+     "text": "has",
+     "start": 7.84,
+     "end": 8.08
+    },
+    {
+     "text": "no",
+     "start": 8.08,
+     "end": 8.32
+    },
+    {
+     "text": "goals",
+     "start": 8.32,
+     "end": 8.72
+    },
+    {
+     "text": "of",
+     "start": 8.72,
+     "end": 8.8
+    },
+    {
+     "text": "its",
+     "start": 8.8,
+     "end": 8.96
+    },
+    {
+     "text": "own",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "Every",
+     "start": 10,
+     "end": 10.32
+    },
+    {
+     "text": "system",
+     "start": 10.32,
+     "end": 10.72
+    },
+    {
+     "text": "still",
+     "start": 10.72,
+     "end": 11.04
+    },
+    {
+     "text": "waits",
+     "start": 11.04,
+     "end": 11.36
+    },
+    {
+     "text": "for",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "a",
+     "start": 11.52,
+     "end": 11.6
+    },
+    {
+     "text": "human",
+     "start": 11.6,
+     "end": 12
+    },
+    {
+     "text": "prompt",
+     "start": 12,
+     "end": 12.48
+    },
+    {
+     "text": "a",
+     "start": 12.64,
+     "end": 12.72
+    },
+    {
+     "text": "budget",
+     "start": 12.8,
+     "end": 13.2
+    },
+    {
+     "text": "and",
+     "start": 13.44,
+     "end": 13.6
+    },
+    {
+     "text": "an",
+     "start": 13.6,
+     "end": 13.68
+    },
+    {
+     "text": "operator",
+     "start": 13.68,
+     "end": 14.16
+    },
+    {
+     "text": "who",
+     "start": 14.16,
+     "end": 14.32
+    },
+    {
+     "text": "decides",
+     "start": 14.32,
+     "end": 14.8
+    },
+    {
+     "text": "what",
+     "start": 14.8,
+     "end": 14.96
+    },
+    {
+     "text": "matters",
+     "start": 14.96,
+     "end": 15.52
+    },
+    {
+     "text": "The",
+     "start": 15.68,
+     "end": 15.68
+    },
+    {
+     "text": "real",
+     "start": 15.68,
+     "end": 16.08
+    },
+    {
+     "text": "risk",
+     "start": 16.08,
+     "end": 16.4
+    },
+    {
+     "text": "is",
+     "start": 16.4,
+     "end": 16.48
+    },
+    {
+     "text": "not",
+     "start": 16.48,
+     "end": 16.8
+    }
+   ],
+   "audio_duration": 18.250884353741498
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "AAAAAAAAAAAAAAAAAAAAAA==",
+  "content": "Artificial intelligence in 2026 is powerful but narrow. It writes code, drafts contracts and diagnoses scans, yet it has no goals of its own. Every system still waits for a human prompt, a budget, and an operator who decides what matters. The real risk is not a machine that wants power.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "Artificial",
+     "start": 0,
+     "end": 0.56
+    },
+    {
+     "text": "intelligence",
+     "start": 0.56,
+     "end": 1.2
+    },
+    {
+     "text": "in",
+     "start": 1.2,
+     "end": 1.28
+    },
+    {
+     "text": "2026",
+     "start": 1.28,
+     "end": 2.16
+    },
+    {
+     "text": "is",
+     "start": 2.16,
+     "end": 2.24
+    },
+    {
+     "text": "powerful",
+     "start": 2.24,
+     "end": 2.8
+    },
+    {
+     "text": "but",
+     "start": 2.8,
+     "end": 2.96
+    },
+    {
+     "text": "narrow",
+     "start": 2.96,
+     "end": 3.52
+    },
+    {
+     "text": "It",
+     "start": 3.92,
+     "end": 4.08
+    },
+    {
+     "text": "writes",
+     "start": 4.08,
+     "end": 4.4
+    },
+    {
+     "text": "code",
+     "start": 4.4,
+     "end": 4.8
+    },
+    {
+     "text": "drafts",
+     "start": 4.96,
+     "end": 5.28
+    },
+    {
+     "text": "contracts",
+     "start": 5.28,
+     "end": 6
+    },
+    {
+     "text": "and",
+     "start": 6,
+     "end": 6.08
+    },
+    {
+     "text": "diagnoses",
+     "start": 6.08,
+     "end": 6.72
+    },
+    {
+     "text": "scans",
+     "start": 6.72,
+     "end": 7.36
+    },
+    {
+     "text": "yet",
+     "start": 7.6,
+     "end": 7.76
+    },
+    {
+     "text": "it",
+     "start": 7.76,
+     "end": 7.84
+    },
+    {
+     "text": "has",
+     "start": 7.84,
+     "end": 8.08
+    },
+    {
+     "text": "no",
+     "start": 8.08,
+     "end": 8.32
+    },
+    {
+     "text": "goals",
+     "start": 8.32,
+     "end": 8.72
+    },
+    {
+     "text": "of",
+     "start": 8.72,
+     "end": 8.8
+    },
+    {
+     "text": "its",
+     "start": 8.8,
+     "end": 8.96
+    },
+    {
+     "text": "own",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "Every",
+     "start": 10,
+     "end": 10.32
+    },
+    {
+     "text": "system",
+     "start": 10.32,
+     "end": 10.72
+    },
+    {
+     "text": "still",
+     "start": 10.72,
+     "end": 11.04
+    },
+    {
+     "text": "waits",
+     "start": 11.04,
+     "end": 11.36
+    },
+    {
+     "text": "for",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "a",
+     "start": 11.52,
+     "end": 11.6
+    },
+    {
+     "text": "human",
+     "start": 11.6,
+     "end": 12
+    },
+    {
+     "text": "prompt",
+     "start": 12,
+     "end": 12.48
+    },
+    {
+     "text": "a",
+     "start": 12.64,
+     "end": 12.72
+    },
+    {
+     "text": "budget",
+     "start": 12.72,
+     "end": 13.2
+    },
+    {
+     "text": "and",
+     "start": 13.44,
+     "end": 13.6
+    },
+    {
+     "text": "an",
+     "start": 13.6,
+     "end": 13.68
+    },
+    {
+     "text": "operator",
+     "start": 13.68,
+     "end": 14.16
+    },
+    {
+     "text": "who",
+     "start": 14.16,
+     "end": 14.32
+    },
+    {
+     "text": "decides",
+     "start": 14.32,
+     "end": 14.8
+    },
+    {
+     "text": "what",
+     "start": 14.8,
+     "end": 14.96
+    },
+    {
+     "text": "matters",
+     "start": 14.96,
+     "end": 15.52
+    },
+    {
+     "text": "The",
+     "start": 15.68,
+     "end": 15.68
+    },
+    {
+     "text": "real",
+     "start": 15.68,
+     "end": 16.08
+    },
+    {
+     "text": "risk",
+     "start": 16.08,
+     "end": 16.4
+    },
+    {
+     "text": "is",
+     "start": 16.4,
+     "end": 16.48
+    },
+    {
+     "text": "not",
+     "start": 16.48,
+     "end": 16.8
+    },
+    {
+     "text": "a",
+     "start": 16.8,
+     "end": 16.8
+    },
+    {
+     "text": "machine",
+     "start": 16.8,
+     "end": 17.28
+    },
+    {
+     "text": "that",
+     "start": 17.28,
+     "end": 17.36
+    },
+    {
+     "text": "wants",
+     "start": 17.36,
+     "end": 17.6
+    },
+    {
+     "text": "power",
+     "start": 17.6,
+     "end": 18.08
+    }
+   ],
+   "audio_duration": 18.250884353741498
+  },
+  "chunk_seq": 0,
+  "chunk_audio_offset_sec": 0
+ },
+ {
+  "audio_base64": "6gDqAOQA2ADWANUA0ADCAA==",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    }
+   ],
+   "audio_duration": 1.1255328798185942
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ },
+ {
+  "audio_base64": "yxDtD2sOqwzZCpkIPQb1BA==",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    },
+    {
+     "text": "that",
+     "start": 0.88,
+     "end": 0.96
+    },
+    {
+     "text": "hands",
+     "start": 0.96,
+     "end": 1.28
+    },
+    {
+     "text": "over",
+     "start": 1.28,
+     "end": 1.44
+    }
+   ],
+   "audio_duration": 1.68281179138322
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ },
+ {
+  "audio_base64": "NAGLAokCHwHC/1n+DPwg+g==",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    },
+    {
+     "text": "that",
+     "start": 0.88,
+     "end": 0.96
+    },
+    {
+     "text": "hands",
+     "start": 0.96,
+     "end": 1.28
+    },
+    {
+     "text": "over",
+     "start": 1.28,
+     "end": 1.44
+    },
+    {
+     "text": "decisions",
+     "start": 1.44,
+     "end": 2
+    },
+    {
+     "text": "it",
+     "start": 2,
+     "end": 2.08
+    },
+    {
+     "text": "never",
+     "start": 2.08,
+     "end": 2.4
+    }
+   ],
+   "audio_duration": 3.168888888888889
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ },
+ {
+  "audio_base64": "BAAEAAMAAwABAAAAAAAAAA==",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    },
+    {
+     "text": "that",
+     "start": 0.88,
+     "end": 0.96
+    },
+    {
+     "text": "hands",
+     "start": 0.96,
+     "end": 1.28
+    },
+    {
+     "text": "over",
+     "start": 1.28,
+     "end": 1.44
+    },
+    {
+     "text": "decisions",
+     "start": 1.44,
+     "end": 2
+    },
+    {
+     "text": "it",
+     "start": 2,
+     "end": 2.08
+    },
+    {
+     "text": "never",
+     "start": 2.08,
+     "end": 2.4
+    },
+    {
+     "text": "understood",
+     "start": 2.4,
+     "end": 3.04
+    },
+    {
+     "text": "to",
+     "start": 3.44,
+     "end": 3.52
+    }
+   ],
+   "audio_duration": 6.141043083900227
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ },
+ {
+  "audio_base64": "Yf8LABoBMQIiAxYEFQWTBQ==",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    },
+    {
+     "text": "that",
+     "start": 0.88,
+     "end": 0.96
+    },
+    {
+     "text": "hands",
+     "start": 0.96,
+     "end": 1.28
+    },
+    {
+     "text": "over",
+     "start": 1.28,
+     "end": 1.44
+    },
+    {
+     "text": "decisions",
+     "start": 1.44,
+     "end": 2
+    },
+    {
+     "text": "it",
+     "start": 2,
+     "end": 2.08
+    },
+    {
+     "text": "never",
+     "start": 2.08,
+     "end": 2.4
+    },
+    {
+     "text": "understood",
+     "start": 2.4,
+     "end": 3.04
+    },
+    {
+     "text": "to",
+     "start": 3.44,
+     "end": 3.52
+    },
+    {
+     "text": "a",
+     "start": 3.52,
+     "end": 3.52
+    },
+    {
+     "text": "model",
+     "start": 3.52,
+     "end": 4
+    }
+   ],
+   "audio_duration": 9.113197278911565
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ },
+ {
+  "audio_base64": "pAB2/4L+UP1Z+zP55fdf9w==",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    },
+    {
+     "text": "that",
+     "start": 0.88,
+     "end": 0.96
+    },
+    {
+     "text": "hands",
+     "start": 0.96,
+     "end": 1.28
+    },
+    {
+     "text": "over",
+     "start": 1.28,
+     "end": 1.44
+    },
+    {
+     "text": "decisions",
+     "start": 1.44,
+     "end": 2
+    },
+    {
+     "text": "it",
+     "start": 2,
+     "end": 2.08
+    },
+    {
+     "text": "never",
+     "start": 2.08,
+     "end": 2.4
+    },
+    {
+     "text": "understood",
+     "start": 2.4,
+     "end": 3.04
+    },
+    {
+     "text": "to",
+     "start": 3.44,
+     "end": 3.52
+    },
+    {
+     "text": "a",
+     "start": 3.52,
+     "end": 3.52
+    },
+    {
+     "text": "model",
+     "start": 3.52,
+     "end": 4
+    },
+    {
+     "text": "that",
+     "start": 4,
+     "end": 4
+    },
+    {
+     "text": "was",
+     "start": 4,
+     "end": 4.16
+    },
+    {
+     "text": "never",
+     "start": 4.16,
+     "end": 4.56
+    },
+    {
+     "text": "accountable",
+     "start": 4.56,
+     "end": 5.2
+    },
+    {
+     "text": "That",
+     "start": 5.68,
+     "end": 5.92
+    },
+    {
+     "text": "gap",
+     "start": 5.92,
+     "end": 6.24
+    },
+    {
+     "text": "between",
+     "start": 6.24,
+     "end": 6.56
+    },
+    {
+     "text": "capability",
+     "start": 6.56,
+     "end": 7.2
+    },
+    {
+     "text": "and",
+     "start": 7.2,
+     "end": 7.28
+    },
+    {
+     "text": "control",
+     "start": 7.28,
+     "end": 7.92
+    },
+    {
+     "text": "is",
+     "start": 8.16,
+     "end": 8.24
+    },
+    {
+     "text": "where",
+     "start": 8.24,
+     "end": 8.4
+    },
+    {
+     "text": "the",
+     "start": 8.4,
+     "end": 8.64
+    },
+    {
+     "text": "actual",
+     "start": 8.64,
+     "end": 8.96
+    },
+    {
+     "text": "danger",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "lives",
+     "start": 9.36,
+     "end": 9.92
+    },
+    {
+     "text": "and",
+     "start": 10.16,
+     "end": 10.32
+    },
+    {
+     "text": "it",
+     "start": 10.32,
+     "end": 10.4
+    },
+    {
+     "text": "is",
+     "start": 10.4,
+     "end": 10.56
+    },
+    {
+     "text": "growing",
+     "start": 10.56,
+     "end": 10.88
+    },
+    {
+     "text": "faster",
+     "start": 10.88,
+     "end": 11.36
+    },
+    {
+     "text": "than",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "any",
+     "start": 11.52,
+     "end": 11.76
+    }
+   ],
+   "audio_duration": 12.085351473922902
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ },
+ {
+  "audio_base64": "yQpfDP0NdQ+7EL8R3xInFA==",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    },
+    {
+     "text": "that",
+     "start": 0.88,
+     "end": 0.96
+    },
+    {
+     "text": "hands",
+     "start": 0.96,
+     "end": 1.28
+    },
+    {
+     "text": "over",
+     "start": 1.28,
+     "end": 1.44
+    },
+    {
+     "text": "decisions",
+     "start": 1.44,
+     "end": 2
+    },
+    {
+     "text": "it",
+     "start": 2,
+     "end": 2.08
+    },
+    {
+     "text": "never",
+     "start": 2.08,
+     "end": 2.4
+    },
+    {
+     "text": "understood",
+     "start": 2.4,
+     "end": 3.04
+    },
+    {
+     "text": "to",
+     "start": 3.44,
+     "end": 3.52
+    },
+    {
+     "text": "a",
+     "start": 3.52,
+     "end": 3.52
+    },
+    {
+     "text": "model",
+     "start": 3.52,
+     "end": 4
+    },
+    {
+     "text": "that",
+     "start": 4,
+     "end": 4
+    },
+    {
+     "text": "was",
+     "start": 4,
+     "end": 4.16
+    },
+    {
+     "text": "never",
+     "start": 4.16,
+     "end": 4.56
+    },
+    {
+     "text": "accountable",
+     "start": 4.56,
+     "end": 5.2
+    },
+    {
+     "text": "That",
+     "start": 5.68,
+     "end": 5.92
+    },
+    {
+     "text": "gap",
+     "start": 5.92,
+     "end": 6.24
+    },
+    {
+     "text": "between",
+     "start": 6.24,
+     "end": 6.56
+    },
+    {
+     "text": "capability",
+     "start": 6.56,
+     "end": 7.2
+    },
+    {
+     "text": "and",
+     "start": 7.2,
+     "end": 7.28
+    },
+    {
+     "text": "control",
+     "start": 7.28,
+     "end": 7.92
+    },
+    {
+     "text": "is",
+     "start": 8.16,
+     "end": 8.24
+    },
+    {
+     "text": "where",
+     "start": 8.24,
+     "end": 8.4
+    },
+    {
+     "text": "the",
+     "start": 8.4,
+     "end": 8.64
+    },
+    {
+     "text": "actual",
+     "start": 8.64,
+     "end": 8.96
+    },
+    {
+     "text": "danger",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "lives",
+     "start": 9.36,
+     "end": 9.92
+    },
+    {
+     "text": "and",
+     "start": 10.16,
+     "end": 10.32
+    },
+    {
+     "text": "it",
+     "start": 10.32,
+     "end": 10.4
+    },
+    {
+     "text": "is",
+     "start": 10.4,
+     "end": 10.56
+    },
+    {
+     "text": "growing",
+     "start": 10.56,
+     "end": 10.88
+    },
+    {
+     "text": "faster",
+     "start": 10.88,
+     "end": 11.36
+    },
+    {
+     "text": "than",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "any",
+     "start": 11.52,
+     "end": 11.76
+    },
+    {
+     "text": "regulation",
+     "start": 11.76,
+     "end": 12.4
+    },
+    {
+     "text": "written",
+     "start": 12.4,
+     "end": 12.64
+    },
+    {
+     "text": "so",
+     "start": 12.64,
+     "end": 12.88
+    }
+   ],
+   "audio_duration": 13.432108843537415
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ },
+ {
+  "audio_base64": "",
+  "content": "It is a company that hands over decisions it never understood, to a model that was never accountable. That gap between capability and control is where the actual danger lives, and it is growing faster than any regulation written so far.",
+  "alignment": {
+   "segments": [
+    {
+     "text": "It",
+     "start": 0.16,
+     "end": 0.32
+    },
+    {
+     "text": "is",
+     "start": 0.32,
+     "end": 0.4
+    },
+    {
+     "text": "a",
+     "start": 0.4,
+     "end": 0.48
+    },
+    {
+     "text": "company",
+     "start": 0.48,
+     "end": 0.8
+    },
+    {
+     "text": "that",
+     "start": 0.88,
+     "end": 0.96
+    },
+    {
+     "text": "hands",
+     "start": 0.96,
+     "end": 1.28
+    },
+    {
+     "text": "over",
+     "start": 1.28,
+     "end": 1.44
+    },
+    {
+     "text": "decisions",
+     "start": 1.44,
+     "end": 2
+    },
+    {
+     "text": "it",
+     "start": 2,
+     "end": 2.08
+    },
+    {
+     "text": "never",
+     "start": 2.08,
+     "end": 2.4
+    },
+    {
+     "text": "understood",
+     "start": 2.4,
+     "end": 3.04
+    },
+    {
+     "text": "to",
+     "start": 3.44,
+     "end": 3.52
+    },
+    {
+     "text": "a",
+     "start": 3.52,
+     "end": 3.52
+    },
+    {
+     "text": "model",
+     "start": 3.52,
+     "end": 3.92
+    },
+    {
+     "text": "that",
+     "start": 4,
+     "end": 4
+    },
+    {
+     "text": "was",
+     "start": 4,
+     "end": 4.16
+    },
+    {
+     "text": "never",
+     "start": 4.16,
+     "end": 4.56
+    },
+    {
+     "text": "accountable",
+     "start": 4.56,
+     "end": 5.2
+    },
+    {
+     "text": "That",
+     "start": 5.68,
+     "end": 5.92
+    },
+    {
+     "text": "gap",
+     "start": 5.92,
+     "end": 6.24
+    },
+    {
+     "text": "between",
+     "start": 6.24,
+     "end": 6.56
+    },
+    {
+     "text": "capability",
+     "start": 6.56,
+     "end": 7.2
+    },
+    {
+     "text": "and",
+     "start": 7.2,
+     "end": 7.28
+    },
+    {
+     "text": "control",
+     "start": 7.28,
+     "end": 7.92
+    },
+    {
+     "text": "is",
+     "start": 8.16,
+     "end": 8.24
+    },
+    {
+     "text": "where",
+     "start": 8.24,
+     "end": 8.4
+    },
+    {
+     "text": "the",
+     "start": 8.4,
+     "end": 8.64
+    },
+    {
+     "text": "actual",
+     "start": 8.64,
+     "end": 8.96
+    },
+    {
+     "text": "danger",
+     "start": 8.96,
+     "end": 9.36
+    },
+    {
+     "text": "lives",
+     "start": 9.36,
+     "end": 9.92
+    },
+    {
+     "text": "and",
+     "start": 10.16,
+     "end": 10.32
+    },
+    {
+     "text": "it",
+     "start": 10.32,
+     "end": 10.4
+    },
+    {
+     "text": "is",
+     "start": 10.4,
+     "end": 10.56
+    },
+    {
+     "text": "growing",
+     "start": 10.56,
+     "end": 10.88
+    },
+    {
+     "text": "faster",
+     "start": 10.88,
+     "end": 11.36
+    },
+    {
+     "text": "than",
+     "start": 11.36,
+     "end": 11.52
+    },
+    {
+     "text": "any",
+     "start": 11.52,
+     "end": 11.76
+    },
+    {
+     "text": "regulation",
+     "start": 11.76,
+     "end": 12.4
+    },
+    {
+     "text": "written",
+     "start": 12.4,
+     "end": 12.64
+    },
+    {
+     "text": "so",
+     "start": 12.64,
+     "end": 12.88
+    },
+    {
+     "text": "far",
+     "start": 12.88,
+     "end": 13.36
+    }
+   ],
+   "audio_duration": 13.432108843537415
+  },
+  "chunk_seq": 1,
+  "chunk_audio_offset_sec": 18.250884353741498
+ }
+]

@@ -5,7 +5,16 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { ManifestSchema, SHORTS_SIZE, ScriptSchema, SceneVisualSpecSchema } from "@shorts/contracts";
+import {
+  ManifestSchema,
+  NARRATION_MAX_CHARS,
+  NARRATION_TARGET_CHARS,
+  SCENE_COUNT_RANGE,
+  SHORTS_SIZE,
+  SPEECH_CHARS_PER_SEC,
+  ScriptSchema,
+  SceneVisualSpecSchema,
+} from "@shorts/contracts";
 import {
   assembleFishStream,
   mapTimingsToOriginalText,
@@ -18,27 +27,78 @@ import { renderVideo } from "@shorts/remotion";
 const TOPIC = process.argv[2] ?? "Will AI actually rebel in 2026";
 const STORAGE = path.resolve("storage");
 const FPS = 30;
-const SCENE_COUNT = 5;
+/**
+ * Целевое число сцен. Схема допускает 5..9; берём верх диапазона, потому что при
+ * лимите озвучки 110 символов (~8 с) именно число сцен задаёт темп: 8 сцен по 4 с
+ * читаются как динамичный клип, 5 сцен по 7 с — как слайд-шоу.
+ */
+const SCENE_COUNT = 8;
+/** Не больше такой доли сцен без визуальных данных — иначе видео превращается в титры. */
+const MAX_TEXT_SCENE_SHARE = 0.4;
 
 const visualJsonSchema = z.toJSONSchema(SceneVisualSpecSchema, { target: "draft-2020-12" });
 
 const SYSTEM = [
-  "You write informative vertical short videos (9:16, ~25 seconds), in English.",
+  "You write informative vertical short videos (9:16, 30-40 seconds), in English.",
   "",
   'Return JSON: { "title": string, "scenes": [ { "narration": string, "visual": <SceneVisualSpec> } ] }',
-  `Exactly ${SCENE_COUNT} scenes.`,
+  `${SCENE_COUNT} scenes (${SCENE_COUNT_RANGE.min}-${SCENE_COUNT_RANGE.max} allowed).`,
   "",
-  "narration: one spoken sentence, max 240 characters, one fact per scene.",
+  `narration: ONE short spoken sentence, ${NARRATION_TARGET_CHARS.min}-${NARRATION_TARGET_CHARS.max} characters,`,
+  `hard maximum ${NARRATION_MAX_CHARS}. Speech runs at ~${SPEECH_CHARS_PER_SEC} characters per second,`,
+  "so a long sentence freezes the scene. One idea per scene, no filler, no throat-clearing.",
+  "",
   "visual must validate against this JSON Schema:",
   JSON.stringify(visualJsonSchema),
   "",
   'Structure: scene 1 is a hook (kind "hook-statement"), the last scene is "outro-cta".',
-  "VISUAL VARIETY (mandatory):",
-  "- Never use more than 2 text-only scenes (hook-statement) in a row.",
-  '- Include at least one "stat-counter" built on a real, widely documented figure.',
-  '- Data-bearing kinds require real verifiable values; if unsure, use "hook-statement".',
+  "VISUAL VARIETY (mandatory, checked programmatically — violations are rejected):",
+  `- At most ${Math.floor(SCENE_COUNT * MAX_TEXT_SCENE_SHARE)} text-only scenes (hook-statement) in the whole video.`,
+  "- Never two scenes of the same kind in a row.",
+  '- Use at least two different visual kinds among "icon-list", "stat-counter", "comparison".',
+  '- Data-bearing kinds require real verifiable values; if unsure, use "icon-list" with claims, not invented numbers.',
 ].join("\n");
 
+/**
+ * Программная проверка баланса.
+ *
+ * Промпт с квотами модель уже игнорировала (в прошлом прогоне взяла hook-statement
+ * 3 раза из 5), поэтому правила проверяются кодом, а нарушения возвращаются модели
+ * текстом — так ретрай исправляет ошибку, а не бросает кости заново.
+ */
+function findBalanceViolations(script) {
+  const kinds = script.scenes.map((scene) => scene.visual.kind);
+  const violations = [];
+
+  if (kinds[0] !== "hook-statement") violations.push('scene 1 must be "hook-statement"');
+  if (kinds[kinds.length - 1] !== "outro-cta") violations.push('the last scene must be "outro-cta"');
+
+  const textScenes = kinds.filter((kind) => kind === "hook-statement").length;
+  const textLimit = Math.max(1, Math.floor(script.scenes.length * MAX_TEXT_SCENE_SHARE));
+  if (textScenes > textLimit) {
+    violations.push(`too many text-only scenes: ${textScenes} hook-statement, limit ${textLimit}`);
+  }
+
+  for (let i = 1; i < kinds.length; i++) {
+    if (kinds[i] === kinds[i - 1]) {
+      violations.push(`scenes ${i} and ${i + 1} have the same kind "${kinds[i]}"`);
+    }
+  }
+
+  const visualKinds = new Set(kinds.filter((kind) => kind === "icon-list" || kind === "stat-counter" || kind === "comparison"));
+  if (visualKinds.size < 2) {
+    violations.push('use at least two different kinds among "icon-list", "stat-counter", "comparison"');
+  }
+
+  const tooLong = script.scenes.filter((scene) => scene.narration.length > NARRATION_TARGET_CHARS.max);
+  if (tooLong.length > Math.ceil(script.scenes.length / 3)) {
+    violations.push(
+      `${tooLong.length} scenes exceed ${NARRATION_TARGET_CHARS.max} characters of narration — shorten them`,
+    );
+  }
+
+  return violations;
+}
 
 /** Собирает content из SSE-стрима OpenAI-совместимого ответа. */
 async function collectStream(res) {
@@ -64,36 +124,64 @@ async function collectStream(res) {
 }
 
 async function generateScript() {
+  const feedback = [];
   for (let attempt = 1; attempt <= 3; attempt++) {
+    const messages = [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: `Topic: ${TOPIC}` },
+    ];
+    if (feedback.length > 0) {
+      messages.push({
+        role: "user",
+        content: `Your previous answer was rejected:\n${feedback.map((f) => `- ${f}`).join("\n")}\nReturn the full corrected JSON.`,
+      });
+    }
+
     const res = await fetch(`${process.env.LLM_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.LLM_API_KEY}` },
       body: JSON.stringify({
         model: process.env.LLM_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: `Topic: ${TOPIC}` },
-        ],
+        messages,
         response_format: { type: "json_object" },
         temperature: 0.8,
         // Прокси обрывает соединение, если ответ не начал поступать за 30 с
         // ("Direct response did not start within 30000ms"), а reasoning-модель думает дольше.
         // Стриминг отдаёт первый байт сразу, поэтому лимит не срабатывает.
         stream: true,
-        max_tokens: 4000,
+        max_tokens: 6000,
       }),
-      signal: AbortSignal.timeout(180000),
+      signal: AbortSignal.timeout(240000),
     });
     if (!res.ok) {
       console.log(`  attempt ${attempt}: HTTP ${res.status}, retry`);
       continue;
     }
-    const raw = JSON.parse(await collectStream(res));
+
+    let raw;
+    try {
+      raw = JSON.parse(await collectStream(res));
+    } catch (error) {
+      console.log(`  attempt ${attempt}: ответ не JSON (${error.message}), retry`);
+      continue;
+    }
+
     const withIds = { ...raw, scenes: (raw.scenes ?? []).map((s, i) => ({ ...s, id: `scene-${i + 1}` })) };
     const parsed = ScriptSchema.safeParse(withIds);
-    if (parsed.success) return parsed.data;
-    const issues = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`);
-    console.log(`  attempt ${attempt}: schema error → ${issues.join("; ")}`);
+    if (!parsed.success) {
+      const issues = parsed.error.issues.slice(0, 4).map((i) => `${i.path.join(".")}: ${i.message}`);
+      console.log(`  attempt ${attempt}: schema error → ${issues.join("; ")}`);
+      feedback.length = 0;
+      feedback.push(...issues);
+      continue;
+    }
+
+    const violations = findBalanceViolations(parsed.data);
+    if (violations.length === 0) return parsed.data;
+
+    console.log(`  attempt ${attempt}: баланс → ${violations.join("; ")}`);
+    feedback.length = 0;
+    feedback.push(...violations);
   }
   throw new Error("LLM failed to produce a valid script in 3 attempts");
 }

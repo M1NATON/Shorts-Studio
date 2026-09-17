@@ -1,7 +1,10 @@
 import React from "react";
 import { assertNever, type SceneVisualSpec } from "@shorts/contracts";
+import { Comparison } from "./Comparison.js";
+import { HookStatement } from "./HookStatement.js";
+import { IconList } from "./IconList.js";
+import { OutroCta } from "./OutroCta.js";
 import { StatCounter } from "./StatCounter.js";
-import { Placeholder } from "./Placeholder.js";
 
 /**
  * Единственная точка сопоставления типа сцены и компонента.
@@ -13,24 +16,16 @@ import { Placeholder } from "./Placeholder.js";
  */
 export const SceneVisual: React.FC<{ spec: SceneVisualSpec }> = ({ spec }) => {
   switch (spec.kind) {
+    case "hook-statement":
+      return <HookStatement spec={spec} />;
     case "stat-counter":
       return <StatCounter spec={spec} />;
-    // TODO(Фаза 2A): полноценные компоненты. Placeholder показывает реальный контент
-    // сцены, а не серый прямоугольник, чтобы пайплайн можно было проверять целиком.
-    case "hook-statement":
-      return <Placeholder kind={spec.kind} title={spec.text} />;
     case "icon-list":
-      return <Placeholder kind={spec.kind} title={spec.title ?? ""} lines={spec.items.map((i) => i.text)} />;
+      return <IconList spec={spec} />;
     case "comparison":
-      return (
-        <Placeholder
-          kind={spec.kind}
-          title={spec.title ?? ""}
-          lines={spec.items.map((i) => `${i.label}: ${i.value}`)}
-        />
-      );
+      return <Comparison spec={spec} />;
     case "outro-cta":
-      return <Placeholder kind={spec.kind} title={spec.text} lines={spec.subtext ? [spec.subtext] : []} />;
+      return <OutroCta spec={spec} />;
     default:
       return assertNever(spec);
   }

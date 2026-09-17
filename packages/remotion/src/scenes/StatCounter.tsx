@@ -1,7 +1,7 @@
 import React from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import type { StatCounterSpec } from "@shorts/contracts";
-import { SAFE, theme } from "../theme.js";
+import { CONTENT_INSET, theme } from "../theme.js";
 import { Icon } from "../Icon.js";
 
 /**
@@ -32,7 +32,7 @@ export const StatCounter: React.FC<{ spec: StatCounterSpec }> = ({ spec }) => {
     <div
       style={{
         position: "absolute",
-        inset: `${SAFE.top}px ${SAFE.side}px ${SAFE.bottom}px`,
+        inset: CONTENT_INSET,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

@@ -1,30 +1,47 @@
-import React from "react";
-import { useCurrentFrame, useVideoConfig } from "remotion";
-import { findActiveWordIndex, type WordTiming } from "@shorts/contracts";
+import React, { useMemo } from "react";
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { buildCaptionPages, findActivePageIndex, findActiveWordIndex, type WordTiming } from "@shorts/contracts";
 import { SAFE, theme } from "./theme.js";
 
+/** Высота бокса под 2 строки — зарезервирована всегда, поэтому блок не прыгает. */
+const BOX_HEIGHT = 230;
+const FONT_SIZE = 68;
+
 /**
- * Пословные субтитры с подсветкой активного слова.
+ * Субтитры страницами: 2–3 слова держатся ~1.2 с, внутри страницы меняется только
+ * подсветка активного слова.
  *
- * Слова хранятся в секундах ОТНОСИТЕЛЬНО своей сцены, а компонент живёт внутри
- * Sequence этой же сцены, поэтому useCurrentFrame() здесь уже локальный — никакого
- * вычитания startFrame не нужно, и это единственное место перевода секунд в кадры в UI.
+ * Почему не «окно вокруг активного слова» (было раньше): окно пересобиралось на каждом
+ * слове и строка переверстывалась 13 раз за 7-секундную сцену — субтитры дёргались,
+ * а при переходе с одной строки на две прыгал весь блок.
+ *
+ * Три гарантии стабильности кадра:
+ * 1) состав страницы и её время посчитаны заранее (buildCaptionPages), кадр их не меняет;
+ * 2) бокс фиксированной высоты с центрированием — перенос на вторую строку не двигает блок;
+ * 3) подсветка — только color/transform, то есть свойства, которые не вызывают reflow.
+ *
+ * Слова хранятся в секундах относительно аудио своей сцены, а компонент живёт внутри
+ * Sequence этой сцены, поэтому useCurrentFrame() здесь уже локальный.
  */
-export const Subtitles: React.FC<{ words: WordTiming[]; approximate: boolean }> = ({
-  words,
-  approximate,
-}) => {
+export const Subtitles: React.FC<{ words: WordTiming[] }> = ({ words }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const timeSec = frame / fps;
 
-  // Показываем окно вокруг активного слова, а не весь текст сцены: на 9:16 иначе не читается.
-  // Активное слово ищется hold-логикой (см. findActiveWordIndex): на реальных данных Fish
-  // условие start <= t < end гасит подсветку в паузах и на словах нулевой длительности.
-  const activeIndex = findActiveWordIndex(words, timeSec);
-  const center = activeIndex === -1 ? 0 : activeIndex;
-  const from = Math.max(0, center - 3);
-  const window = words.slice(from, from + 7);
+  const pages = useMemo(() => buildCaptionPages(words), [words]);
+  const pageIndex = findActivePageIndex(pages, timeSec);
+  const page = pageIndex === -1 ? undefined : pages[pageIndex];
+  const activeWordIndex = findActiveWordIndex(words, timeSec);
+
+  if (!page) return null;
+
+  const pageStartFrame = Math.round(page.startSec * fps);
+  const entrance = spring({
+    frame: frame - pageStartFrame,
+    fps,
+    durationInFrames: 8,
+    config: { damping: 200 },
+  });
 
   return (
     <div
@@ -32,38 +49,51 @@ export const Subtitles: React.FC<{ words: WordTiming[]; approximate: boolean }> 
         position: "absolute",
         left: SAFE.side,
         right: SAFE.side,
-        bottom: SAFE.bottom - 180,
+        bottom: SAFE.bottom,
+        height: BOX_HEIGHT,
         display: "flex",
-        flexWrap: "wrap",
+        alignItems: "center",
         justifyContent: "center",
-        gap: "0 16px",
-        fontSize: 56,
-        fontWeight: 700,
-        lineHeight: 1.25,
-        textAlign: "center",
       }}
     >
-      {window.map((word, i) => {
-        const isActive = from + i === activeIndex;
-        return (
-          <span
-            key={`${word.text}-${from + i}`}
-            style={{
-              color: isActive ? theme.accent : theme.text,
-              opacity: isActive ? 1 : 0.72,
-              textShadow: "0 4px 24px rgba(0,0,0,0.55)",
-              transform: isActive ? "translateY(-4px)" : "none",
-            }}
-          >
-            {word.text}
-          </span>
-        );
-      })}
-      {approximate ? (
-        <div style={{ width: "100%", marginTop: 16, fontSize: 24, fontWeight: 500, color: theme.muted }}>
-          subtitle timing is approximate
-        </div>
-      ) : null}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          alignItems: "baseline",
+          // Зазор с запасом: активное слово масштабируется, и при 18px оно визуально
+          // склеивалось с соседним.
+          gap: "6px 30px",
+          fontSize: FONT_SIZE,
+          fontWeight: 800,
+          lineHeight: 1.15,
+          letterSpacing: "-0.01em",
+          textAlign: "center",
+          opacity: entrance,
+          transform: `translateY(${interpolate(entrance, [0, 1], [18, 0])}px)`,
+          willChange: "transform, opacity",
+        }}
+      >
+        {page.words.map((word, i) => {
+          const isActive = page.firstWordIndex + i === activeWordIndex;
+          return (
+            <span
+              key={`${page.firstWordIndex + i}-${word.text}`}
+              style={{
+                display: "inline-block",
+                color: isActive ? theme.accent : theme.text,
+                transform: isActive ? "scale(1.04)" : "scale(1)",
+                textShadow: isActive
+                  ? `0 0 42px ${theme.accentSoft}, 0 6px 26px rgba(0,0,0,0.65)`
+                  : "0 6px 26px rgba(0,0,0,0.65)",
+              }}
+            >
+              {word.text}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 };

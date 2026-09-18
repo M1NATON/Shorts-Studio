@@ -119,7 +119,7 @@ export const api = {
     for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value));
     return request<{ items: Project[]; total: number }>(`/api/projects?${params}`);
   },
-  createProjects: (input: { topics: string[]; format?: VideoFormat; freshness?: Freshness; minutes?: number }) =>
+  createProjects: (input: { topics: string[]; format?: VideoFormat; captionStyle?: CaptionStyle; freshness?: Freshness; minutes?: number }) =>
     input.topics.length === 1
       ? post<{ project: Project }>("/api/projects", { ...input, topic: input.topics[0], topics: undefined }).then((r) => [r.project])
       : post<{ items: { project: Project }[] }>("/api/projects/batch", input).then((r) => r.items.map((i) => i.project)),

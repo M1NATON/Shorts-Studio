@@ -27,6 +27,7 @@ import type { Worker } from "./worker.js";
 // Не переданные формат, свежесть и длина берутся из предпочтений (Настройки).
 const CreateOptions = {
   format: z.enum(["shorts", "landscape"]).optional(),
+  captionStyle: z.enum(["clean", "karaoke", "boxed", "outline"]).optional(),
   freshness: z.enum(["current", "evergreen"]).optional(),
   minutes: z.number().min(1).max(20).optional(),
 };
@@ -126,13 +127,18 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.put("/api/preferences", async (request) => savePreferences(repo, request.body));
 
   /** Параметры нового ролика: переданные в запросе, иначе из предпочтений. */
-  async function createOptions(body: { format?: "shorts" | "landscape"; freshness?: "current" | "evergreen"; minutes?: number }) {
+  async function createOptions(body: {
+    format?: "shorts" | "landscape";
+    captionStyle?: "clean" | "karaoke" | "boxed" | "outline";
+    freshness?: "current" | "evergreen";
+    minutes?: number;
+  }) {
     const prefs = await loadPreferences(repo);
     const format = body.format ?? prefs.format;
     const freshness = body.freshness ?? (prefs.freshness === "auto" ? undefined : prefs.freshness);
     return {
       format,
-      captionStyle: prefs.captionStyle,
+      captionStyle: body.captionStyle ?? prefs.captionStyle,
       ...(freshness ? { freshness } : {}),
       ...(format === "landscape" ? { minutes: body.minutes ?? prefs.minutes } : {}),
     };

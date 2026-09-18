@@ -5,3 +5,4 @@
 export { ShortsVideo } from "./ShortsVideo.js";
 export { SceneVisual } from "./scenes/index.js";
 export { useTheme, useThemeFont, useFormat } from "./theme.js";
+export { CaptionSample, CAPTION_SAMPLE } from "./CaptionSample.js";

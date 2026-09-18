@@ -108,3 +108,9 @@ details summary { cursor: pointer; color: var(--muted); }
   .editor .pane { max-height: none; }
   .player-wrap { min-height: 60vh; }
 }
+
+/* Выбор стиля субтитров: образцы в ряд */
+.caption-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.caption-option { display: grid; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; cursor: pointer; text-align: center; }
+.caption-option.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+@media (max-width: 720px) { .caption-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

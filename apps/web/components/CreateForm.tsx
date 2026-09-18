@@ -1,29 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { VideoFormat } from "@shorts/contracts";
-import { api, ApiError, type Freshness } from "@/lib/api";
-import { MINUTES_OPTIONS } from "@/lib/format";
+import type { CaptionStyle } from "@shorts/contracts";
+import { api, ApiError, type Preferences } from "@/lib/api";
+import { CAPTION_LABEL, MINUTES_OPTIONS } from "@/lib/format";
+import { CaptionPicker } from "./CaptionPicker";
+
+const DEFAULTS: Preferences = { format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true };
 
 /**
  * Создание ролика. Несколько тем — по одной на строку: они встают в очередь и
  * генерируются по одной (прокси модели не держит параллельные запросы).
+ *
+ * Параметры ролика запоминаются: форма открывается с последними выбранными.
  */
 export function CreateForm({ onCreated }: { onCreated: () => void }) {
   const [text, setText] = useState("");
-  const [format, setFormat] = useState<VideoFormat>("shorts");
-  const [freshness, setFreshness] = useState<Freshness | "auto">("auto");
-  const [minutes, setMinutes] = useState(3);
+  const [prefs, setPrefs] = useState<Preferences>(DEFAULTS);
+  const [showCaptions, setShowCaptions] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  // Начальные значения — из Настроек → Предпочтения; здесь их можно поменять для одного запуска.
-  useEffect(() => {
-    api.preferences().then((p) => {
-      setFormat(p.format);
-      setFreshness(p.freshness);
-      setMinutes(p.minutes);
-    }).catch(() => undefined);
-  }, []);
   const topics = text.split("\n").map((t) => t.trim()).filter((t) => t.length >= 3);
+
+  useEffect(() => {
+    api.preferences().then(setPrefs).catch(() => undefined);
+  }, []);
+
+  function change(patch: Partial<Preferences>) {
+    setPrefs((p) => ({ ...p, ...patch }));
+    api.savePreferences(patch).catch((e: Error) => setError(`Не удалось запомнить параметры: ${e.message}`));
+  }
 
   async function submit() {
     setBusy(true);
@@ -31,9 +36,10 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
     try {
       await api.createProjects({
         topics,
-        format,
-        ...(freshness !== "auto" ? { freshness } : {}),
-        ...(format === "landscape" ? { minutes } : {}),
+        format: prefs.format,
+        captionStyle: prefs.captionStyle,
+        ...(prefs.freshness !== "auto" ? { freshness: prefs.freshness } : {}),
+        ...(prefs.format === "landscape" ? { minutes: prefs.minutes } : {}),
       });
       setText("");
       onCreated();
@@ -58,13 +64,13 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
       />
       <div className="row">
         <div className="seg" role="group" aria-label="Формат">
-          <button className={format === "shorts" ? "on" : ""} onClick={() => setFormat("shorts")}>Shorts 9:16</button>
-          <button className={format === "landscape" ? "on" : ""} onClick={() => setFormat("landscape")}>Длинный 16:9</button>
+          <button className={prefs.format === "shorts" ? "on" : ""} onClick={() => change({ format: "shorts" })}>Shorts 9:16</button>
+          <button className={prefs.format === "landscape" ? "on" : ""} onClick={() => change({ format: "landscape" })}>Длинный 16:9</button>
         </div>
-        {format === "landscape" ? (
+        {prefs.format === "landscape" ? (
           <label className="row small muted">
             Длина
-            <select className="select" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
+            <select className="select" value={prefs.minutes} onChange={(e) => change({ minutes: Number(e.target.value) })}>
               {MINUTES_OPTIONS.map((m) => (
                 <option key={m} value={m}>{m} мин</option>
               ))}
@@ -73,18 +79,28 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
         ) : null}
         <label className="row small muted" title="Свежесть фактов: новости и фильтр по давности. «Авто» — решает модель по теме.">
           Факты
-          <select className="select" value={freshness} onChange={(e) => setFreshness(e.target.value as Freshness | "auto")}>
+          <select className="select" value={prefs.freshness} onChange={(e) => change({ freshness: e.target.value as Preferences["freshness"] })}>
             <option value="auto">авто</option>
             <option value="current">свежие (новости за год)</option>
             <option value="evergreen">вечнозелёные</option>
           </select>
         </label>
+        <label className="row small muted" title="Искать источники в сети (Firecrawl) и сверять с ними числа. Без поиска факты — только из знаний модели.">
+          <input type="checkbox" checked={prefs.research} onChange={(e) => change({ research: e.target.checked })} />
+          Поиск источников
+        </label>
+        <button className="btn" aria-expanded={showCaptions} onClick={() => setShowCaptions((v) => !v)}>
+          Субтитры: {CAPTION_LABEL[prefs.captionStyle]} {showCaptions ? "▴" : "▾"}
+        </button>
         <div className="spacer" />
         {error ? <span className="error small">{error}</span> : null}
         <button className="btn primary" disabled={busy || topics.length === 0} onClick={() => void submit()}>
           {topics.length > 1 ? `Создать ${topics.length} ролика` : "Создать ролик"}
         </button>
       </div>
+      {showCaptions ? (
+        <CaptionPicker value={prefs.captionStyle} onChange={(style: CaptionStyle) => change({ captionStyle: style })} />
+      ) : null}
     </div>
   );
 }

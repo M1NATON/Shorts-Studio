@@ -114,8 +114,8 @@ describe("API", () => {
 
     const created = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps explained" } });
     expect(created.json().project).toMatchObject({ format: "landscape", minutes: 5, captionStyle: "boxed" });
-    const explicit = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps short", format: "shorts" } });
-    expect(explicit.json().project).toMatchObject({ format: "shorts", minutes: null });
+    const explicit = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps short", format: "shorts", captionStyle: "clean" } });
+    expect(explicit.json().project).toMatchObject({ format: "shorts", minutes: null, captionStyle: "clean" });
     await worker.idle();
   });
 

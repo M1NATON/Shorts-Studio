@@ -1,7 +1,7 @@
 import React from "react";
 
 import type { IconListSpec } from "@shorts/contracts";
-import { useTheme, useThemeFont } from "../theme.js";
+import { useTheme } from "../theme.js";
 import { useSceneMotion, useStagger } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 import { Icon } from "../Icon.js";
@@ -15,7 +15,6 @@ import { Icon } from "../Icon.js";
  */
 const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
   const theme = useTheme();
-  const font = useThemeFont();
   const stagger = useStagger();
   const motionStyle = useMotionStyle();
   const { frame, durationInFrames } = useSceneMotion();

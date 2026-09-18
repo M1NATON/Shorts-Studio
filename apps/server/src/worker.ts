@@ -15,7 +15,6 @@ export interface Worker {
 
 export function startWorker(deps: PipelineDeps, options: { pollMs?: number; log?: (m: string) => void } = {}): Worker {
   let stopped = false;
-  let running: Promise<void> | undefined;
   let wake: (() => void) | undefined;
   const idleWaiters: (() => void)[] = [];
 
@@ -52,7 +51,7 @@ export function startWorker(deps: PipelineDeps, options: { pollMs?: number; log?
     }
   }
 
-  running = loop();
+  const running = loop();
   return {
     kick: () => wake?.(),
     async stop() {

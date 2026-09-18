@@ -8,7 +8,7 @@ import {
   type VideoTheme,
   type WordTiming,
 } from "@shorts/contracts";
-import { useFormat, useTheme, useThemeFont } from "./theme.js";
+import { useFormat, useTheme } from "./theme.js";
 
 /**
  * Субтитры страницами: 2–3 слова держатся ~1.2 с, внутри страницы меняется только
@@ -64,7 +64,6 @@ function wordStyle(style: CaptionStyle, active: boolean, theme: VideoTheme, font
 
 export const Subtitles: React.FC<{ words: WordTiming[]; captionStyle?: CaptionStyle }> = ({ words, captionStyle = "karaoke" }) => {
   const theme = useTheme();
-  const font = useThemeFont();
   const { captions } = useFormat();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();

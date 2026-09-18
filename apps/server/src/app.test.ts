@@ -102,6 +102,43 @@ async function createGenerated() {
   return { id, detail: (await app.inject({ url: `/api/projects/${id}` })).json() };
 }
 
+describe("защита локального API", () => {
+  it("чужой Host (DNS rebinding) — 403, в том числе через прокси Next", async () => {
+    expect((await app.inject({ url: "/api/health", headers: { host: "evil.example:3001" } })).statusCode).toBe(403);
+    expect((await app.inject({ url: "/api/settings", headers: { host: "127.0.0.1:3001", "x-forwarded-host": "evil.example:3100" } })).statusCode).toBe(403);
+    const put = await app.inject({ method: "PUT", url: "/api/settings/llm", headers: { host: "evil.example" }, payload: { baseUrl: "https://evil.example/v1" } });
+    expect(put.statusCode).toBe(403);
+    expect((await app.inject({ url: "/projects/x/video.mp4", headers: { host: "evil.example" } })).statusCode).toBe(403);
+    expect(JSON.stringify((await app.inject({ url: "/api/settings" })).json())).not.toContain("evil.example");
+  });
+
+  it("свои Host проходят: localhost, 127.0.0.1, [::1], прокси Next", async () => {
+    for (const host of ["localhost:3100", "127.0.0.1:3001", "[::1]:3001", "localhost"]) {
+      expect((await app.inject({ url: "/api/health", headers: { host } })).statusCode).toBe(200);
+    }
+    expect((await app.inject({ url: "/api/health", headers: { host: "127.0.0.1:3001", "x-forwarded-host": "127.0.0.1:3100" } })).statusCode).toBe(200);
+  });
+
+  it("запрос с чужого сайта — 403, свой Origin проходит", async () => {
+    const foreign = await app.inject({ method: "POST", url: "/api/projects", headers: { origin: "http://evil.example" }, payload: { topic: "Heat pumps explained" } });
+    expect(foreign.statusCode).toBe(403);
+    const own = await app.inject({ method: "POST", url: "/api/projects", headers: { origin: "http://127.0.0.1:3100" }, payload: { topic: "Heat pumps explained" } });
+    expect(own.statusCode).toBe(201);
+    await worker.idle();
+  });
+
+  it("изменяющий запрос не в JSON (простая форма, text/plain) — 415 до ручки", async () => {
+    const { id } = await createGenerated();
+    for (const type of ["text/plain", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x", "application/json-foo"]) {
+      const res = await app.inject({ method: "POST", url: `/api/projects/${id}/render`, headers: { "content-type": type }, payload: "x" });
+      expect(res.statusCode).toBe(415);
+    }
+    expect(renders).toBe(0);
+    // DELETE без тела — не «простой» запрос, браузер сам не отправит его с чужого сайта.
+    expect((await app.inject({ method: "DELETE", url: `/api/projects/${id}` })).statusCode).toBe(204);
+  });
+});
+
 describe("API", () => {
   it("предпочтения: по умолчанию, частичное сохранение, применяются к новому ролику", async () => {
     expect((await app.inject({ url: "/api/preferences" })).json()).toEqual({

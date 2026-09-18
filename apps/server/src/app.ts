@@ -71,9 +71,41 @@ export interface AppDeps extends PipelineDeps {
   readonly worker?: Worker;
 }
 
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/** Имя хоста из Host / X-Forwarded-Host / Origin; нечитаемое значение — не локальное. */
+function isLocal(value: string, withScheme = false): boolean {
+  try {
+    return LOCAL_HOSTS.has(new URL(withScheme ? value : `http://${value}`).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
   const { repo, events } = deps;
+
+  // Авторизации нет, поэтому API отвечает только своим. Чужой Host — DNS rebinding:
+  // страница evil.example, перепривязанная на 127.0.0.1, иначе прочитала бы проекты и
+  // переписала baseUrl LLM, уведя сохранённый ключ. X-Forwarded-Host ставит прокси Next.
+  // Чужой Origin и не-JSON тело (форма, text/plain — «простые» запросы без preflight)
+  // отсекают CSRF. Хук стоит до статики, чтобы закрывать и /projects/.
+  app.addHook("onRequest", async (request, reply) => {
+    const forwarded = request.headers["x-forwarded-host"];
+    const hosts = [request.headers.host ?? "", ...(forwarded === undefined ? [] : [forwarded].flat())];
+    if (!hosts.every((host) => isLocal(host))) return reply.code(403).send({ error: "forbidden host" });
+    const origin = request.headers.origin;
+    if (origin !== undefined && !isLocal(origin, true)) return reply.code(403).send({ error: "forbidden origin" });
+    if (MUTATING.has(request.method)) {
+      const type = request.headers["content-type"];
+      const hasBody = Number(request.headers["content-length"] ?? 0) > 0 || request.headers["transfer-encoding"] !== undefined;
+      if (type === undefined ? hasBody : !/^application\/json\s*(;|$)/i.test(type)) {
+        return reply.code(415).send({ error: "expected application/json" });
+      }
+    }
+  });
 
   // Файлы проектов (озвучка для плеера, обложки, MP4). Путь в манифесте —
   // "projects/<id>/audio/<hash>.wav", staticFile в плеере даёт "/projects/…".

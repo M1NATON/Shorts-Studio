@@ -5,9 +5,13 @@ import {
   SceneCompositionSchema,
   blockSignature,
   compositionCapacity,
+  compositionFitIssues,
+  contentWidth,
   estimateCompositionHeight,
+  splitColumns,
 } from "./scene-composition.js";
-import { SceneVisualSpecSchema } from "./scene-visual-spec.js";
+import { SceneVisualSpecSchema, visualSpecSchemaFor } from "./scene-visual-spec.js";
+import { stageSize } from "./format.js";
 
 const heading = { block: "heading", text: "Batteries got cheap" } as const;
 const ring = { block: "ring", percent: 89, label: "Price drop since 2010", at: 0.2 } as const;
@@ -135,7 +139,11 @@ describe("SceneComposition: вертикальная ёмкость", () => {
   ];
 
   it("переполненная сцена отвергается с цифрами, по которым модель может исправиться", () => {
-    expect(messages(scene(tall))).toEqual([expect.stringMatching(/about \d+px of 1060px/)]);
+    // Ёмкость зависит от формата, поэтому её проверяет схема формата, а не схема сцены.
+    expect(messages(scene(tall))).toEqual([]);
+    const result = visualSpecSchemaFor("shorts").safeParse(scene(tall));
+    expect(result.success).toBe(false);
+    expect(result.error!.issues.map((i) => i.message)).toEqual([expect.stringMatching(/about \d+px of 1060px/)]);
   });
 
   it("ёмкость зависит от композиции: stacked теснее center", () => {
@@ -158,5 +166,45 @@ describe("SceneComposition: вертикальная ёмкость", () => {
 describe("blockSignature", () => {
   it("подпись — последовательность типов блоков", () => {
     expect(blockSignature([{ block: "heading" }, { block: "ring" }])).toBe("heading+ring");
+  });
+});
+
+describe("форматы: 16:9", () => {
+  const split = (blocks: unknown[]) => ({ kind: "composed", layout: "split", blocks });
+  const textAndRing = [
+    { block: "heading", text: "Battery packs got cheaper every single year", size: "l" },
+    { block: "caption", text: "Average pack price, BloombergNEF", at: 0.1 },
+    { block: "ring", percent: 89, label: "Drop since 2010", at: 0.2 },
+  ];
+
+  it("сцена 16:9 в дизайн-пикселях: шире вертикальной, той же высоты", () => {
+    expect(stageSize("shorts")).toEqual({ width: 920, height: 1060 });
+    expect(stageSize("landscape").width).toBeGreaterThan(2000);
+    expect(Math.abs(stageSize("landscape").height - 1060)).toBeLessThan(10);
+  });
+
+  it("split: текст слева, визуал справа, высота — по более высокой колонке", () => {
+    const parsed = SceneCompositionSchema.parse(split(textAndRing));
+    const { text, visual } = splitColumns(parsed.blocks);
+    expect(text.map((b) => b.block)).toEqual(["heading", "caption"]);
+    expect(visual.map((b) => b.block)).toEqual(["ring"]);
+    expect(contentWidth("split", "landscape")).toBeGreaterThan(contentWidth("center", "shorts"));
+    expect(estimateCompositionHeight(parsed.blocks, "split", "landscape")).toBeLessThan(
+      estimateCompositionHeight(parsed.blocks, "center", "shorts"),
+    );
+  });
+
+  it("split только в 16:9 и только у сцены из блоков", () => {
+    expect(visualSpecSchemaFor("landscape").safeParse(split(textAndRing)).success).toBe(true);
+    expect(compositionFitIssues(SceneCompositionSchema.parse(split(textAndRing)), "shorts")).toEqual([
+      expect.stringMatching(/only for 16:9/),
+    ]);
+    const hook = { kind: "hook-statement", text: "Hi", layout: "split" };
+    expect(visualSpecSchemaFor("landscape").safeParse(hook).success).toBe(false);
+  });
+
+  it("глава — визуальный блок: сцена из одной карточки главы валидна", () => {
+    const chapter = { kind: "composed", layout: "center", blocks: [{ block: "chapter", index: 2, title: "Why prices fell", kicker: "Chapter" }] };
+    expect(visualSpecSchemaFor("landscape").safeParse(chapter).success).toBe(true);
   });
 });

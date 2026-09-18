@@ -4,6 +4,29 @@ import { ensureBrowser, renderMedia, renderStill, selectComposition } from "@rem
 import type { Manifest } from "@shorts/contracts";
 import { COMPOSITION_ID } from "./Root.js";
 
+/**
+ * Бандл Remotion собирается webpack-ом 10–20 с. Сервер рендерит много раз за
+ * жизнь процесса, поэтому бандл кешируется по точке входа и каталогу storage.
+ * Код компонентов меняется только с перезапуском процесса — кеш этому не мешает.
+ */
+const bundles = new Map<string, Promise<string>>();
+function cachedBundle(entryPoint: string, publicDir: string): Promise<string> {
+  const key = `${entryPoint}|${publicDir}`;
+  let serveUrl = bundles.get(key);
+  if (!serveUrl) {
+    // Bundler по умолчанию печатает прогресс в stdout; в воркере это лишний шум.
+    // symlinkPublicDir: бандл ссылается на storage, а не копирует его. Иначе
+    // озвучка, записанная после сборки бандла (новый текст сцены), в кеше
+    // отсутствовала — рендер падал с 404, — а копия storage с сотней роликов
+    // занимала бы гигабайты на каждую сборку.
+    serveUrl = bundle({ entryPoint, publicDir, symlinkPublicDir: true, onProgress: () => undefined });
+    // Упавшая сборка не должна закешироваться навсегда.
+    serveUrl.catch(() => bundles.delete(key));
+    bundles.set(key, serveUrl);
+  }
+  return serveUrl;
+}
+
 export interface RenderOptions {
   manifest: Manifest;
   outputPath: string;
@@ -27,12 +50,7 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
 
   await ensureBrowser();
 
-  const serveUrl = await bundle({
-    entryPoint,
-    publicDir: options.storageDir,
-    // Bundler по умолчанию печатает прогресс в stdout; в воркере это лишний шум.
-    onProgress: () => undefined,
-  });
+  const serveUrl = await cachedBundle(entryPoint, options.storageDir);
 
   const inputProps = { manifest: options.manifest };
   const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
@@ -67,7 +85,7 @@ export async function renderStills(options: StillsOptions): Promise<string[]> {
   const entryPoint =
     options.entryPoint ?? path.join(path.dirname(new URL(import.meta.url).pathname), "entry.js");
   await ensureBrowser();
-  const serveUrl = await bundle({ entryPoint, publicDir: options.storageDir, onProgress: () => undefined });
+  const serveUrl = await cachedBundle(entryPoint, options.storageDir);
   const inputProps = { manifest: options.manifest };
   const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
 

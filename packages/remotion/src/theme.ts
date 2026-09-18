@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { DEFAULT_VIDEO_THEME, SCENE_ZONE, type VideoTheme } from "@shorts/contracts";
+import { DEFAULT_VIDEO_THEME, FORMATS, SCENE_ZONE, stageSize, type FormatSpec, type VideoFormat, type VideoTheme } from "@shorts/contracts";
 
 /**
  * Тема ролика приходит из манифеста: её генерирует модель под конкретную тему
@@ -30,3 +30,13 @@ export const CONTENT = SCENE_ZONE;
 
 /** Инсет для корневого контейнера сцены — чтобы не повторять в каждом компоненте. */
 export const CONTENT_INSET = `${CONTENT.top}px ${CONTENT.side}px ${CONTENT.bottom}px`;
+
+/**
+ * Формат ролика приходит из манифеста. Зона, масштаб кеглей и субтитры читаются
+ * отсюда, а не из констант: один и тот же компонент рисует и 9:16, и 16:9.
+ */
+export const FormatContext = createContext<VideoFormat>("shorts");
+export const useFormat = (): FormatSpec & { name: VideoFormat; stage: { width: number; height: number } } => {
+  const name = useContext(FormatContext);
+  return { ...FORMATS[name], name, stage: stageSize(name) };
+};

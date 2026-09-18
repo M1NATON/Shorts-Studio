@@ -1,0 +1,23 @@
+{
+  "name": "@shorts/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b && tsc -p tsconfig.test.json",
+    "test": "vitest run --passWithNoTests",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@fastify/static": "10.1.3",
+    "@shorts/contracts": "workspace:*",
+    "@shorts/db": "workspace:*",
+    "@shorts/llm-core": "workspace:*",
+    "@shorts/media-core": "workspace:*",
+    "@shorts/remotion": "workspace:*",
+    "fastify": "5.12.5",
+    "zod": "^4.6.5"
+  }
+}

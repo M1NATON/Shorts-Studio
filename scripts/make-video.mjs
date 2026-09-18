@@ -1,13 +1,16 @@
 /**
  * Вертикальный срез пайплайна: тема → сценарий (LLM) → озвучка (Fish) → манифест → MP4.
- * Запуск: set -a; . ./.env; set +a; node scripts/make-video.mjs "Тема"
+ * Запуск: set -a; . ./.env; set +a; node scripts/make-video.mjs "Тема" [--freshness=current|evergreen]
+ *   [--format=shorts|landscape] [--minutes=3]
+ * Без --freshness режим поиска выбирает модель по теме. --minutes только для landscape.
  *
- * Генерация сценария живёт в scripts/lib/script-gen.mjs — три маленьких этапа
- * вместо одного большого запроса.
+ * Генерация сценария живёт в @shorts/llm-core (generateScript): поиск и дизайн,
+ * план тезисов, раскладка кодом, наполнение по сцене. Здесь только обёртка:
+ * ключи из окружения, озвучка, манифест, рендер.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ManifestSchema, SHORTS_SIZE } from "@shorts/contracts";
+import { FORMATS, ManifestSchema } from "@shorts/contracts";
 import {
   assembleFishStream,
   mapTimingsToOriginalText,
@@ -16,9 +19,19 @@ import {
   recomputeTimeline,
 } from "@shorts/media-core";
 import { renderVideo } from "@shorts/remotion";
-import { generateScript } from "./lib/script-gen.mjs";
+import { generateLongScript, generateScript } from "@shorts/llm-core";
+import { cliContext } from "./lib/cli-context.mjs";
 
-const TOPIC = process.argv[2] ?? "Will AI actually rebel in 2026";
+const args = process.argv.slice(2);
+const TOPIC = args.find((a) => !a.startsWith("--")) ?? "Will AI actually rebel in 2026";
+const freshnessArg = args.find((a) => a.startsWith("--freshness="))?.split("=")[1];
+if (freshnessArg && !["current", "evergreen"].includes(freshnessArg)) {
+  throw new Error(`--freshness: ожидается current или evergreen, получено ${freshnessArg}`);
+}
+const FORMAT = args.find((a) => a.startsWith("--format="))?.split("=")[1] ?? "shorts";
+if (!(FORMAT in FORMATS)) throw new Error(`--format: ожидается shorts или landscape, получено ${FORMAT}`);
+const MINUTES = Number(args.find((a) => a.startsWith("--minutes="))?.split("=")[1] ?? 3);
+if (!(MINUTES > 0 && MINUTES <= 20)) throw new Error("--minutes: от 1 до 20");
 const STORAGE = path.resolve("storage");
 const FPS = 30;
 
@@ -50,8 +63,15 @@ async function synthesize(scene) {
   return { relPath, durationSec, words: mapped.words, unmatched: mapped.unmatched };
 }
 
-console.log(`\n1/4 Сценарий: "${TOPIC}"`);
-const { script, sources, theme } = await generateScript(TOPIC);
+console.log(`\n1/4 Сценарий (${FORMAT}${FORMAT === "landscape" ? `, ~${MINUTES} мин` : ""}): "${TOPIC}"`);
+const generated =
+  FORMAT === "landscape"
+    ? await generateLongScript(cliContext(), TOPIC, { freshness: freshnessArg, minutes: MINUTES })
+    : await generateScript(cliContext(), TOPIC, { freshness: freshnessArg });
+const { script, sources, brief, theme, unverified, freshness, researchedAt } = generated;
+if (generated.chapters) {
+  console.log(`  главы: ${generated.chapters.map((c) => `${c.firstScene + 1}. ${c.title}`).join(" · ")}`);
+}
 console.log(
   `  «${script.title}» — ${script.scenes.length} сцен: ${script.scenes
     .map((s) => `${s.visual.kind}/${s.visual.layout}/${s.visual.motion}`)
@@ -79,12 +99,17 @@ const manifest = ManifestSchema.parse({
   sourceHash: `slice-${Date.now()}`,
   title: script.title,
   fps: FPS,
-  ...SHORTS_SIZE,
+  format: FORMAT,
+  width: FORMATS[FORMAT].width,
+  height: FORMATS[FORMAT].height,
   totalDurationInFrames,
   theme,
-  sources: sources.map(({ url, title }) => ({ url, title })),
+  sources: sources.map(({ url, title, kind, publishedAt }) => ({ url, title, kind, publishedAt })),
+  researchedAt,
+  freshness,
   scenes: script.scenes.map((scene, i) => ({
     sceneId: scene.id,
+    intent: scene.intent,
     visual: scene.visual,
     narration: scene.narration,
     startFrame: slots[i].startFrame,
@@ -93,14 +118,17 @@ const manifest = ManifestSchema.parse({
     audioSrc: audio[i].relPath,
     words: audio[i].words,
     timingSource: "native",
+    unverifiedNumbers: unverified[i],
   })),
 });
 await mkdir(path.join(STORAGE, "renders"), { recursive: true });
 await writeFile(path.join(STORAGE, "manifest.json"), JSON.stringify(manifest, null, 2));
+// Сводка источников нужна для пересборки сцены (scripts/regen-scene.mjs) без нового поиска.
+await writeFile(path.join(STORAGE, "research-brief.txt"), brief);
 console.log(`  ${totalDurationInFrames} кадров = ${(totalDurationInFrames / FPS).toFixed(1)}s`);
 
 console.log("\n4/4 Рендер MP4");
-const output = path.join(STORAGE, "renders", "vertical-slice.mp4");
+const output = path.join(STORAGE, "renders", FORMAT === "landscape" ? "landscape-slice.mp4" : "vertical-slice.mp4");
 let lastLogged = -1;
 await renderVideo({
   manifest,

@@ -5,7 +5,7 @@ import { Background } from "./Background.js";
 import { loadThemeFont } from "./fonts.js";
 import { SceneVisual } from "./scenes/index.js";
 import { Subtitles } from "./Subtitles.js";
-import { FontContext, ThemeContext } from "./theme.js";
+import { FontContext, FormatContext, ThemeContext } from "./theme.js";
 
 /**
  * Корневая композиция. Читает ровно тот immutable manifest, который потом уйдёт
@@ -25,6 +25,7 @@ export const ShortsVideo: React.FC<{ manifest: Manifest }> = ({ manifest }) => {
   );
 
   return (
+    <FormatContext.Provider value={manifest.format}>
     <ThemeContext.Provider value={theme}>
       <FontContext.Provider value={font}>
         <AbsoluteFill style={{ backgroundColor: theme.canvas, fontFamily: font.fontFamily }}>
@@ -38,11 +39,12 @@ export const ShortsVideo: React.FC<{ manifest: Manifest }> = ({ manifest }) => {
             >
               <Audio src={staticFile(scene.audioSrc)} />
               <SceneVisual spec={scene.visual} />
-              <Subtitles words={scene.words} />
+              <Subtitles words={scene.words} captionStyle={manifest.captionStyle} />
             </Sequence>
           ))}
         </AbsoluteFill>
       </FontContext.Provider>
     </ThemeContext.Provider>
+    </FormatContext.Provider>
   );
 };

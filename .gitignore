@@ -11,3 +11,6 @@ storage/*
 .env
 .env.local
 *.tsbuildinfo
+.next-e2e/
+test-results/
+playwright-report/

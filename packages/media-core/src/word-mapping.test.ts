@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import shortFixture from "./fixtures/fish-short.json" with { type: "json" };
+import numbersFixture from "./fixtures/fish-numbers.json" with { type: "json" };
 import { assembleFishStream, type FishStreamEvent } from "./fish-stream.js";
 import { estimateTimings, mapTimingsToOriginalText } from "./word-mapping.js";
 
@@ -15,6 +16,27 @@ describe("mapTimingsToOriginalText", () => {
     expect(unmatched).toBe(0);
     expect(words.map((w) => w.text)).toEqual(["By", "2026,", "AI", "can't", "rebel."]);
     expect(words[3]).toMatchObject({ text: "can't", start: 1.9, end: 2.3 });
+  });
+
+  it("склеивает числа, которые Fish режет по точке и запятой (реальный ответ)", () => {
+    // Fish: "$8.7" → "8" + "7", "1,100" → "1" + "100", "3.5x" → "3" + "5x".
+    const { words, unmatched } = mapTimingsToOriginalText(numbersFixture.text, numbersFixture.words);
+    expect(unmatched).toBe(0);
+    const byText = new Map(words.map((w) => [w.text, w]));
+    const provider = numbersFixture.words;
+    const at = (t: string) => provider.findIndex((w) => w.text === t);
+    expect(byText.get("$8.7")).toMatchObject({ start: provider[at("8")]!.start, end: provider[at("7")]!.end });
+    expect(byText.get("1,100")!.end).toBe(provider[at("100")]!.end);
+    expect(byText.get("3.5x")!.end).toBe(provider[at("5x")]!.end);
+  });
+
+  it("не склеивает соседние слова в чужое число", () => {
+    const { words, unmatched } = mapTimingsToOriginalText("12 5", [
+      { text: "12", start: 0, end: 0.4 },
+      { text: "5", start: 0.5, end: 0.8 },
+    ]);
+    expect(unmatched).toBe(0);
+    expect(words[0]).toMatchObject({ start: 0, end: 0.4 });
   });
 
   it("переживает точки в аббревиатурах и регистр", () => {

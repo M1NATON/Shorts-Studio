@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { VideoThemeSchema } from "./video-theme.js";
-import { FpsSchema } from "./script.js";
+import { addFormatIssues, FpsSchema, SceneIntentSchema } from "./script.js";
+import { FORMATS, VideoFormatSchema } from "./format.js";
 import { SceneVisualSpecSchema } from "./scene-visual-spec.js";
 
 /**
@@ -25,8 +26,19 @@ export const WordTimingSchema = z.object({
 });
 export type WordTiming = z.infer<typeof WordTimingSchema>;
 
+/**
+ * Стиль субтитров ролика.
+ * - clean: белый текст с тенью, без подсветки — для спокойных тем;
+ * - karaoke: активное слово подсвечивается акцентом (по умолчанию);
+ * - boxed: страница на плашке, активное слово — акцентной подложкой;
+ * - outline: толстая обводка, читается на любом фоне.
+ */
+export const CaptionStyleSchema = z.enum(["clean", "karaoke", "boxed", "outline"]);
+export type CaptionStyle = z.infer<typeof CaptionStyleSchema>;
+
 export const ManifestSceneSchema = z.object({
   sceneId: z.string().min(1),
+  intent: SceneIntentSchema.optional(),
   visual: SceneVisualSpecSchema,
   narration: z.string().min(1),
   /** Источник кадрового времени. Всё остальное (startSec) — производное. */
@@ -38,10 +50,16 @@ export const ManifestSceneSchema = z.object({
   audioSrc: z.string().min(1),
   words: z.array(WordTimingSchema),
   timingSource: TimingSourceSchema,
+  /**
+   * Числа из озвучки и кадра, которых нет в источниках. Не ошибка (цифра могла быть
+   * посчитана), а предупреждение для редактора: эту сцену стоит проверить глазами.
+   */
+  unverifiedNumbers: z.array(z.string()).default([]),
 });
 export type ManifestScene = z.infer<typeof ManifestSceneSchema>;
 
-export const ManifestSchema = z.object({
+export const ManifestSchema = z
+  .object({
   /** Версия формата: старые снапшоты не должны молча ломаться о новый код. */
   version: z.literal(1),
   projectId: z.string().min(1),
@@ -65,9 +83,35 @@ export const ManifestSchema = z.object({
    * остаются валидными без смены версии формата.
    */
   sources: z
-    .array(z.object({ url: z.string().url(), title: z.string().min(1) }))
+    .array(
+      z.object({
+        url: z.string().url(),
+        title: z.string().min(1),
+        kind: z.enum(["web", "news"]).optional(),
+        /** YYYY-MM-DD: без даты не отличить прошлогоднюю цифру от сегодняшней. */
+        publishedAt: z.iso.date().optional(),
+      }),
+    )
     .default([]),
-});
+  /** День, на который собраны факты: «факты на 18.09.2026» в библиотеке. */
+  researchedAt: z.iso.date().optional(),
+  /** current — свежие новости и фильтр давности; evergreen — обычный поиск. */
+  freshness: z.enum(["current", "evergreen"]).optional(),
+  /** Дефолт shorts: манифесты до 16:9 остаются валидными без смены версии. */
+  format: VideoFormatSchema.default("shorts"),
+  captionStyle: CaptionStyleSchema.default("karaoke"),
+  })
+  .superRefine((manifest, ctx) => {
+    const size = FORMATS[manifest.format];
+    if (manifest.width !== size.width || manifest.height !== size.height) {
+      ctx.addIssue({
+        code: "custom",
+        message: `${manifest.format} is ${size.width}x${size.height}, got ${manifest.width}x${manifest.height}`,
+        path: ["width"],
+      });
+    }
+    addFormatIssues(manifest.format, manifest.scenes, ctx);
+  });
 export type Manifest = z.infer<typeof ManifestSchema>;
 
 /** Разрешение Shorts 9:16. */

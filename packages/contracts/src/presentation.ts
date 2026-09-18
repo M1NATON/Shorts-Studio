@@ -22,6 +22,11 @@ export const SceneLayoutSchema = z.enum([
   "stacked",
   /** Контент смещён влево, с левой акцентной линией. */
   "left",
+  /**
+   * Две колонки: текст слева, визуал справа. Только для 16:9 и только для сцены
+   * из блоков — в вертикальном кадре колонкам не хватает ширины.
+   */
+  "split",
 ]);
 export type SceneLayout = z.infer<typeof SceneLayoutSchema>;
 
@@ -85,6 +90,7 @@ export type Presentation = z.infer<typeof PresentationSchema>;
  * считает, влезает ли сцена в кадр, до того как её увидит Remotion.
  */
 export const SCENE_ZONE = { top: 220, bottom: 640, side: 80 } as const;
+// Та же зона, что FORMATS.shorts.zone; оставлена для вертикального кода и старых импортов.
 
 /**
  * Сдвиг оптического центра по композиции. Прямой justifyContent: flex-start
@@ -97,4 +103,5 @@ export const LAYOUT_ZONE_PADDING: Record<SceneLayout, { top: number; bottom: num
   stacked: { top: 300, bottom: 0, left: 0 },
   // Левая акцентная линия (6px) и отступ текста от неё (26px).
   left: { top: 0, bottom: 0, left: 32 },
+  split: { top: 0, bottom: 0, left: 0 },
 };

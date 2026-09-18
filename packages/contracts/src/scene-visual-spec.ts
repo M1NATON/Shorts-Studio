@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { IconNameSchema } from "./icons.js";
 import { presentationFields } from "./presentation.js";
-import { SceneCompositionSchema } from "./scene-composition.js";
+import { compositionFitIssues, SceneCompositionSchema } from "./scene-composition.js";
+import type { VideoFormat } from "./format.js";
 
 /**
  * Визуальная спецификация сцены — контракт между LLM, Remotion и инспектором.
@@ -196,4 +197,18 @@ export const SCENE_VISUAL_KINDS = [
  */
 export function assertNever(value: never): never {
   throw new Error(`Unhandled scene visual kind: ${JSON.stringify(value)}`);
+}
+
+/**
+ * Схема визуала с правилами формата: ёмкость кадра и раскладка split.
+ * Этой схемой валидируются ответ модели и ручная правка в редакторе.
+ */
+export function visualSpecSchemaFor(format: VideoFormat) {
+  return SceneVisualSpecSchema.superRefine((spec, ctx) => {
+    const issues = compositionFitIssues(
+      { kind: spec.kind, layout: spec.layout, ...(spec.kind === "composed" ? { blocks: spec.blocks } : {}) },
+      format,
+    );
+    for (const message of issues) ctx.addIssue({ code: "custom", message, path: ["blocks"] });
+  });
 }

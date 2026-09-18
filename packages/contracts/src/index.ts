@@ -5,3 +5,4 @@ export * from "./caption-pages.js";
 export * from "./presentation.js";
 export * from "./video-theme.js";
 export * from "./scene-composition.js";
+export * from "./format.js";

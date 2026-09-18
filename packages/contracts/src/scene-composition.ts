@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { IconNameSchema } from "./icons.js";
+import { stageSize, type VideoFormat } from "./format.js";
 import {
   LAYOUT_ZONE_PADDING,
-  SCENE_ZONE,
   SceneMotionKindSchema,
   presentationFields,
   type SceneLayout,
@@ -140,6 +140,18 @@ export const PairBlockSchema = z.object({
   ...entrance,
 });
 
+/**
+ * Титульная карточка главы длинного ролика: номер, название, надзаголовок.
+ * Генерируется кодом из плана глав, модель её не собирает.
+ */
+export const ChapterBlockSchema = z.object({
+  block: z.literal("chapter"),
+  index: z.number().int().min(1).max(99),
+  title: text(1, 60),
+  kicker: text(1, 32).optional(),
+  ...entrance,
+});
+
 export const BlockSchema = z.discriminatedUnion("block", [
   HeadingBlockSchema,
   CaptionBlockSchema,
@@ -153,6 +165,7 @@ export const BlockSchema = z.discriminatedUnion("block", [
   DividerBlockSchema,
   QuoteBlockSchema,
   PairBlockSchema,
+  ChapterBlockSchema,
 ]);
 export type Block = z.infer<typeof BlockSchema>;
 export type BlockType = Block["block"];
@@ -171,6 +184,7 @@ export const BLOCK_TYPES = [
   "divider",
   "quote",
   "pair",
+  "chapter",
 ] as const satisfies readonly BlockType[];
 
 /** Блоки с данными: в кадре не больше одного, иначе цифры спорят друг с другом. */
@@ -189,6 +203,7 @@ export const VISUAL_BLOCKS: ReadonlySet<BlockType> = new Set([
   "icon",
   "quote",
   "pair",
+  "chapter",
 ]);
 
 /** Сколько раз блок может встретиться в одном кадре. */
@@ -205,6 +220,7 @@ export const BLOCK_MAX_PER_SCENE: Record<BlockType, number> = {
   divider: 1,
   quote: 1,
   pair: 1,
+  chapter: 1,
 };
 
 export const MAX_BLOCKS_PER_SCENE = 5;
@@ -231,6 +247,9 @@ export const BLOCK_TYPE = {
   divider: { line: 6, vs: 110, arrow: 90 },
   quote: { size: 62, markHeight: 90, attributionSize: 38, attributionGap: 16, lineHeight: 1.15 },
   pair: { labelSize: 32, valueSize: 48, padding: 26, iconSize: 56, gap: 24, lineHeight: 1.15 },
+  chapter: { kickerSize: 38, indexSize: 180, titleSize: 96, gap: 20, lineHeight: 1.08 },
+  /** Промежуток между колонками раскладки split. */
+  splitGutter: 160,
 } as const;
 
 const T = BLOCK_TYPE;
@@ -244,15 +263,33 @@ export function estimateLines(value: string, fontSize: number, width: number): n
   return Math.max(1, Math.ceil((value.length * 1.12) / perLine));
 }
 
-/** Ширина зоны контента для композиции. */
-export function contentWidth(layout: SceneLayout): number {
-  return 1080 - SCENE_ZONE.side * 2 - LAYOUT_ZONE_PADDING[layout].left;
+/**
+ * Ширина зоны контента для композиции, в дизайн-пикселях формата.
+ * У split — ширина одной колонки.
+ */
+export function contentWidth(layout: SceneLayout, format: VideoFormat = "shorts"): number {
+  const stage = stageSize(format);
+  if (layout === "split") return Math.floor((stage.width - T.splitGutter) / 2);
+  return stage.width - LAYOUT_ZONE_PADDING[layout].left;
 }
 
 /** Доступная высота под блоки с учётом сдвига оптического центра. */
-export function compositionCapacity(layout: SceneLayout): number {
+export function compositionCapacity(layout: SceneLayout, format: VideoFormat = "shorts"): number {
   const pad = LAYOUT_ZONE_PADDING[layout];
-  return 1920 - SCENE_ZONE.top - SCENE_ZONE.bottom - pad.top - pad.bottom;
+  return stageSize(format).height - pad.top - pad.bottom;
+}
+
+/**
+ * Блоки левой колонки split: текст. Всё остальное — визуал, правая колонка.
+ * Разбиение делает код, а не модель: одна функция на валидатор и рендер.
+ */
+export const SPLIT_TEXT_BLOCKS: ReadonlySet<BlockType> = new Set(["heading", "caption", "badge", "quote", "chapter"]);
+
+export function splitColumns<B extends Pick<Block, "block">>(blocks: readonly B[]): { text: B[]; visual: B[] } {
+  return {
+    text: blocks.filter((b) => SPLIT_TEXT_BLOCKS.has(b.block)),
+    visual: blocks.filter((b) => !SPLIT_TEXT_BLOCKS.has(b.block)),
+  };
 }
 
 /** Ожидаемая высота блока в пикселях — без браузера, по таблице кеглей. */
@@ -319,6 +356,13 @@ export function estimateBlockHeight(block: Block, width: number): number {
         estimateLines(block.text, T.quote.size, width) * T.quote.size * T.quote.lineHeight +
         (block.attribution ? T.quote.attributionGap + T.quote.attributionSize * 1.25 : 0)
       );
+    case "chapter":
+      return (
+        (block.kicker ? T.chapter.kickerSize * 1.2 + T.chapter.gap : 0) +
+        T.chapter.indexSize +
+        T.chapter.gap +
+        estimateLines(block.title, T.chapter.titleSize, width) * T.chapter.titleSize * T.chapter.lineHeight
+      );
     case "pair": {
       const column = (width - T.pair.gap) / 2 - T.pair.padding * 2;
       const lines = Math.max(
@@ -336,11 +380,52 @@ export function estimateBlockHeight(block: Block, width: number): number {
   }
 }
 
-/** Высота всей композиции: блоки плюс зазоры между ними. */
-export function estimateCompositionHeight(blocks: readonly Block[], layout: SceneLayout): number {
-  const width = contentWidth(layout);
-  const body = blocks.reduce((sum, block) => sum + estimateBlockHeight(block, width), 0);
-  return Math.round(body + Math.max(0, blocks.length - 1) * T.gap);
+const stackHeight = (blocks: readonly Block[], width: number): number =>
+  blocks.reduce((sum, block) => sum + estimateBlockHeight(block, width), 0) +
+  Math.max(0, blocks.length - 1) * T.gap;
+
+/**
+ * Высота всей композиции: блоки плюс зазоры между ними. У split — высота
+ * более высокой колонки; если одна колонка пуста, сцена рисуется одной стопкой.
+ */
+export function estimateCompositionHeight(
+  blocks: readonly Block[],
+  layout: SceneLayout,
+  format: VideoFormat = "shorts",
+): number {
+  if (layout === "split") {
+    const { text, visual } = splitColumns(blocks);
+    if (text.length > 0 && visual.length > 0) {
+      const width = contentWidth("split", format);
+      return Math.round(Math.max(stackHeight(text, width), stackHeight(visual, width)));
+    }
+    return Math.round(stackHeight(blocks, contentWidth("center", format)));
+  }
+  return Math.round(stackHeight(blocks, contentWidth(layout, format)));
+}
+
+/**
+ * Правила кадра, которые зависят от формата: ёмкость и раскладка split.
+ * Схема сцены их не проверяет — формат знает сценарий и манифест, а не сцена.
+ */
+export function compositionFitIssues(
+  scene: { kind: string; layout: SceneLayout; blocks?: readonly Block[] },
+  format: VideoFormat = "shorts",
+): string[] {
+  const issues: string[] = [];
+  if (scene.layout === "split") {
+    if (format !== "landscape") issues.push('layout "split" is only for 16:9 videos');
+    if (scene.kind !== "composed") issues.push('layout "split" is only for scenes composed from blocks');
+  }
+  if (scene.kind !== "composed" || !scene.blocks) return issues;
+  const height = estimateCompositionHeight(scene.blocks, scene.layout, format);
+  const capacity = compositionCapacity(scene.layout, format);
+  if (height > capacity) {
+    issues.push(
+      `the blocks do not fit the frame: about ${height}px of ${capacity}px; drop a block or shorten the text`,
+    );
+  }
+  return issues;
 }
 
 /**
@@ -407,13 +492,8 @@ export const SceneCompositionSchema = z
       }
     });
 
-    const height = estimateCompositionHeight(blocks, scene.layout);
-    const capacity = compositionCapacity(scene.layout);
-    if (height > capacity) {
-      issue(
-        `the blocks do not fit the frame: about ${height}px of ${capacity}px; drop a block or shorten the text`,
-      );
-    }
+    // Ёмкость кадра зависит от формата и проверяется в compositionFitIssues —
+    // её вызывают схемы сценария и манифеста, которые формат знают.
   });
 
 export type SceneComposition = z.infer<typeof SceneCompositionSchema>;

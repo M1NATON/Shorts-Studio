@@ -2,7 +2,7 @@ import React, { createContext, useContext } from "react";
 import { interpolate } from "remotion";
 import { LAYOUT_ZONE_PADDING, type Presentation, type SceneMotionKind } from "@shorts/contracts";
 import { Backdrop } from "./Backdrop.js";
-import { CONTENT_INSET, useTheme } from "./theme.js";
+import { useFormat, useTheme } from "./theme.js";
 import { EASE_OUT, useMotionProfile, useSceneMotion } from "./motion.js";
 
 /** hex → HSL и обратно: нужен только сдвиг тона, поэтому без внешней цветовой библиотеки. */
@@ -106,16 +106,26 @@ const zonePadding = (layout: Presentation["layout"]): React.CSSProperties => {
  *
  * Компоненты сцен не знают про инсеты и про сдвиг акцента — так композицию можно
  * менять централизованно, а модель влияет на неё только через закрытый enum.
+ *
+ * Внутри зоны лежит «сцена» в дизайн-пикселях (см. stageSize): блоки свёрстаны
+ * под кегли кадра 1080×1920, а в 16:9 та же вёрстка уменьшается целиком. Поэтому
+ * таблица кеглей одна, и оценка высоты в валидаторе совпадает с рендером.
+ *
+ * `wide`: сцена из блоков занимает всю ширину сцены; шаблонные типы ограничены
+ * templateMaxWidth — абзац на 2300 дизайн-пикселей в 16:9 не читается.
  */
 export const SceneFrame: React.FC<{
   presentation: Presentation;
   children: React.ReactNode;
   gap?: number;
-}> = ({ presentation, children, gap = 28 }) => {
+  wide?: boolean;
+}> = ({ presentation, children, gap = 28, wide = false }) => {
   const theme = useTheme();
+  const format = useFormat();
   const { visible } = useSceneMotion();
   const accent = shiftHue(theme.accent, presentation.accentShift);
   const isLeft = presentation.layout === "left";
+  const maxWidth = wide ? format.stage.width : Math.min(format.stage.width, format.templateMaxWidth);
 
   return (
     <AccentContext.Provider value={accent}>
@@ -123,21 +133,36 @@ export const SceneFrame: React.FC<{
       <div
         style={{
           position: "absolute",
-          inset: CONTENT_INSET,
+          top: format.zone.top,
+          left: format.zone.side,
+          width: format.stage.width,
+          height: format.stage.height,
+          transform: format.scale === 1 ? undefined : `scale(${format.scale})`,
+          transformOrigin: "top left",
           display: "flex",
-          flexDirection: "column",
           justifyContent: "center",
-          alignItems: isLeft ? "flex-start" : "stretch",
-          textAlign: isLeft ? "left" : "center",
-          ...zonePadding(presentation.layout),
-          // Линия 6px входит в LAYOUT_ZONE_PADDING.left вместе с отступом текста.
-          paddingLeft: isLeft ? LAYOUT_ZONE_PADDING.left.left - 6 : 0,
-          borderLeft: isLeft ? `6px solid ${accent}` : undefined,
-          gap,
-          opacity: visible,
         }}
       >
-        {children}
+        <div
+          style={{
+            width: "100%",
+            maxWidth,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: isLeft ? "flex-start" : "stretch",
+            textAlign: isLeft ? "left" : "center",
+            ...zonePadding(presentation.layout),
+            // Линия 6px входит в LAYOUT_ZONE_PADDING.left вместе с отступом текста.
+            paddingLeft: isLeft ? LAYOUT_ZONE_PADDING.left.left - 6 : 0,
+            borderLeft: isLeft ? `6px solid ${accent}` : undefined,
+            gap,
+            opacity: visible,
+          }}
+        >
+          {children}
+        </div>
       </div>
     </AccentContext.Provider>
   );

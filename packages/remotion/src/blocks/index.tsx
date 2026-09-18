@@ -3,7 +3,7 @@ import type { Block } from "@shorts/contracts";
 import { assertNever } from "@shorts/contracts";
 import { BarsBlock, NumberBlock, RingBlock } from "./DataBlocks.js";
 import { ChipsBlock, IconBlock, PairBlock, RowBlock } from "./CardBlocks.js";
-import { BadgeBlock, CaptionBlock, DividerBlock, HeadingBlock, QuoteBlock } from "./TextBlocks.js";
+import { BadgeBlock, CaptionBlock, ChapterBlock, DividerBlock, HeadingBlock, QuoteBlock } from "./TextBlocks.js";
 
 interface Timing {
   readonly localFrame: number;
@@ -38,6 +38,8 @@ export const BlockView: React.FC<{ block: Block } & Timing> = ({ block, ...timin
       return <QuoteBlock block={block} {...timing} />;
     case "pair":
       return <PairBlock block={block} {...timing} />;
+    case "chapter":
+      return <ChapterBlock block={block} {...timing} />;
     default:
       return assertNever(block);
   }

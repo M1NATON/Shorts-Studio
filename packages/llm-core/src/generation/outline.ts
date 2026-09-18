@@ -1,0 +1,97 @@
+import {
+  NARRATION_MAX_CHARS,
+  NARRATION_TARGET_CHARS,
+  SCENE_COUNT_RANGE,
+  SceneIntentSchema,
+  SPEECH_CHARS_PER_SEC,
+} from "@shorts/contracts";
+import { z } from "zod";
+import { dateRule, log, withFeedback, type GenerationContext } from "./context.js";
+import type { Beat } from "./plan.js";
+
+export const DEFAULT_SCENE_COUNT = 8;
+
+export function outlineSystem(today: string, sceneCount: number): string {
+  return [
+    "You plan informative vertical short videos (9:16), in English.",
+    "",
+    'Return JSON: { "title": string (max 110 chars), "beats": [ { "narration": string, "intent": string } ] }',
+    `Exactly ${sceneCount} beats.`,
+    "",
+    `narration: ONE spoken sentence, ${NARRATION_TARGET_CHARS.min}-${NARRATION_TARGET_CHARS.max} characters,`,
+    `hard maximum ${NARRATION_MAX_CHARS}. Speech runs at ~${SPEECH_CHARS_PER_SEC} characters per second,`,
+    "so a long sentence freezes the scene. One idea per beat, no filler.",
+    "",
+    `intent: one of ${SceneIntentSchema.options.join(", ")}.`,
+    'The first beat is "hook", the last is "takeaway".',
+    'Use "number" only for a real, widely documented figure worth animating; never invent one.',
+    'Use "contrast" for A-versus-B, "list" for two to four parallel points,',
+    '"sequence" for ordered steps or a chronology, "punch" for a short emotional line',
+    'that works split across two or three lines, "fact" otherwise.',
+    "Aim for a mix: at least one number or contrast, and at least two lists.",
+    "",
+    dateRule(today),
+  ].join("\n");
+}
+
+export interface Outline {
+  readonly title: string;
+  readonly beats: Beat[];
+}
+
+const OutlineSchema = z.object({
+  title: z.string().trim().min(1).transform((t) => t.slice(0, 120)),
+  beats: z
+    .array(
+      z.object({
+        narration: z.string().trim().min(1).max(NARRATION_MAX_CHARS),
+        // Неизвестный замысел — не повод перегенерировать весь план.
+        intent: SceneIntentSchema.catch("fact"),
+      }),
+    )
+    .min(SCENE_COUNT_RANGE.min),
+});
+
+export function sourcesBlock(brief: string): string {
+  return brief
+    ? ["", "SOURCES (use only facts and numbers that appear here; do not invent figures):", brief].join("\n")
+    : "";
+}
+
+/**
+ * План ролика: заголовок и тезисы озвучки. Длина тезиса проверяется здесь, а не
+ * при сборке сценария: слишком длинная фраза уходит на повтор с замечанием.
+ */
+export async function outline(
+  ctx: GenerationContext,
+  topic: string,
+  brief: string,
+  sceneCount = DEFAULT_SCENE_COUNT,
+): Promise<Outline> {
+  const feedback: string[] = [];
+  let lastError = "no attempts";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const raw = await ctx.llm.askJson({
+        system: outlineSystem(ctx.today, sceneCount),
+        user: withFeedback(`Topic: ${topic}${sourcesBlock(brief)}`, feedback),
+        maxTokens: 1600,
+        timeoutMs: 180000,
+      });
+      const parsed = OutlineSchema.safeParse(raw);
+      if (parsed.success) {
+        return { title: parsed.data.title, beats: parsed.data.beats.slice(0, Math.min(sceneCount, SCENE_COUNT_RANGE.max)) };
+      }
+      feedback.splice(
+        0,
+        feedback.length,
+        ...parsed.error.issues.slice(0, 4).map((i) => `${i.path.map(String).join(".")}: ${i.message}`),
+      );
+      lastError = feedback.join("; ");
+    } catch (error) {
+      lastError = (error as Error).message;
+    }
+    log(ctx, `план attempt ${attempt}: ${lastError}`);
+  }
+  throw new Error(`outline failed: ${lastError}`);
+}

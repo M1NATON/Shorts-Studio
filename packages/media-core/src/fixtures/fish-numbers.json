@@ -1,0 +1,130 @@
+{
+  "text": "It cost $8.7 billion, used 0.24 Wh, fell 90%, sold 1,100 units, ran 3.5x faster in 2026, about 12.5 percent.",
+  "words": [
+    {
+      "text": "It",
+      "start": 0,
+      "end": 0.08
+    },
+    {
+      "text": "cost",
+      "start": 0.08,
+      "end": 0.4
+    },
+    {
+      "text": "8",
+      "start": 0.48,
+      "end": 0.64
+    },
+    {
+      "text": "7",
+      "start": 0.64,
+      "end": 0.88
+    },
+    {
+      "text": "billion",
+      "start": 1.28,
+      "end": 1.68
+    },
+    {
+      "text": "used",
+      "start": 1.68,
+      "end": 1.68
+    },
+    {
+      "text": "0",
+      "start": 1.68,
+      "end": 1.68
+    },
+    {
+      "text": "24",
+      "start": 1.68,
+      "end": 1.92
+    },
+    {
+      "text": "Wh",
+      "start": 1.92,
+      "end": 3.2
+    },
+    {
+      "text": "fell",
+      "start": 3.52,
+      "end": 3.68
+    },
+    {
+      "text": "90",
+      "start": 3.68,
+      "end": 4.32
+    },
+    {
+      "text": "sold",
+      "start": 4.32,
+      "end": 4.32
+    },
+    {
+      "text": "1",
+      "start": 4.32,
+      "end": 4.32
+    },
+    {
+      "text": "100",
+      "start": 4.32,
+      "end": 4.64
+    },
+    {
+      "text": "units",
+      "start": 4.64,
+      "end": 6.16
+    },
+    {
+      "text": "ran",
+      "start": 6.72,
+      "end": 6.88
+    },
+    {
+      "text": "3",
+      "start": 6.88,
+      "end": 7.2
+    },
+    {
+      "text": "5x",
+      "start": 7.2,
+      "end": 7.2
+    },
+    {
+      "text": "faster",
+      "start": 9.76,
+      "end": 10
+    },
+    {
+      "text": "in",
+      "start": 10.8,
+      "end": 10.96
+    },
+    {
+      "text": "2026",
+      "start": 10.96,
+      "end": 11.92
+    },
+    {
+      "text": "about",
+      "start": 12.24,
+      "end": 12.56
+    },
+    {
+      "text": "12",
+      "start": 12.56,
+      "end": 13.12
+    },
+    {
+      "text": "5",
+      "start": 13.12,
+      "end": 13.12
+    },
+    {
+      "text": "percent",
+      "start": 13.12,
+      "end": 13.12
+    }
+  ]
+}

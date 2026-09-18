@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildResearchBrief, extractFactualExcerpt, parseSearchResponse, searchSources } from "./firecrawl.js";
+import {
+  buildResearchBrief,
+  extractFactualExcerpt,
+  normalizeDate,
+  parseSearchResponse,
+  rankSources,
+  searchSources,
+} from "./firecrawl.js";
 
 const MARKDOWN = [
   "# Measuring the environmental impact of AI inference",
@@ -97,5 +104,73 @@ describe("searchSources", () => {
     expect(captured!.url).toContain("/search");
     expect((captured!.init.headers as Record<string, string>).Authorization).toBe("Bearer secret-key");
     expect(String(captured!.init.body)).toContain("markdown");
+  });
+});
+
+describe("свежесть источников", () => {
+  const now = new Date("2026-09-18T12:00:00Z");
+
+  it("normalizeDate: ISO, относительная дата и мусор", () => {
+    expect(normalizeDate("2026-09-01T08:00:00Z", now)).toBe("2026-09-01");
+    expect(normalizeDate("3 days ago", now)).toBe("2026-09-15");
+    expect(normalizeDate("not a date", now)).toBeUndefined();
+    // Дата из будущего — ошибка метаданных, а не свежий факт.
+    expect(normalizeDate("2027-01-01", now)).toBeUndefined();
+  });
+
+  it("разбирает новости с датой и веб с датой из метаданных", () => {
+    const sources = parseSearchResponse(
+      {
+        data: {
+          web: [
+            {
+              url: "https://w.example",
+              title: "W",
+              description: "Sales rose 12 percent in 2026 compared with the year before.",
+              metadata: { "article:published_time": "2026-05-02" },
+            },
+          ],
+          news: [
+            { url: "https://n.example", title: "N", snippet: "Prices fell 30 percent this quarter, analysts said.", date: "2 days ago" },
+          ],
+        },
+      },
+      now,
+    );
+    expect(sources.map((s) => [s.kind, s.publishedAt])).toEqual([
+      ["web", "2026-05-02"],
+      ["news", "2026-09-16"],
+    ]);
+  });
+
+  it("rankSources: свежие первыми, без даты в конце, дубликаты URL убраны", () => {
+    const base = { title: "t", excerpt: "e", kind: "web" as const };
+    const ranked = rankSources(
+      [
+        { ...base, url: "https://a.example/x" },
+        { ...base, url: "https://b.example/", publishedAt: "2025-01-01" },
+        { ...base, url: "https://c.example", publishedAt: "2026-09-01" },
+        { ...base, url: "https://b.example", publishedAt: "2025-01-01" },
+      ],
+      10,
+    );
+    expect(ranked.map((s) => s.url)).toEqual(["https://c.example", "https://b.example/", "https://a.example/x"]);
+  });
+
+  it("brief содержит дату, чтобы модель видела возраст цифры", () => {
+    const brief = buildResearchBrief([
+      { url: "https://n.example", title: "N", excerpt: "x", kind: "news", publishedAt: "2026-09-16" },
+    ]);
+    expect(brief).toContain("(news, published 2026-09-16)");
+  });
+
+  it("запрос с новостями и фильтром давности", async () => {
+    let body: Record<string, unknown> = {};
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body));
+      return new Response(JSON.stringify({ data: { web: [], news: [] } }), { status: 200 });
+    }) as unknown as typeof fetch;
+    await searchSources({ query: "q", apiKey: "test", recency: "month", news: true, fetchImpl });
+    expect(body).toMatchObject({ sources: [{ type: "web" }, { type: "news" }], tbs: "qdr:m" });
   });
 });

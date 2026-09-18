@@ -3,3 +3,4 @@ export * from "./wav.js";
 export * from "./fish-stream.js";
 export * from "./ffprobe.js";
 export * from "./word-mapping.js";
+export * from "./fish-client.js";

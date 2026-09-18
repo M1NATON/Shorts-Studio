@@ -11,9 +11,13 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "studio": "remotion studio packages/remotion/src/entry.tsx --port=3210"
+    "studio": "node scripts/studio.mjs",
+    "remotion:studio": "remotion studio packages/remotion/src/entry.tsx --port=3210",
+    "e2e": "playwright test",
+    "check:secrets": "node scripts/check-secrets.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@remotion/cli": "4.0.525",
     "@types/node": "^22.20.3",
     "turbo": "^2.10.13",
@@ -22,9 +26,10 @@
   },
   "dependencies": {
     "@shorts/contracts": "workspace:*",
+    "@shorts/db": "workspace:*",
+    "@shorts/llm-core": "workspace:*",
     "@shorts/media-core": "workspace:*",
     "@shorts/remotion": "workspace:*",
-    "zod": "^4.6.5",
-    "@shorts/llm-core": "workspace:*"
+    "zod": "^4.6.5"
   }
 }

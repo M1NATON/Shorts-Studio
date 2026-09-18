@@ -205,3 +205,71 @@ export const DividerBlock: React.FC<BlockProps<"divider">> = ({ block, localFram
     </div>
   );
 };
+
+/**
+ * Титульная карточка главы: надзаголовок, крупный номер, название. Номер
+ * проявляется первым, название — следом, линия акцента растёт под ними.
+ */
+export const ChapterBlock: React.FC<BlockProps<"chapter">> = ({ block, localFrame, align }) => {
+  const theme = useTheme();
+  const font = useThemeFont();
+  const accent = useAccent();
+  const { enterFrames, easing } = useMotionProfile();
+  const appear = (delay: number) =>
+    interpolate(localFrame - delay, [0, enterFrames], [0, 1], { ...clamp, easing });
+  const C = T.chapter;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: align === "left" ? "flex-start" : "center",
+        gap: C.gap,
+        width: "100%",
+      }}
+    >
+      {block.kicker ? (
+        <div
+          style={{
+            fontSize: C.kickerSize,
+            lineHeight: 1.2,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: theme.muted,
+            opacity: appear(0),
+          }}
+        >
+          {block.kicker}
+        </div>
+      ) : null}
+      <div
+        style={{
+          fontSize: C.indexSize,
+          lineHeight: 1,
+          height: C.indexSize,
+          fontWeight: font.headingWeight,
+          color: accent,
+          fontVariantNumeric: "tabular-nums",
+          opacity: appear(2),
+          scale: String(interpolate(appear(2), [0, 1], [0.9, 1])),
+        }}
+      >
+        {String(block.index).padStart(2, "0")}
+      </div>
+      <div
+        style={{
+          fontSize: C.titleSize,
+          lineHeight: C.lineHeight,
+          fontWeight: font.headingWeight,
+          letterSpacing: `${theme.letterSpacing}em`,
+          color: theme.text,
+          opacity: appear(6),
+          translate: `0px ${(1 - appear(6)) * 24}px`,
+        }}
+      >
+        {block.title}
+      </div>
+    </div>
+  );
+};

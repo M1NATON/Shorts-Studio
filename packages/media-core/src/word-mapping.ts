@@ -39,28 +39,49 @@ export function mapTimingsToOriginalText(
     if (!key) continue;
 
     // Ищем следующее совпадение, допуская, что провайдер мог пропустить слово.
-    let found = -1;
-    for (let i = cursor; i < providerWords.length && i < cursor + 4; i++) {
-      if (normalize(providerWords[i]!.text) === key) {
-        found = i;
-        break;
-      }
-    }
-
-    if (found === -1) {
+    const match = findSpan(providerWords, cursor, key);
+    if (!match) {
       // Нет совпадения — ставим заглушку, интерполируем ниже.
       words.push({ text: original, start: Number.NaN, end: Number.NaN });
       unmatched++;
       continue;
     }
 
-    const match = providerWords[found]!;
-    words.push({ text: original, start: match.start, end: match.end });
-    cursor = found + 1;
+    words.push({ text: original, start: providerWords[match.first]!.start, end: providerWords[match.last]!.end });
+    cursor = match.last + 1;
   }
 
   interpolateGaps(words);
   return { words, unmatched };
+}
+
+/** Сколько слов провайдера можно пропустить в поисках совпадения. */
+const LOOKAHEAD = 4;
+/** Из скольких слов провайдера может состоять одно слово оригинала: "1,000,000" → 1 000 000. */
+const MAX_SPAN = 4;
+
+/**
+ * Слово оригинала — одно слово провайдера или несколько подряд.
+ *
+ * Fish режет числа по точке и запятой: "$8.7" приходит как "8" + "7", "1,100" —
+ * как "1" + "100", "3.5x" — как "3" + "5x". Без склейки такие слова оставались
+ * без тайминга, и подсветка в субтитрах шла по интерполяции как раз на числах —
+ * самом важном месте сцены.
+ */
+function findSpan(
+  providerWords: readonly WordTiming[],
+  cursor: number,
+  key: string,
+): { first: number; last: number } | undefined {
+  for (let first = cursor; first < providerWords.length && first < cursor + LOOKAHEAD; first++) {
+    let joined = "";
+    for (let last = first; last < providerWords.length && last < first + MAX_SPAN; last++) {
+      joined += normalize(providerWords[last]!.text);
+      if (joined === key) return { first, last };
+      if (!key.startsWith(joined)) break;
+    }
+  }
+  return undefined;
 }
 
 /** Заполняет пропуски линейно между известными соседями, чтобы субтитры не дёргались. */

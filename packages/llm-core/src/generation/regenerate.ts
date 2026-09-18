@@ -17,6 +17,7 @@ import { dateRule, log, withFeedback, type GenerationContext } from "./context.j
 import { fillComposed, fillTemplate, narrationHasFigure, type SceneFillInput } from "./fill.js";
 import { mapLimited } from "./llm-client.js";
 import { sourcesBlock } from "./outline.js";
+import { narrationTells, skill } from "./skills.js";
 import {
   BACKDROP_BY_HERO,
   DATA_HEROES,
@@ -209,6 +210,8 @@ export async function rewriteNarration(
     "Keep the role of the scene in the video; do not repeat the neighbouring sentences.",
     "Use only facts and numbers from the current narration and SOURCES.",
     dateRule(ctx.today),
+    "",
+    skill("narration"),
   ].join("\n");
   const user = [
     `Video topic: ${input.topic}`,
@@ -225,7 +228,12 @@ export async function rewriteNarration(
     try {
       const raw = await ctx.llm.askJson({ system, user: withFeedback(user, feedback), maxTokens: 400, timeoutMs: 180000 });
       const parsed = NarrationSchema.safeParse(raw);
-      if (parsed.success) return parsed.data.narration;
+      const tells = parsed.success && attempt === 1 ? narrationTells(parsed.data.narration) : [];
+      if (parsed.success && tells.length === 0) return parsed.data.narration;
+      if (parsed.success) {
+        feedback.splice(0, feedback.length, ...tells);
+        continue;
+      }
       feedback.splice(0, feedback.length, ...parsed.error.issues.map((i) => `${i.path.map(String).join(".")}: ${i.message}`));
     } catch (error) {
       feedback.splice(0, feedback.length);

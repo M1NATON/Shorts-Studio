@@ -19,7 +19,8 @@ import { buildResearchBrief, searchMany, type ResearchSource } from "../firecraw
 import { dateRule, log, withFeedback, type GenerationContext } from "./context.js";
 import { acceptComposed, fillScene, videoNoun, type SceneFillInput } from "./fill.js";
 import { mapLimited } from "./llm-client.js";
-import { sourcesBlock } from "./outline.js";
+import { beatTells, sourcesBlock } from "./outline.js";
+import { skill } from "./skills.js";
 import { planScenes, SKELETONS, type Beat, type ScenePlan } from "./plan.js";
 import { BLOCK_CONTRACT, HERO_EXAMPLE, HERO_HINT, ICON_LIST } from "./prompts.js";
 import { research, type Freshness } from "./research.js";
@@ -89,12 +90,22 @@ export async function longOutline(
     `Exactly ${chapterCount} chapters, each a distinct angle, in a logical order.`,
     narrationRule(),
     dateRule(ctx.today),
+    "",
+    skill("narration"),
   ].join("\n");
   const feedback: string[] = [];
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const raw = await ctx.llm.askJson({ system, user: withFeedback(`Topic: ${topic}${sourcesBlock(brief)}`, feedback), maxTokens: 2000 });
       const parsed = LongOutlineSchema.safeParse(raw);
+      const tells = parsed.success && attempt === 1
+        ? beatTells(parsed.data.title, [...parsed.data.hook, parsed.data.takeaway])
+        : [];
+      if (tells.length > 0) {
+        feedback.splice(0, feedback.length, ...tells);
+        log(ctx, `главы attempt ${attempt}: штампы: ${tells.join("; ")}`);
+        continue;
+      }
       if (parsed.success) {
         return {
           ...parsed.data,
@@ -126,6 +137,8 @@ export async function chapterBeats(
     '"sequence" for ordered steps; "punch" for a short striking line; "fact" otherwise. Mix them.',
     "Do not repeat what other chapters cover. Use only facts and numbers from SOURCES.",
     dateRule(ctx.today),
+    "",
+    skill("narration"),
   ].join("\n");
   const others = input.outline.chapters.map((c, i) => `${i + 1}. ${c.title}${i === input.chapterIndex ? "   <- write this one" : ""}`);
   const user = [
@@ -141,6 +154,12 @@ export async function chapterBeats(
     try {
       const raw = await ctx.llm.askJson({ system, user: withFeedback(user, feedback), maxTokens: 2500 });
       const parsed = Schema.safeParse(raw);
+      const tells = parsed.success && attempt === 1 ? beatTells("", parsed.data.beats) : [];
+      if (tells.length > 0) {
+        feedback.splice(0, feedback.length, ...tells);
+        log(ctx, `глава ${input.chapterIndex + 1} attempt ${attempt}: штампы: ${tells.join("; ")}`);
+        continue;
+      }
       if (parsed.success) {
         // Хук и вывод есть у ролика целиком; внутри главы они превратились бы в шаблонные кадры.
         return parsed.data.beats.slice(0, input.count).map((b) => ({
@@ -196,6 +215,8 @@ export async function fillChapterBatch(
       "Use only facts and numbers from the narration and SOURCES.",
       dateRule(ctx.today),
       `\nAllowed icon values: ${ICON_LIST}`,
+      "",
+      skill("on-screen"),
     ].join("\n");
     const user = [
       `Video topic: ${composed[0]!.topic}`,

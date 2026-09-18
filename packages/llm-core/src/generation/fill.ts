@@ -31,6 +31,7 @@ import {
   KIND_EXAMPLE,
   NEEDS_ICONS,
 } from "./prompts.js";
+import { skill } from "./skills.js";
 
 export interface SceneFillInput {
   readonly topic: string;
@@ -117,6 +118,8 @@ export async function fillTemplate(ctx: GenerationContext, input: SceneFillInput
     "The visual must show what the narration says, in fewer words than the narration.",
     "Never invent numbers, names or sources: use only the narration and SOURCES. No markdown, no extra fields.",
     dateRule(ctx.today),
+    "",
+    skill("on-screen"),
   ]
     .filter(Boolean)
     .join("\n");
@@ -205,6 +208,8 @@ export async function fillComposed(ctx: GenerationContext, input: SceneFillInput
     "Use only facts and numbers from the narration and SOURCES.",
     dateRule(ctx.today),
     `\nAllowed icon values: ${ICON_LIST}`,
+    "",
+    skill("on-screen"),
   ]
     .filter(Boolean)
     .join("\n");

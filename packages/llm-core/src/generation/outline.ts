@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { dateRule, log, withFeedback, type GenerationContext } from "./context.js";
 import type { Beat } from "./plan.js";
+import { narrationTells, skill } from "./skills.js";
 
 export const DEFAULT_SCENE_COUNT = 8;
 
@@ -31,6 +32,8 @@ export function outlineSystem(today: string, sceneCount: number): string {
     "Aim for a mix: at least one number or contrast, and at least two lists.",
     "",
     dateRule(today),
+    "",
+    skill("narration"),
   ].join("\n");
 }
 
@@ -80,7 +83,14 @@ export async function outline(
       });
       const parsed = OutlineSchema.safeParse(raw);
       if (parsed.success) {
-        return { title: parsed.data.title, beats: parsed.data.beats.slice(0, Math.min(sceneCount, SCENE_COUNT_RANGE.max)) };
+        const beats = parsed.data.beats.slice(0, Math.min(sceneCount, SCENE_COUNT_RANGE.max));
+        // Штампы — мягкое требование: один повтор с замечаниями, дальше принимаем как есть.
+        const tells = attempt === 1 ? beatTells(parsed.data.title, beats) : [];
+        if (tells.length === 0) return { title: parsed.data.title, beats };
+        feedback.splice(0, feedback.length, ...tells);
+        lastError = `штампы: ${tells.join("; ")}`;
+        log(ctx, `план attempt ${attempt}: ${lastError}`);
+        continue;
       }
       feedback.splice(
         0,
@@ -94,4 +104,12 @@ export async function outline(
     log(ctx, `план attempt ${attempt}: ${lastError}`);
   }
   throw new Error(`outline failed: ${lastError}`);
+}
+
+/** Штампы в заголовке и тезисах — замечания для повтора (не больше пяти). */
+export function beatTells(title: string, beats: readonly { narration: string }[]): string[] {
+  return [
+    ...narrationTells(title).map((t) => `title: ${t}`),
+    ...beats.flatMap((b, i) => narrationTells(b.narration).map((t) => `beat ${i + 1}: ${t}`)),
+  ].slice(0, 5);
 }

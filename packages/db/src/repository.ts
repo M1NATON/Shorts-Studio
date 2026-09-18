@@ -11,12 +11,14 @@ import { alias } from "drizzle-orm/sqlite-core";
 import {
   FORMATS,
   ManifestSchema,
+  PublishMetaSchema,
   SceneMediaSchema,
   SceneVisualSpecSchema,
   VideoThemeSchema,
   WordTimingSchema,
   type CaptionStyle,
   type Manifest,
+  type PublishMeta,
   type SceneIntent,
   type SceneMedia,
   type SceneVisualSpec,
@@ -68,6 +70,8 @@ export interface ProjectRecord {
   readonly theme: VideoTheme | null;
   /** Фоновая музыка: файл из storage/music и громкость; null — без музыки. */
   readonly music: ProjectMusic | null;
+  /** Название/описание/хэштеги для YouTube; null — ещё не сгенерирована. Правка не помечает MP4 устаревшим. */
+  readonly publish: PublishMeta | null;
   readonly sources: SourceRecord[];
   readonly brief: string | null;
   readonly chapters: { title: string; firstScene: number }[];
@@ -123,6 +127,8 @@ export interface JobRecord {
   readonly error: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /** Когда задача стала running; null — ещё ждёт (или создана до миграции 8). */
+  readonly startedAt: string | null;
 }
 
 const stamp = (): string => new Date().toISOString();
@@ -151,6 +157,7 @@ function toProject(row: ProjectRow): ProjectRecord {
     format: row.format,
     theme: row.theme ? VideoThemeSchema.parse(row.theme) : null,
     music: row.music ? ProjectMusicSchema.parse(row.music) : null,
+    publish: toPublishMeta(row.publish),
     sources: SourcesSchema.parse(row.sources ?? []),
     chapters: ChaptersSchema.parse(row.chapters ?? []),
   };
@@ -188,6 +195,13 @@ const toJob = (row: JobRow): JobRecord => ({ ...row });
 function toSceneMedia(raw: unknown): SceneMedia | null {
   if (!raw) return null;
   const parsed = SceneMediaSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Мусор в колонке публикации — тихо null, не падение чтения проекта. */
+function toPublishMeta(raw: unknown): PublishMeta | null {
+  if (!raw) return null;
+  const parsed = PublishMetaSchema.safeParse(raw);
   return parsed.success ? parsed.data : null;
 }
 
@@ -324,6 +338,11 @@ export function createRepository(database: Database) {
         await tx.update(projects).set({ music }).where(eq(projects.id, id));
         await markEdited(tx, id);
       });
+    },
+
+    /** Название/описание/хэштеги YouTube; null — сбросить. Не влияет на MP4, поэтому не трогает status. */
+    async setPublish(id: string, publish: PublishMeta | null): Promise<void> {
+      await db.update(projects).set({ publish }).where(eq(projects.id, id));
     },
 
     async setCaptionStyle(id: string, captionStyle: CaptionStyle): Promise<void> {
@@ -706,8 +725,9 @@ export function createRepository(database: Database) {
           .orderBy(asc(jobs.createdAt))
           .limit(1);
         if (!next) return undefined;
-        await tx.update(jobs).set({ status: "running", updatedAt: stamp() }).where(eq(jobs.id, next.id));
-        return toJob({ ...next, status: "running" });
+        const startedAt = stamp();
+        await tx.update(jobs).set({ status: "running", updatedAt: startedAt, startedAt }).where(eq(jobs.id, next.id));
+        return toJob({ ...next, status: "running", startedAt });
       });
     },
 

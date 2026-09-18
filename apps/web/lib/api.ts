@@ -2,7 +2,9 @@
  * Клиент API студии. Типы ответов описаны здесь, а не импортом из @shorts/db:
  * база тянет node:sqlite, в браузерный бандл она попасть не должна.
  */
-import type { CaptionStyle, Manifest, SceneIntent, SceneMedia, SceneVisualSpec, VideoFormat, VideoTheme, WordTiming } from "@shorts/contracts";
+import type { CaptionStyle, Manifest, PublishMeta, SceneIntent, SceneMedia, SceneVisualSpec, VideoFormat, VideoTheme, WordTiming } from "@shorts/contracts";
+
+export type { PublishMeta } from "@shorts/contracts";
 
 export type ProjectStatus = "generating" | "draft" | "ready" | "stale" | "failed";
 export type Freshness = "current" | "evergreen";
@@ -20,6 +22,7 @@ export interface Project {
   minutes: number | null;
   theme: VideoTheme | null;
   music: ProjectMusic | null;
+  publish: PublishMeta | null;
   sources: { url: string; title: string; kind?: "web" | "news"; publishedAt?: string }[];
   chapters: { title: string; firstScene: number }[];
   thumbnailPath: string | null;
@@ -66,6 +69,7 @@ export interface Job {
   error: string | null;
   createdAt: string;
   updatedAt: string;
+  startedAt: string | null;
 }
 
 export interface ProjectMusic {
@@ -148,6 +152,9 @@ export const api = {
   setMusic: (id: string, music: ProjectMusic | null) =>
     request<Project>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify({ music }) }),
   music: () => request<MusicTrack[]>("/api/music"),
+  regeneratePublish: (id: string) => post<PublishMeta>(`/api/projects/${id}/publish`),
+  setPublish: (id: string, publish: PublishMeta | null) =>
+    request<Project>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify({ publish }) }),
   deleteProject: (id: string) => request<void>(`/api/projects/${id}`, { method: "DELETE" }),
   duplicate: (id: string) => post<{ project: Project }>(`/api/projects/${id}/duplicate`),
   retry: (id: string) => post<{ job: Job }>(`/api/projects/${id}/retry`),

@@ -35,13 +35,19 @@ export const STAGE_LABEL: Record<string, string> = {
   fill: "Сцены",
   check: "Проверка чисел",
   voice: "Озвучка",
+  media: "Фото и видео",
   thumbnail: "Обложка",
   render: "Рендер",
   done: "Готово",
 };
 
+/** Текущий этап человеческим языком, без «done/total» — для карточек, где прогресс показан отдельно. */
+export function stageText(job: Job): string {
+  return job.message ?? (job.stage ? (STAGE_LABEL[job.stage] ?? job.stage) : job.status === "queued" ? "В очереди" : "…");
+}
+
 export function jobProgress(job: Job): string {
-  const stage = job.message ?? (job.stage ? (STAGE_LABEL[job.stage] ?? job.stage) : job.status === "queued" ? "В очереди" : "…");
+  const stage = stageText(job);
   return job.total ? `${stage} · ${job.done ?? 0}/${job.total}` : stage;
 }
 
@@ -60,6 +66,16 @@ export const formatDuration = (sec: number | null): string => {
   const s = Math.round(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
 };
+
+/** «5 мин назад» для недавних событий очереди. */
+export function timeAgo(iso: string, now: number = Date.now()): string {
+  const diffMin = Math.floor((now - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return "только что";
+  if (diffMin < 60) return `${diffMin} мин назад`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH} ч назад`;
+  return formatShortDate(iso);
+}
 
 /** «1 ролик», «2 ролика», «5 роликов». */
 export function plural(n: number, one: string, few: string, many: string): string {

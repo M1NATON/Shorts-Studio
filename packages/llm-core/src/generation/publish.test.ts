@@ -1,0 +1,56 @@
+import { describe, expect, it } from "vitest";
+import { generatePublishMeta } from "./publish.js";
+import { fakeLlm } from "./test-helpers.js";
+
+const input = {
+  topic: "Battery prices",
+  title: "Why batteries got cheap",
+  format: "shorts" as const,
+  narration: ["Batteries got ninety percent cheaper in a decade.", "Packs cost 115 dollars per kWh in 2024."],
+  sources: [{ title: "Battery price report", url: "https://x.test/report" }],
+};
+
+const validAnswer = {
+  title: "Why battery prices collapsed in a decade",
+  description:
+    "Batteries got dramatically cheaper. This video covers the forces behind it: bigger factories, better chemistry and fierce competition between makers.",
+  hashtags: ["#Batteries", "#EnergyStorage", "#Tech"],
+};
+
+describe("generatePublishMeta", () => {
+  it("промпт содержит narration и источники", async () => {
+    const llm = fakeLlm(() => validAnswer);
+    await generatePublishMeta(llm, input);
+    const user = llm.calls[0]!.user;
+    expect(user).toContain("Batteries got ninety percent cheaper in a decade.");
+    expect(user).toContain("Packs cost 115 dollars per kWh in 2024.");
+    expect(user).toContain("Battery price report: https://x.test/report");
+  });
+
+  it("shorts без #Shorts в ответе — добавляется первым и список обрезается до 8", async () => {
+    const llm = fakeLlm(() => ({ ...validAnswer, hashtags: Array.from({ length: 8 }, (_, i) => `#Tag${i}`) }));
+    const result = await generatePublishMeta(llm, input);
+    expect(result.hashtags[0]).toBe("#Shorts");
+    expect(result.hashtags).toHaveLength(8);
+  });
+
+  it("landscape не получает #Shorts", async () => {
+    const llm = fakeLlm(() => validAnswer);
+    const result = await generatePublishMeta(llm, { ...input, format: "landscape" });
+    expect(result.hashtags).not.toContain("#Shorts");
+  });
+
+  it("невалидный ответ уходит на повтор с замечаниями, затем принимается", async () => {
+    const llm = fakeLlm((_req, call) => (call === 1 ? { title: "short" } : validAnswer));
+    const result = await generatePublishMeta(llm, input);
+    expect(llm.calls).toHaveLength(2);
+    expect(llm.calls[1]!.user).toMatch(/rejected/);
+    expect(result.title).toBe(validAnswer.title);
+  });
+
+  it("три невалидных ответа подряд — бросает ошибку", async () => {
+    const llm = fakeLlm(() => ({ title: "x" }));
+    await expect(generatePublishMeta(llm, input)).rejects.toThrow(/publish meta failed/);
+    expect(llm.calls).toHaveLength(3);
+  });
+});

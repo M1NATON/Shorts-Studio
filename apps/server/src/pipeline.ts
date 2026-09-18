@@ -16,6 +16,7 @@ import {
   visualSpecSchemaFor,
   type Manifest,
   type MusicMood,
+  type PublishMeta,
   type SceneIntent,
   type SceneMedia,
   type SceneVisualSpec,
@@ -23,6 +24,7 @@ import {
 } from "@shorts/contracts";
 import {
   audioHash,
+  NotReadyError,
   projectPaths,
   type JobRecord,
   type ProjectRecord,
@@ -33,6 +35,7 @@ import {
 import {
   checkNumbers,
   generateLongScript,
+  generatePublishMeta,
   generateScript,
   regenerateSceneVisual,
   rewriteNarration,
@@ -131,6 +134,26 @@ export async function makeThumbnail(deps: PipelineDeps, projectId: string): Prom
     thumbnailPath: rel,
     durationSec: Math.round((manifest.totalDurationInFrames / manifest.fps) * 10) / 10,
   });
+}
+
+/**
+ * Название/описание/хэштеги для YouTube по текущим сценам и источникам проекта.
+ * 409 (NotReadyError), если у проекта ещё нет сцен — так же, как у buildManifest.
+ */
+export async function refreshPublishMeta(deps: PipelineDeps, projectId: string): Promise<PublishMeta> {
+  const project = await deps.repo.requireProject(projectId);
+  const scenes = await deps.repo.currentScenes(projectId);
+  if (scenes.length === 0) throw new NotReadyError("project has no scenes yet");
+  const ctx = await deps.generationContext(() => undefined);
+  const meta = await generatePublishMeta(ctx.llm, {
+    topic: project.title ?? project.topic,
+    title: project.title ?? project.topic,
+    format: project.format,
+    narration: scenes.map((s) => s.version.narration),
+    sources: project.sources.map((s) => ({ title: s.title, url: s.url })),
+  });
+  await deps.repo.setPublish(projectId, meta);
+  return meta;
 }
 
 /**
@@ -337,6 +360,14 @@ export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<u
   await fillMedia(deps, project, mediaJobs, report);
 
   await voiceMissing(deps, project.id, report);
+
+  await report({ stage: "publish", message: "Название и описание" });
+  try {
+    await refreshPublishMeta(deps, project.id);
+  } catch (error) {
+    console.error(`publish meta for project ${project.id}: ${(error as Error).message}`);
+  }
+
   await report({ stage: "thumbnail", message: "Обложка", done: null, total: null });
   await makeThumbnail(deps, project.id);
   deps.events.emit({ type: "project", projectId: project.id });

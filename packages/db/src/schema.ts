@@ -35,6 +35,8 @@ export const projects = sqliteTable(
     minutes: real("minutes"),
     theme: text("theme", { mode: "json" }),
     music: text("music", { mode: "json" }),
+    /** Название/описание/хэштеги для YouTube (PublishMeta); null — ещё не сгенерирована. */
+    publish: text("publish", { mode: "json" }),
     sources: text("sources", { mode: "json" }),
     /** Сводка источников: по ней пересобираются сцены без нового поиска. */
     brief: text("brief"),
@@ -122,6 +124,7 @@ export const jobs = sqliteTable(
     error: text("error"),
     createdAt: text("created_at").notNull().default(now),
     updatedAt: text("updated_at").notNull().default(now),
+    startedAt: text("started_at"),
   },
   (t) => [index("jobs_status_idx").on(t.status, t.createdAt), index("jobs_project_idx").on(t.projectId)],
 );

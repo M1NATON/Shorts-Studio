@@ -8,3 +8,4 @@ export * from "./fill.js";
 export * from "./script.js";
 export * from "./regenerate.js";
 export * from "./long.js";
+export * from "./publish.js";

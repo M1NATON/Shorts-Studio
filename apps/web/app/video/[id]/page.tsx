@@ -2,13 +2,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { Captions, Download, ExternalLink, Library, Music, RotateCcw, ScanLine, TriangleAlert, Upload } from "lucide-react";
+import { Captions, Download, ExternalLink, FileDown, Library, Megaphone, Music, RotateCcw, ScanLine, TriangleAlert, Upload } from "lucide-react";
 import type { PlayerRef } from "@remotion/player";
 import { FORMATS, type CaptionStyle, type Manifest } from "@shorts/contracts";
 import { CaptionPicker } from "@/components/CaptionPicker";
+import { ExportMenu } from "@/components/ExportMenu";
 import { GenerationProgress } from "@/components/GenerationProgress";
 import { MusicPicker, trackLabel } from "@/components/MusicPicker";
 import { Popover } from "@/components/Popover";
+import { PublishPanel } from "@/components/PublishPanel";
 import { SceneInspector } from "@/components/SceneInspector";
 import { Topbar } from "@/components/Topbar";
 import { Transport } from "@/components/Transport";
@@ -176,6 +178,12 @@ export default function VideoEditorPage() {
           button={<><Music {...ICON} />{project.music ? "Музыка" : "Без музыки"}</>}
         >
           {() => <MusicPicker value={project.music} onChange={(music) => act(() => api.setMusic(id, music))} />}
+        </Popover>
+        <Popover label="Экспорт содержимого ролика" button={<><FileDown {...ICON} />Экспорт</>}>
+          {() => <ExportMenu project={project} scenes={scenes} />}
+        </Popover>
+        <Popover label="Публикация на YouTube" menuClass="menu wide" button={<><Megaphone {...ICON} />Публикация</>}>
+          {() => <PublishPanel projectId={id} value={project.publish} onChanged={() => void load()} />}
         </Popover>
         <button className="btn" aria-pressed={safeZone} onClick={() => setSafeZone((v) => !v)} title="Рамка зоны контента: снаружи — интерфейс платформы и субтитры">
           <ScanLine {...ICON} />Safe-зона

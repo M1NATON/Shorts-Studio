@@ -180,6 +180,28 @@ describe("медиа сцены", () => {
   });
 });
 
+describe("публикация", () => {
+  const publish = { title: "Why batteries got cheap: the real story", description: "A" .repeat(60), hashtags: ["#Batteries", "#Tech", "#Energy"] };
+
+  it("setPublish сохраняет и читается обратно, не трогает статус готового ролика", async () => {
+    const { project } = await projectWithScript();
+    await repo.updateProject(project.id, { status: "ready" });
+    await repo.setPublish(project.id, publish);
+    const reloaded = await repo.requireProject(project.id);
+    expect(reloaded.publish).toEqual(publish);
+    expect(reloaded.status).toBe("ready");
+
+    await repo.setPublish(project.id, null);
+    expect((await repo.requireProject(project.id)).publish).toBeNull();
+  });
+
+  it("мусор в колонке publish читается как null, не падает", async () => {
+    const { project } = await projectWithScript();
+    await database.raw.prepare("UPDATE projects SET publish = ? WHERE id = ?").run(JSON.stringify({ title: "x" }), project.id);
+    expect((await repo.requireProject(project.id)).publish).toBeNull();
+  });
+});
+
 describe("задачи", () => {
   it("очередь по порядку, одна задача не выдаётся дважды", async () => {
     const a = await repo.createJob({ kind: "generate" });
@@ -199,7 +221,11 @@ describe("задачи", () => {
     const a2 = await repo.createJob({ kind: "render", projectId: a.id });
     await tick();
     const b1 = await repo.createJob({ kind: "render", projectId: b.id });
-    expect((await repo.claimNextJob())?.id).toBe(a1.id);
+    expect(a1.startedAt).toBeNull();
+    const claimed = await repo.claimNextJob();
+    expect(claimed?.id).toBe(a1.id);
+    expect(claimed?.startedAt).not.toBeNull();
+    expect((await repo.getJob(a1.id))?.startedAt).toBe(claimed?.startedAt);
     expect((await repo.claimNextJob())?.id).toBe(b1.id);
     expect(await repo.claimNextJob()).toBeUndefined();
     await repo.updateJob(a1.id, { status: "done" });

@@ -35,6 +35,14 @@ const llm: LlmClient = {
       return { blocks: [{ block: "icon", icon: "zap" }, { block: "row", text: "Scale", emphasis: true, at: 0.2 }] };
     }
     if (system.includes("outro-cta")) return { text: "Storage is the story" };
+    if (system.includes("YouTube publish metadata")) {
+      return {
+        title: "Why battery prices collapsed in a decade",
+        description:
+          "Batteries got dramatically cheaper. This video explains the three forces that drove it: bigger factories, better chemistry and fierce competition between makers.",
+        hashtags: ["#Batteries", "#EnergyStorage", "#Tech"],
+      };
+    }
     return { variant: "statement", text: "Batteries got cheap" };
   },
 };
@@ -388,6 +396,36 @@ describe("API", () => {
     mediaKeyConfigured = false;
     const denied = await app.inject({ method: "POST", url: `/api/scenes/${scene.id}/media`, payload: { query: "server room lights" } });
     expect(denied.statusCode).toBe(409);
+  });
+
+  it("публикация: генерация даёт #Shorts первым, POST /publish перегенерирует, PATCH сохраняет правку, невалидный хэштег — 400", async () => {
+    const { id, detail } = await createGenerated();
+    expect(detail.project.publish).toMatchObject({
+      title: "Why battery prices collapsed in a decade",
+      hashtags: ["#Shorts", "#Batteries", "#EnergyStorage", "#Tech"],
+    });
+
+    const regenerated = await app.inject({ method: "POST", url: `/api/projects/${id}/publish` });
+    expect(regenerated.statusCode).toBe(200);
+    expect(regenerated.json().hashtags[0]).toBe("#Shorts");
+
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${id}`,
+      payload: { publish: { title: "Manual title, edited by hand", description: "B".repeat(60), hashtags: ["#Shorts", "#Manual", "#Edit"] } },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().publish.title).toBe("Manual title, edited by hand");
+
+    const invalid = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${id}`,
+      payload: { publish: { title: "Manual title, edited by hand", description: "B".repeat(60), hashtags: ["not-a-hashtag", "#A", "#B"] } },
+    });
+    expect(invalid.statusCode).toBe(400);
+
+    const empty = await repo.createProject({ topic: "No scenes yet", format: "shorts" });
+    expect((await app.inject({ method: "POST", url: `/api/projects/${empty.id}/publish` })).statusCode).toBe(409);
   });
 
   it("панель очереди: порядок, название проекта, отмена только ждущей задачи", async () => {

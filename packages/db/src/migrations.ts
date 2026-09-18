@@ -102,4 +102,8 @@ export const MIGRATIONS: readonly string[] = [
   // 6: фото/видео фона сцены с Pexels (JSON, SceneMedia). Принадлежит сцене, а не
   // версии текста — переписывание и переозвучка его не теряют.
   `ALTER TABLE scenes ADD COLUMN media TEXT;`,
+  // 7: мета публикации YouTube (JSON: title, description, hashtags). NULL — ещё не сгенерирована.
+  `ALTER TABLE projects ADD COLUMN publish TEXT;`,
+  // 8: когда задача стала running — панель очереди показывает «идёт 1:32», а не время с постановки.
+  `ALTER TABLE jobs ADD COLUMN started_at TEXT;`,
 ];

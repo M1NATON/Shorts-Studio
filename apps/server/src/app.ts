@@ -8,6 +8,7 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
+import { PublishMetaSchema } from "@shorts/contracts";
 import {
   loadPreferences,
   NotFoundError,
@@ -21,7 +22,7 @@ import { fallbackStatement, presentationAt } from "@shorts/llm-core";
 import { z } from "zod";
 import type { ServerConfig } from "./config.js";
 import type { ProviderKind, ProviderStore } from "@shorts/db";
-import { deleteSceneMedia, listMusic, NoMediaKeyError, saveManualVisual, setSceneMediaManual, type PipelineDeps } from "./pipeline.js";
+import { deleteSceneMedia, listMusic, NoMediaKeyError, refreshPublishMeta, saveManualVisual, setSceneMediaManual, type PipelineDeps } from "./pipeline.js";
 import type { Worker } from "./worker.js";
 
 // Не переданные формат, свежесть и длина берутся из предпочтений (Настройки).
@@ -51,6 +52,8 @@ const ProjectPatchBody = z.object({
   captionStyle: z.enum(["clean", "karaoke", "boxed", "outline"]).optional(),
   /** null — без музыки. Файл проверяется по списку storage/music, не по пути из запроса. */
   music: z.object({ track: z.string().min(1), volume: z.number().min(0).max(1) }).nullable().optional(),
+  /** Ручная правка названия/описания/хэштегов; null — сбросить. */
+  publish: PublishMetaSchema.nullable().optional(),
 });
 
 const MoveBody = z.object({ position: z.number().int().min(0) });
@@ -238,6 +241,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
     if (body.captionStyle) await repo.setCaptionStyle(project.id, body.captionStyle);
     if (body.music !== undefined) await repo.setMusic(project.id, body.music);
+    if (body.publish !== undefined) await repo.setPublish(project.id, body.publish);
     events.emit({ type: "project", projectId: project.id });
     return repo.requireProject(project.id);
   });
@@ -279,6 +283,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.post<{ Params: { id: string } }>("/api/projects/:id/render", async (request, reply) => {
     await repo.requireProject(request.params.id);
     return reply.code(202).send({ job: await enqueue("render", request.params.id) });
+  });
+
+  /** Перегенерировать название/описание/хэштеги по текущим сценам; 409 без сцен. */
+  app.post<{ Params: { id: string } }>("/api/projects/:id/publish", async (request) => {
+    const meta = await refreshPublishMeta(deps, request.params.id);
+    events.emit({ type: "project", projectId: request.params.id });
+    return meta;
   });
 
   app.get<{ Params: { id: string } }>("/api/projects/:id/video", async (request, reply) => {

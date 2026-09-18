@@ -46,6 +46,14 @@ const llm: LlmClient = {
     if (system.includes("outro-cta")) return { text: "Storage is the story" };
     if (system.includes("kinetic-text")) return { lines: ["Cheaper", "every year"], emphasisLine: 1 };
     if (system.includes("timeline")) return { steps: [{ label: "Mine", text: "Lithium" }, { label: "Refine", text: "Cells" }] };
+    if (system.includes("YouTube publish metadata")) {
+      return {
+        title: "Batteries got 90% cheaper in a decade",
+        description:
+          "Battery packs got dramatically cheaper. This video walks through why: bigger factories, better chemistry and fierce competition between makers.",
+        hashtags: ["#Batteries", "#EnergyStorage", "#Tech"],
+      };
+    }
     return { variant: "statement", text: "Batteries got cheap" };
   },
 };

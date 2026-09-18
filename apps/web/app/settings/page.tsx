@@ -31,6 +31,12 @@ const PROVIDERS: { kind: ProviderKind; title: string; hint: string; fields: { na
     hint: "Без поиска факты берутся только из знаний модели и не проверяются по источникам.",
     fields: [{ name: "apiKey", label: "API key" }],
   },
+  {
+    kind: "media",
+    title: "Фото и видео (Pexels)",
+    hint: "Без ключа сцены остаются без фонового фото/видео. Бесплатный ключ: pexels.com/api.",
+    fields: [{ name: "apiKey", label: "API key" }],
+  },
 ];
 
 /**

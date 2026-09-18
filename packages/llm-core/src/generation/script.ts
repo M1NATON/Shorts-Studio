@@ -1,4 +1,4 @@
-import { ScriptSchema, type Script, type VideoTheme } from "@shorts/contracts";
+import { ScriptSchema, themeStyle, type Script, type VideoTheme } from "@shorts/contracts";
 import { collectVisualTexts, extractNumbers, findUnsupportedNumbers } from "../fact-check.js";
 import type { ResearchSource } from "../firecrawl.js";
 import { log, type GenerationContext } from "./context.js";
@@ -59,7 +59,7 @@ export async function generateScript(
   ]);
 
   progress({ stage: "outline", message: "План ролика" });
-  const { title, beats } = await outline(ctx, topic, brief, options.sceneCount ?? DEFAULT_SCENE_COUNT);
+  const { title, beats } = await outline(ctx, topic, brief, options.sceneCount ?? DEFAULT_SCENE_COUNT, themeStyle(theme));
 
   const plans = planScenes(beats);
   log(
@@ -84,6 +84,8 @@ export async function generateScript(
       intent: beat.intent,
       narration: beat.narration,
       visual: visuals[index],
+      ...(beat.mediaQuery ? { mediaQuery: beat.mediaQuery } : {}),
+      ...(beat.mediaKind ? { mediaKind: beat.mediaKind } : {}),
     })),
   });
 

@@ -151,6 +151,35 @@ describe("манифест", () => {
   });
 });
 
+describe("медиа сцены", () => {
+  it("setSceneMedia кладёт медиа в манифест и меняет хеш; null убирает", async () => {
+    const { project, saved } = await projectWithScript();
+    for (const [i, scene] of saved.entries()) await repo.setAudio(scene.version.id, audio(i));
+    const before = await repo.buildManifest(project.id);
+    expect(before.manifest.scenes[0]!.media).toBeUndefined();
+
+    const media = {
+      kind: "photo" as const,
+      query: "lithium mine aerial",
+      src: `projects/${project.id}/media/${saved[0]!.id}-123.jpg`,
+      width: 1080,
+      height: 1920,
+      pexelsId: 123,
+      credit: { name: "Jane Doe", url: "https://www.pexels.com/photo/123/" },
+    };
+    await repo.setSceneMedia(saved[0]!.id, media);
+    expect((await repo.getScene(saved[0]!.id)).media).toEqual(media);
+
+    const withMedia = await repo.buildManifest(project.id);
+    expect(withMedia.manifest.scenes[0]!.media).toEqual({ kind: "photo", src: media.src });
+    expect(withMedia.hash).not.toBe(before.hash);
+
+    await repo.setSceneMedia(saved[0]!.id, null);
+    expect((await repo.getScene(saved[0]!.id)).media).toBeNull();
+    expect((await repo.buildManifest(project.id)).manifest.scenes[0]!.media).toBeUndefined();
+  });
+});
+
 describe("задачи", () => {
   it("очередь по порядку, одна задача не выдаётся дважды", async () => {
     const a = await repo.createJob({ kind: "generate" });

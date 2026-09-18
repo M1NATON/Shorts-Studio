@@ -100,6 +100,12 @@ const deps: PipelineDeps = {
   still: async (manifest, frame, output) => {
     await renderStills({ manifest, storageDir: config.storageDir, frames: [frame], outputPath: () => output });
   },
+  // Без ключа Pexels: шаг медиа в генерации пропускается молча, ручки медиа вернут 409.
+  mediaKey: async () => undefined,
+  searchMedia: async () => [],
+  downloadMedia: async () => {
+    throw new Error("media not available in e2e");
+  },
 };
 
 const worker = startWorker(deps, { pollMs: 300, log: (m) => console.error(m) });

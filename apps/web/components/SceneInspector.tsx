@@ -7,6 +7,7 @@ import { INTENT_LABEL } from "@/lib/labels";
 import { ArrowLeft, ArrowRight, Copy, Info, LoaderCircle, Mic, PenLine, Plus, Sparkles, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { pendingVariants } from "@/lib/variants";
 import { BlockEditor } from "./BlockEditor";
+import { SceneMediaPanel } from "./SceneMediaPanel";
 import { sceneManifest, VideoPlayer } from "./VideoPlayer";
 
 type Tab = "visual" | "text" | "ai" | "history";
@@ -154,21 +155,24 @@ export function SceneInspector({
       </div>
 
       {tab === "visual" ? (
-        <BlockEditor
-          key={scene.version.id}
-          visual={scene.version.visual}
-          format={format}
-          saving={saving}
-          onSave={async (visual) => {
-            setSaving(true);
-            try {
-              await api.saveVisual(scene.id, visual);
-              onChanged();
-            } finally {
-              setSaving(false);
-            }
-          }}
-        />
+        <div className="stack">
+          <SceneMediaPanel sceneId={scene.id} media={scene.media} format={format} onChanged={onChanged} />
+          <BlockEditor
+            key={scene.version.id}
+            visual={scene.version.visual}
+            format={format}
+            saving={saving}
+            onSave={async (visual) => {
+              setSaving(true);
+              try {
+                await api.saveVisual(scene.id, visual);
+                onChanged();
+              } finally {
+                setSaving(false);
+              }
+            }}
+          />
+        </div>
       ) : null}
 
       {tab === "text" ? (

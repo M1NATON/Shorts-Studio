@@ -8,7 +8,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
-const SECRET_VARS = ["LLM_API_KEY", "FISH_API_KEY", "FIRECRAWL_API_KEY"];
+const SECRET_VARS = ["LLM_API_KEY", "FISH_API_KEY", "FIRECRAWL_API_KEY", "PEXELS_API_KEY"];
 if (existsSync(".env")) process.loadEnvFile(".env");
 const secrets = SECRET_VARS.map((name) => ({ name, value: process.env[name] })).filter((s) => s.value && s.value.length >= 8);
 if (secrets.length === 0) {

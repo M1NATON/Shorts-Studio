@@ -3,6 +3,8 @@ import { AbsoluteFill, Audio, interpolate, Sequence, staticFile } from "remotion
 import { DEFAULT_VIDEO_THEME, type Manifest } from "@shorts/contracts";
 import { Background } from "./Background.js";
 import { loadThemeFont } from "./fonts.js";
+import { HasSceneMediaContext } from "./presentation.js";
+import { SceneMedia } from "./SceneMedia.js";
 import { SceneVisual } from "./scenes/index.js";
 import { Subtitles } from "./Subtitles.js";
 import { FontContext, FormatContext, ThemeContext } from "./theme.js";
@@ -58,7 +60,10 @@ export const ShortsVideo: React.FC<{ manifest: Manifest }> = ({ manifest }) => {
               name={`${scene.sceneId} · ${scene.visual.kind}`}
             >
               <Audio src={staticFile(scene.audioSrc)} />
-              <SceneVisual spec={scene.visual} />
+              {scene.media ? <SceneMedia media={scene.media} durationInFrames={scene.durationInFrames} /> : null}
+              <HasSceneMediaContext.Provider value={Boolean(scene.media)}>
+                <SceneVisual spec={scene.visual} />
+              </HasSceneMediaContext.Provider>
               <Subtitles words={scene.words} captionStyle={manifest.captionStyle} />
             </Sequence>
           ))}

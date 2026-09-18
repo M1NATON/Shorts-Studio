@@ -50,6 +50,9 @@ export const SceneSchema = z.object({
    */
   narration: z.string().trim().min(1).max(FORMATS.landscape.pacing.narration.hardMax),
   visual: SceneVisualSpecSchema,
+  /** Короткий поисковый запрос для фото/видео фона сцены на Pexels; не у каждой сцены. */
+  mediaQuery: z.string().trim().min(2).max(60).optional(),
+  mediaKind: z.enum(["photo", "video"]).optional(),
 });
 export type Scene = z.infer<typeof SceneSchema>;
 

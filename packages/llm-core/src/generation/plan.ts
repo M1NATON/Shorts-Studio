@@ -22,6 +22,9 @@ import {
 export interface Beat {
   readonly narration: string;
   readonly intent: SceneIntent;
+  /** Короткий поисковый запрос для фото/видео фона сцены на Pexels; не у каждого тезиса. */
+  readonly mediaQuery?: string;
+  readonly mediaKind?: "photo" | "video";
 }
 
 /** Главный блок сцены: вокруг него модель собирает кадр. */

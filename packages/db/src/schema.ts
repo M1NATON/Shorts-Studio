@@ -57,6 +57,8 @@ export const scenes = sqliteTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     currentVersionId: text("current_version_id"),
+    /** Фото/видео фона сцены с Pexels (SceneMedia); null — без медиа. */
+    media: text("media", { mode: "json" }),
   },
   (t) => [index("scenes_project_idx").on(t.projectId, t.position)],
 );

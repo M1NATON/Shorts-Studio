@@ -17,7 +17,9 @@ import {
   type Manifest,
   type MusicMood,
   type SceneIntent,
+  type SceneMedia,
   type SceneVisualSpec,
+  type VideoFormat,
 } from "@shorts/contracts";
 import {
   audioHash,
@@ -38,7 +40,7 @@ import {
   type GenerationProgress,
   type ResearchSource,
 } from "@shorts/llm-core";
-import type { VoicedNarration } from "@shorts/media-core";
+import type { MediaKind, MediaOrientation, PexelsCandidate, VoicedNarration } from "@shorts/media-core";
 import type { StudioEvents } from "./events.js";
 
 export interface PipelineDeps {
@@ -57,6 +59,17 @@ export interface PipelineDeps {
   readonly voiceKey: () => Promise<string>;
   readonly render: (manifest: Manifest, outputAbs: string, onProgress: (p: number) => void) => Promise<void>;
   readonly still: (manifest: Manifest, frame: number, outputAbs: string) => Promise<void>;
+  /** Pexels apiKey, если провайдер настроен; undefined — шаги медиа молча пропускаются. */
+  readonly mediaKey: () => Promise<string | undefined>;
+  /** Кандидаты по запросу (одна страница, до 10); [] — ничего не нашлось. */
+  readonly searchMedia: (input: { apiKey: string; query: string; kind: MediaKind; orientation: MediaOrientation; page?: number }) => Promise<PexelsCandidate[]>;
+  /** Скачать кандидата на диск (временный файл + rename внутри). */
+  readonly downloadMedia: (url: string, destAbs: string) => Promise<void>;
+}
+
+/** «Проверить»/сохранить медиа без ключа Pexels — понятная 409 в app.ts, не безликая ошибка сети. */
+export class NoMediaKeyError extends Error {
+  override readonly name = "NoMediaKeyError";
 }
 
 export class JobError extends Error {
@@ -157,6 +170,136 @@ export function pickTrack(tracks: readonly MusicTrack[], mood: MusicMood, seed: 
   return pool[createHash("sha1").update(seed).digest().readUInt32BE(0) % pool.length]!.file;
 }
 
+/** shorts — вертикальный кадр, portrait; landscape — горизонтальный. */
+function orientationFor(format: VideoFormat): MediaOrientation {
+  return format === "landscape" ? "landscape" : "portrait";
+}
+
+/** Имя строит вызывающий код из sceneId+pexelsId, не из URL кандидата. */
+function mediaPath(projectId: string, sceneId: string, kind: MediaKind, pexelsId: number): string {
+  return `${projectPaths(projectId).base}/media/${sceneId}-${pexelsId}.${kind === "photo" ? "jpg" : "mp4"}`;
+}
+
+function toSceneMedia(kind: MediaKind, query: string, rel: string, candidate: PexelsCandidate): SceneMedia {
+  return {
+    kind,
+    query,
+    src: rel,
+    width: candidate.width,
+    height: candidate.height,
+    ...(candidate.durationSec ? { durationSec: candidate.durationSec } : {}),
+    pexelsId: candidate.pexelsId,
+    credit: candidate.credit,
+  };
+}
+
+/** Удалить прежний файл медиа сцены — только если он и правда лежит в её папке media. */
+async function removeOldMedia(deps: PipelineDeps, projectId: string, media: SceneMedia | null): Promise<void> {
+  if (!media) return;
+  const mediaDir = path.resolve(deps.storageDir, projectPaths(projectId).base, "media") + path.sep;
+  const abs = path.resolve(deps.storageDir, media.src);
+  if (abs.startsWith(mediaDir)) await rm(abs, { force: true });
+}
+
+interface MediaJob {
+  readonly sceneId: string;
+  readonly query: string;
+  readonly kind: MediaKind;
+}
+
+/**
+ * Фото/видео фона по сценам со mediaQuery — параллельно, но скачивания ограничены
+ * общим лимитом (mediaSlot в main.ts). Нет ключа → пропускается молча; ошибка на
+ * одной сцене — лог и сцена без медиа, генерация не падает.
+ */
+async function fillMedia(deps: PipelineDeps, project: ProjectRecord, jobs: readonly MediaJob[], report: Progress): Promise<void> {
+  if (jobs.length === 0) return;
+  const apiKey = await deps.mediaKey();
+  if (!apiKey) return;
+  const orientation = orientationFor(project.format);
+  let done = 0;
+  await Promise.all(
+    jobs.map(async (job) => {
+      try {
+        const [candidate] = await deps.searchMedia({ apiKey, query: job.query, kind: job.kind, orientation });
+        if (candidate) {
+          const rel = mediaPath(project.id, job.sceneId, job.kind, candidate.pexelsId);
+          await deps.downloadMedia(candidate.url, path.join(deps.storageDir, rel));
+          await deps.repo.setSceneMedia(job.sceneId, toSceneMedia(job.kind, job.query, rel, candidate));
+        }
+      } catch (error) {
+        console.error(`media for scene ${job.sceneId} ("${job.query}"): ${(error as Error).message}`);
+      } finally {
+        done++;
+        await report({ stage: "media", message: `Фото и видео: ${done} из ${jobs.length}`, done, total: jobs.length });
+      }
+    }),
+  );
+}
+
+/**
+ * Кандидат после текущего по выдаче Pexels; после последнего — снова первый.
+ * ponytail: смотрим первые 3 страницы (30 кандидатов), дальше круг замыкается.
+ */
+export async function nextCandidate(
+  search: (page: number) => Promise<PexelsCandidate[]>,
+  currentId: number,
+): Promise<PexelsCandidate | undefined> {
+  let first: PexelsCandidate | undefined;
+  let seen = false;
+  for (let page = 1; page <= 3; page++) {
+    const list = await search(page);
+    for (const candidate of list) {
+      first ??= candidate;
+      if (seen) return candidate;
+      if (candidate.pexelsId === currentId) seen = true;
+    }
+    if (list.length === 0) break;
+  }
+  return first?.pexelsId === currentId ? undefined : first;
+}
+
+/**
+ * Ручной подбор медиа сцены: `POST /api/scenes/:sceneId/media`. `next` — следующий
+ * кандидат по той же (или новой) странице выдачи, по индексу текущего pexelsId.
+ */
+export async function setSceneMediaManual(
+  deps: PipelineDeps,
+  sceneId: string,
+  input: { query?: string; kind?: MediaKind; next?: boolean },
+): Promise<SceneRecord & { projectId: string }> {
+  const scene = await deps.repo.getScene(sceneId);
+  const project = await deps.repo.requireProject(scene.projectId);
+  const apiKey = await deps.mediaKey();
+  if (!apiKey) throw new NoMediaKeyError("Pexels не настроен: Настройки → Фото и видео (или PEXELS_API_KEY в .env)");
+
+  const query = input.query?.trim() || scene.media?.query;
+  if (!query) throw new Error("query required: scene has no existing media to refine");
+  const kind = input.kind ?? scene.media?.kind ?? "photo";
+  const orientation = orientationFor(project.format);
+
+  const search = (page: number) => deps.searchMedia({ apiKey, query, kind, orientation, page });
+  const candidate = input.next && scene.media ? await nextCandidate(search, scene.media.pexelsId) : (await search(1))[0];
+  if (!candidate) throw new Error(`no Pexels ${kind} found for "${query}"`);
+
+  const rel = mediaPath(project.id, scene.id, kind, candidate.pexelsId);
+  await deps.downloadMedia(candidate.url, path.join(deps.storageDir, rel));
+  // Сначала запись в БД, потом удаление старого файла: при сбое записи сцена не ссылается на удалённый файл.
+  await deps.repo.setSceneMedia(scene.id, toSceneMedia(kind, query, rel, candidate));
+  if (scene.media?.src !== rel) await removeOldMedia(deps, project.id, scene.media);
+  deps.events.emit({ type: "project", projectId: project.id });
+  return deps.repo.getScene(sceneId);
+}
+
+/** `DELETE /api/scenes/:sceneId/media`: убрать медиа и удалить файл. */
+export async function deleteSceneMedia(deps: PipelineDeps, sceneId: string): Promise<SceneRecord & { projectId: string }> {
+  const scene = await deps.repo.getScene(sceneId);
+  await deps.repo.setSceneMedia(sceneId, null);
+  await removeOldMedia(deps, scene.projectId, scene.media);
+  deps.events.emit({ type: "project", projectId: scene.projectId });
+  return deps.repo.getScene(sceneId);
+}
+
 export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<unknown> {
   const project = await deps.repo.requireProject(job.projectId!);
   const report = progressOf(deps, job);
@@ -172,7 +315,7 @@ export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<u
       ? await generateLongScript(ctx, project.topic, { ...options, minutes: project.minutes ?? 3 })
       : await generateScript(ctx, project.topic, options);
 
-  await deps.repo.saveScript(project.id, {
+  const savedScenes = await deps.repo.saveScript(project.id, {
     script: result.script,
     theme: result.theme,
     sources: result.sources.map((s) => ({ url: s.url, title: s.title, kind: s.kind, excerpt: s.excerpt, ...(s.publishedAt ? { publishedAt: s.publishedAt } : {}) })),
@@ -185,6 +328,13 @@ export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<u
   const track = pickTrack(await listMusic(deps.storageDir), result.theme.musicMood ?? "calm", project.id);
   await deps.repo.setMusic(project.id, track ? { track, volume: DEFAULT_MUSIC_VOLUME } : null);
   deps.events.emit({ type: "project", projectId: project.id });
+
+  // Сценарий знает mediaQuery только в памяти (не хранится отдельной колонкой): сцены сохранены
+  // saveScript в том же порядке, что и script.scenes, поэтому позиции совпадают напрямую.
+  const mediaJobs = result.script.scenes.flatMap((scene, i) =>
+    scene.mediaQuery ? [{ sceneId: savedScenes[i]!.id, query: scene.mediaQuery, kind: scene.mediaKind ?? ("photo" as const) }] : [],
+  );
+  await fillMedia(deps, project, mediaJobs, report);
 
   await voiceMissing(deps, project.id, report);
   await report({ stage: "thumbnail", message: "Обложка", done: null, total: null });

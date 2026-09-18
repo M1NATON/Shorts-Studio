@@ -17,7 +17,7 @@ import { createProviderStore } from "@shorts/db";
 const SECRET = "sk-test-0123456789abcdef-SECRET";
 
 const BEATS = [
-  { narration: "Batteries got ninety percent cheaper in a decade.", intent: "hook" },
+  { narration: "Batteries got ninety percent cheaper in a decade.", intent: "hook", mediaQuery: "battery factory line", mediaKind: "photo" },
   { narration: "Packs cost 115 dollars per kWh in 2024.", intent: "number" },
   { narration: "Three forces drove the price down.", intent: "list" },
   { narration: "Old chemistry versus new chemistry.", intent: "contrast" },
@@ -47,6 +47,8 @@ let worker: Worker;
 let received: StudioEvent[];
 let voiced: string[];
 let renders: number;
+let mediaKeyConfigured: boolean;
+let mediaSearches: { query: string; kind: string; page?: number }[];
 
 beforeEach(async () => {
   dir = mkdtempSync(path.join(tmpdir(), "studio-"));
@@ -57,6 +59,8 @@ beforeEach(async () => {
   events.subscribe((e) => received.push(e));
   voiced = [];
   renders = 0;
+  mediaKeyConfigured = true;
+  mediaSearches = [];
   const deps: PipelineDeps = {
     repo,
     events,
@@ -75,6 +79,23 @@ beforeEach(async () => {
       await writeFile(out, "mp4");
     },
     still: async (_manifest, _frame, out) => writeFile(out, "png"),
+    mediaKey: async () => (mediaKeyConfigured ? "pexels-test-key" : undefined),
+    // Заглушка Pexels: страница 1 и страница 2 дают разные id, чтобы «next» их различал.
+    searchMedia: async (input) => {
+      mediaSearches.push({ query: input.query, kind: input.kind, page: input.page });
+      const page = input.page ?? 1;
+      return Array.from({ length: 3 }, (_, i) => ({
+        pexelsId: page * 100 + i,
+        url: `https://images.pexels.com/photos/${page * 100 + i}/photo.jpg`,
+        width: 1080,
+        height: 1920,
+        credit: { name: "Test Photographer", url: "https://www.pexels.com/@test" },
+      }));
+    },
+    downloadMedia: async (_url, dest) => {
+      await import("node:fs/promises").then((fs) => fs.mkdir(path.dirname(dest), { recursive: true }));
+      await writeFile(dest, "jpg");
+    },
   };
   worker = startWorker(deps, { pollMs: 20 });
   const config = { ...loadConfig({ LLM_BASE_URL: "https://llm.test/v1", LLM_API_KEY: SECRET, LLM_MODEL: "env-model" }, dir), storageDir: dir };
@@ -344,6 +365,29 @@ describe("API", () => {
     expect((await patch(null)).statusCode).toBe(200);
     expect((await manifest()).music).toBeUndefined();
     expect((await app.inject({ url: "/music/calm-drift.mp3" })).statusCode).toBe(200);
+  });
+
+  it("медиа: сцена с mediaQuery получает фон при генерации, «next» меняет кандидата, без ключа — 409", async () => {
+    const { id, detail } = await createGenerated();
+    const scene = detail.scenes[0];
+    expect(scene.media).toMatchObject({ kind: "photo", query: "battery factory line", pexelsId: 100 });
+    expect(scene.media.src).toBe(`projects/${id}/media/${scene.id}-100.jpg`);
+    expect(detail.scenes[1].media).toBeNull();
+
+    const manifest = (await app.inject({ url: `/api/projects/${id}/manifest` })).json().manifest;
+    expect(manifest.scenes[0].media).toEqual({ kind: "photo", src: scene.media.src });
+
+    const next = await app.inject({ method: "POST", url: `/api/scenes/${scene.id}/media`, payload: { next: true } });
+    expect(next.statusCode).toBe(200);
+    expect(next.json().media).toMatchObject({ pexelsId: 101 });
+    expect(mediaSearches.filter((s) => s.query === "battery factory line")).toHaveLength(2);
+
+    const deleted = await app.inject({ method: "DELETE", url: `/api/scenes/${scene.id}/media` });
+    expect(deleted.json().media).toBeNull();
+
+    mediaKeyConfigured = false;
+    const denied = await app.inject({ method: "POST", url: `/api/scenes/${scene.id}/media`, payload: { query: "server room lights" } });
+    expect(denied.statusCode).toBe(409);
   });
 
   it("панель очереди: порядок, название проекта, отмена только ждущей задачи", async () => {

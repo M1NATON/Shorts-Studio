@@ -21,7 +21,7 @@ import { fallbackStatement, presentationAt } from "@shorts/llm-core";
 import { z } from "zod";
 import type { ServerConfig } from "./config.js";
 import type { ProviderKind, ProviderStore } from "@shorts/db";
-import { listMusic, saveManualVisual, type PipelineDeps } from "./pipeline.js";
+import { deleteSceneMedia, listMusic, NoMediaKeyError, saveManualVisual, setSceneMediaManual, type PipelineDeps } from "./pipeline.js";
 import type { Worker } from "./worker.js";
 
 // Не переданные формат, свежесть и длина берутся из предпочтений (Настройки).
@@ -58,7 +58,12 @@ const AddSceneBody = z.object({
   afterPosition: z.number().int().min(-1),
   narration: z.string().trim().min(1).max(320),
 });
-const ProviderParam = z.enum(["llm", "tts", "search"]);
+const ProviderParam = z.enum(["llm", "tts", "search", "media"]);
+const SceneMediaBody = z.object({
+  query: z.string().trim().min(2).max(80).optional(),
+  kind: z.enum(["photo", "video"]).optional(),
+  next: z.boolean().optional(),
+});
 const VoicePreviewBody = z.object({
   text: z.string().trim().min(1).max(200).optional(),
   referenceId: z.string().trim().min(1).max(200).optional(),
@@ -328,6 +333,20 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const job = await enqueue("revoice-scene", scene.projectId, { payload: { sceneId: scene.id }, sceneIndex: scene.position });
     return reply.code(202).send({ job });
   });
+
+  /** Подбор фона сцены на Pexels: без очереди — один запрос + скачивание, как правка кадра. */
+  app.post<{ Params: { sceneId: string } }>("/api/scenes/:sceneId/media", async (request, reply) => {
+    const body = SceneMediaBody.parse(request.body ?? {});
+    try {
+      return await setSceneMediaManual(deps, request.params.sceneId, body);
+    } catch (error) {
+      if (error instanceof NoMediaKeyError) return reply.code(409).send({ error: error.message });
+      if (error instanceof NotFoundError) throw error;
+      return reply.code(502).send({ error: (error as Error).message });
+    }
+  });
+
+  app.delete<{ Params: { sceneId: string } }>("/api/scenes/:sceneId/media", async (request) => deleteSceneMedia(deps, request.params.sceneId));
 
   // ── порядок и состав сцен ────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>("/api/scenes/:id/move", async (request) => {

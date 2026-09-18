@@ -22,19 +22,22 @@ export const TtsSettingsSchema = z.object({
   referenceId: z.string().trim().min(1).max(200),
 });
 export const SearchSettingsSchema = z.object({ apiKey: z.string().trim().min(1).max(500) });
+export const MediaSettingsSchema = z.object({ apiKey: z.string().trim().min(1).max(500) });
 
 export type LlmSettings = z.infer<typeof LlmSettingsSchema>;
 export type TtsSettings = z.infer<typeof TtsSettingsSchema>;
 export type SearchSettings = z.infer<typeof SearchSettingsSchema>;
-export type ProviderKind = "llm" | "tts" | "search";
+export type MediaSettings = z.infer<typeof MediaSettingsSchema>;
+export type ProviderKind = "llm" | "tts" | "search" | "media";
 
 export interface Providers {
   readonly llm?: LlmSettings;
   readonly tts?: TtsSettings;
   readonly search?: SearchSettings;
+  readonly media?: MediaSettings;
 }
 
-const SCHEMAS = { llm: LlmSettingsSchema, tts: TtsSettingsSchema, search: SearchSettingsSchema } as const;
+const SCHEMAS = { llm: LlmSettingsSchema, tts: TtsSettingsSchema, search: SearchSettingsSchema, media: MediaSettingsSchema } as const;
 const KEY = (kind: ProviderKind) => `provider.${kind}`;
 
 /** «••••1234» — последние 4 символа только у длинного ключа, иначе одна маска. */
@@ -62,6 +65,7 @@ export function providersFromEnv(env: NodeJS.ProcessEnv): Providers {
       ? { tts: { apiKey: env.FISH_API_KEY, model: env.FISH_MODEL, referenceId: env.FISH_REFERENCE_ID } }
       : {}),
     ...(env.FIRECRAWL_API_KEY ? { search: { apiKey: env.FIRECRAWL_API_KEY } } : {}),
+    ...(env.PEXELS_API_KEY ? { media: { apiKey: env.PEXELS_API_KEY } } : {}),
   };
 }
 
@@ -74,15 +78,17 @@ export function createProviderStore(repo: Repository, fromEnv: Providers): Provi
   }
 
   async function current(): Promise<Providers> {
-    const [llm, tts, search] = await Promise.all([stored("llm"), stored("tts"), stored("search")]);
+    const [llm, tts, search, media] = await Promise.all([stored("llm"), stored("tts"), stored("search"), stored("media")]);
     const pick = <T>(ui: T | undefined, env: T | undefined) => ui ?? env;
-    const result: { llm?: LlmSettings; tts?: TtsSettings; search?: SearchSettings } = {};
+    const result: { llm?: LlmSettings; tts?: TtsSettings; search?: SearchSettings; media?: MediaSettings } = {};
     const l = pick(llm as LlmSettings | undefined, fromEnv.llm);
     const t = pick(tts as TtsSettings | undefined, fromEnv.tts);
     const s = pick(search as SearchSettings | undefined, fromEnv.search);
+    const m = pick(media as MediaSettings | undefined, fromEnv.media);
     if (l) result.llm = l;
     if (t) result.tts = t;
     if (s) result.search = s;
+    if (m) result.media = m;
     return result;
   }
 
@@ -97,7 +103,7 @@ export function createProviderStore(repo: Repository, fromEnv: Providers): Provi
     async describe() {
       const now = await current();
       const out = {} as Awaited<ReturnType<ProviderStore["describe"]>>;
-      for (const kind of ["llm", "tts", "search"] as const) {
+      for (const kind of ["llm", "tts", "search", "media"] as const) {
         const value = now[kind] as Record<string, string> | undefined;
         const source = (await stored(kind)) ? "ui" : fromEnv[kind] ? "env" : null;
         const fields: Record<string, string | null> = {};

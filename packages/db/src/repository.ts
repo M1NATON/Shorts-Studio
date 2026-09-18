@@ -11,12 +11,14 @@ import { alias } from "drizzle-orm/sqlite-core";
 import {
   FORMATS,
   ManifestSchema,
+  SceneMediaSchema,
   SceneVisualSpecSchema,
   VideoThemeSchema,
   WordTimingSchema,
   type CaptionStyle,
   type Manifest,
   type SceneIntent,
+  type SceneMedia,
   type SceneVisualSpec,
   type Script,
   type VideoFormat,
@@ -102,6 +104,8 @@ export interface SceneRecord {
   readonly id: string;
   readonly position: number;
   readonly version: SceneVersionRecord;
+  /** Фото/видео фона сцены с Pexels; null — без медиа. Мусор в базе тоже даёт null. */
+  readonly media: SceneMedia | null;
 }
 
 export interface JobRecord {
@@ -180,6 +184,13 @@ function toVersion(row: VersionRow): SceneVersionRecord {
 
 const toJob = (row: JobRow): JobRecord => ({ ...row });
 
+/** Мусор в колонке (ручная правка базы, старый формат) — тихо null, не падение чтения сцены. */
+function toSceneMedia(raw: unknown): SceneMedia | null {
+  if (!raw) return null;
+  const parsed = SceneMediaSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
 /** Пути файлов проекта относительно storage: по проекту и по хешу содержимого. */
 export function projectPaths(projectId: string) {
   const base = `projects/${projectId}`;
@@ -252,7 +263,7 @@ export function createRepository(database: Database) {
       .innerJoin(sceneVersions, eq(sceneVersions.id, scenes.currentVersionId))
       .where(eq(scenes.projectId, projectId))
       .orderBy(asc(scenes.position));
-    return rows.map(({ scene, version }) => ({ id: scene.id, position: scene.position, version: toVersion(version) }));
+    return rows.map(({ scene, version }) => ({ id: scene.id, position: scene.position, version: toVersion(version), media: toSceneMedia(scene.media) }));
   }
 
   return {
@@ -388,7 +399,13 @@ export function createRepository(database: Database) {
         .innerJoin(sceneVersions, eq(sceneVersions.id, scenes.currentVersionId))
         .where(eq(scenes.id, sceneId));
       if (!row) throw new NotFoundError(`scene ${sceneId} not found`);
-      return { id: row.scene.id, position: row.scene.position, projectId: row.scene.projectId, version: toVersion(row.version) };
+      return {
+        id: row.scene.id,
+        position: row.scene.position,
+        projectId: row.scene.projectId,
+        version: toVersion(row.version),
+        media: toSceneMedia(row.scene.media),
+      };
     },
 
     /** Новая версия сцены. Старые не удаляются: плохая перегенерация не губит хороший исходник. */
@@ -436,6 +453,17 @@ export function createRepository(database: Database) {
           timingSource: audio.timingSource,
         })
         .where(eq(sceneVersions.id, versionId));
+    },
+
+    /** Фото/видео фона сцены; null — убрать медиа. Принадлежит сцене, правки текста его не трогают. */
+    async setSceneMedia(sceneId: string, media: SceneMedia | null): Promise<void> {
+      const value = media ? SceneMediaSchema.parse(media) : null;
+      await database.transaction(async (tx) => {
+        const [scene] = await tx.select({ projectId: scenes.projectId }).from(scenes).where(eq(scenes.id, sceneId));
+        if (!scene) throw new NotFoundError(`scene ${sceneId} not found`);
+        await tx.update(scenes).set({ media: value }).where(eq(scenes.id, sceneId));
+        await markEdited(tx, scene.projectId);
+      });
     },
 
     async listVersions(sceneId: string): Promise<SceneVersionRecord[]> {
@@ -508,6 +536,7 @@ export function createRepository(database: Database) {
           words: s.version.audio!.words,
           timingSource: s.version.audio!.timingSource,
           unverifiedNumbers: s.version.unverifiedNumbers,
+          ...(s.media ? { media: { kind: s.media.kind, src: s.media.src, ...(s.media.durationSec ? { durationSec: s.media.durationSec } : {}) } } : {}),
         })),
       };
       const parsed = ManifestSchema.parse({ ...draft, sourceHash: "pending" });

@@ -99,4 +99,7 @@ export const MIGRATIONS: readonly string[] = [
   `ALTER TABLE scene_versions ADD COLUMN batch_id TEXT;`,
   // 5: фоновая музыка проекта (JSON: файл из storage/music и громкость). NULL — без музыки.
   `ALTER TABLE projects ADD COLUMN music TEXT;`,
+  // 6: фото/видео фона сцены с Pexels (JSON, SceneMedia). Принадлежит сцене, а не
+  // версии текста — переписывание и переозвучка его не теряют.
+  `ALTER TABLE scenes ADD COLUMN media TEXT;`,
 ];

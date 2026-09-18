@@ -6,7 +6,7 @@ import { checkNumbers, generateScript } from "./script.js";
 import { fakeLlm, testContext } from "./test-helpers.js";
 
 const BEATS = [
-  { narration: "Batteries got ninety percent cheaper in a decade.", intent: "hook" },
+  { narration: "Batteries got ninety percent cheaper in a decade.", intent: "hook", mediaQuery: "battery factory line", mediaKind: "video" },
   { narration: "Packs cost 115 dollars per kWh in 2024.", intent: "number" },
   { narration: "Three forces drove the price down.", intent: "list" },
   { narration: "Old chemistry versus new chemistry.", intent: "contrast" },
@@ -37,6 +37,8 @@ describe("generateScript", () => {
     expect(ScriptSchema.safeParse(result.script).success).toBe(true);
     expect(result.script.scenes).toHaveLength(7);
     expect(result.script.scenes[1]!.intent).toBe("number");
+    expect(result.script.scenes[0]).toMatchObject({ mediaQuery: "battery factory line", mediaKind: "video" });
+    expect(result.script.scenes[1]!.mediaQuery).toBeUndefined();
     expect(result.theme.mood).toBeDefined(); // откат на дефолтную тему
     expect(result.freshness).toBe("evergreen");
     expect(result.researchedAt).toBe("2026-09-18");

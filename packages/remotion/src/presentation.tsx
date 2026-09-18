@@ -53,6 +53,12 @@ const AccentContext = createContext<string>("#DCA268");
 /** Акцент текущей сцены: базовый цвет темы со сдвигом из спеки. */
 export const useAccent = (): string => useContext(AccentContext);
 
+const HasSceneMediaContext = createContext<boolean>(false);
+
+/** Есть ли у текущей сцены фон-медиа (см. SceneMedia.tsx): подавляет Backdrop и poster-плашку. */
+export const useHasSceneMedia = (): boolean => useContext(HasSceneMediaContext);
+export { HasSceneMediaContext };
+
 /**
  * Смещение и масштаб элемента по характеру движения.
  *
@@ -128,6 +134,7 @@ export const SceneFrame: React.FC<{
   const theme = useTheme();
   const format = useFormat();
   const { visible } = useSceneMotion();
+  const hasMedia = useHasSceneMedia();
   const accent = shiftHue(theme.accent, presentation.accentShift);
   const isLeft = presentation.layout === "left";
   const stage = stageSize(format.name, zoom);
@@ -136,10 +143,10 @@ export const SceneFrame: React.FC<{
 
   return (
     <AccentContext.Provider value={accent}>
-      {themeStyle(theme) === "poster" ? (
+      {themeStyle(theme) === "poster" && !hasMedia ? (
         <AbsoluteFill style={{ backgroundColor: shiftHue(theme.canvas, presentation.accentShift * 3) }} />
       ) : null}
-      <Backdrop backdrop={presentation.backdrop} accent={accent} />
+      {hasMedia ? null : <Backdrop backdrop={presentation.backdrop} accent={accent} />}
       <div
         style={{
           position: "absolute",

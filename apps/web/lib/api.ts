@@ -2,7 +2,7 @@
  * Клиент API студии. Типы ответов описаны здесь, а не импортом из @shorts/db:
  * база тянет node:sqlite, в браузерный бандл она попасть не должна.
  */
-import type { CaptionStyle, Manifest, SceneIntent, SceneVisualSpec, VideoFormat, VideoTheme, WordTiming } from "@shorts/contracts";
+import type { CaptionStyle, Manifest, SceneIntent, SceneMedia, SceneVisualSpec, VideoFormat, VideoTheme, WordTiming } from "@shorts/contracts";
 
 export type ProjectStatus = "generating" | "draft" | "ready" | "stale" | "failed";
 export type Freshness = "current" | "evergreen";
@@ -48,6 +48,7 @@ export interface Scene {
   id: string;
   position: number;
   version: SceneVersion;
+  media: SceneMedia | null;
 }
 
 export interface Job {
@@ -90,7 +91,7 @@ export interface ProjectDetail {
   jobs: Job[];
 }
 
-export type ProviderKind = "llm" | "tts" | "search";
+export type ProviderKind = "llm" | "tts" | "search" | "media";
 export interface ProviderInfo {
   configured: boolean;
   source: "ui" | "env" | null;
@@ -186,6 +187,9 @@ export const api = {
   deleteScene: (sceneId: string) => request<void>(`/api/scenes/${sceneId}`, { method: "DELETE" }),
   addScene: (projectId: string, afterPosition: number, narration: string) =>
     post<{ sceneId: string; job: Job }>(`/api/projects/${projectId}/scenes`, { afterPosition, narration }),
+  setSceneMedia: (sceneId: string, body: { query?: string; kind?: "photo" | "video"; next?: boolean }) =>
+    post<Scene & { projectId: string }>(`/api/scenes/${sceneId}/media`, body),
+  deleteSceneMedia: (sceneId: string) => request<Scene & { projectId: string }>(`/api/scenes/${sceneId}/media`, { method: "DELETE" }),
 };
 
 export const videoUrl = (id: string) => `/api/projects/${id}/video`;

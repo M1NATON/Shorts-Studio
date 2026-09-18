@@ -64,6 +64,14 @@ export const ManifestSceneSchema = z.object({
    * посчитана), а предупреждение для редактора: эту сцену стоит проверить глазами.
    */
   unverifiedNumbers: z.array(z.string()).default([]),
+  /** Фон сцены — фото/видео с Pexels; хеш манифеста меняется вместе с ним, кеш рендера это учитывает. */
+  media: z
+    .object({
+      kind: z.enum(["photo", "video"]),
+      src: z.string().min(1),
+      durationSec: z.number().positive().optional(),
+    })
+    .optional(),
 });
 export type ManifestScene = z.infer<typeof ManifestSceneSchema>;
 

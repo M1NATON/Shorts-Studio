@@ -5,7 +5,7 @@
 import { mkdirSync } from "node:fs";
 import { createRepository, openDatabase } from "@shorts/db";
 import { createOpenAiCompatibleClient, searchSources, todayIso } from "@shorts/llm-core";
-import { synthesizeFish, voiceNarration } from "@shorts/media-core";
+import { downloadMedia as downloadPexelsMedia, searchPexels, synthesizeFish, voiceNarration } from "@shorts/media-core";
 import { renderStills, renderVideo } from "@shorts/remotion";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
@@ -41,6 +41,7 @@ async function requireTts() {
 const llmSlot = limiter(2);
 const ttsSlot = limiter(2);
 const renderSlot = limiter(1);
+const mediaSlot = limiter(2);
 
 const deps: PipelineDeps = {
   repo,
@@ -73,6 +74,9 @@ const deps: PipelineDeps = {
   still: async (manifest, frame, output) => {
     await renderStills({ manifest, storageDir: config.storageDir, frames: [frame], outputPath: () => output });
   },
+  mediaKey: async () => (await providers.current()).media?.apiKey,
+  searchMedia: (input) => mediaSlot(() => searchPexels({ ...input, timeoutMs: 20000 })),
+  downloadMedia: (url, dest) => mediaSlot(() => downloadPexelsMedia({ url, dest, timeoutMs: 60000 })),
 };
 
 /** «Проверить» в настройках: самый дешёвый запрос, который доказывает, что ключ рабочий. */
@@ -88,9 +92,14 @@ async function testProvider(kind: ProviderKind): Promise<{ ok: boolean; message:
     const { words } = await synthesizeFish("Test.", { ...tts, timeoutMs: 60000 });
     return { ok: true, message: `Озвучка работает${words.length ? ", тайминги слов есть" : ", но без таймингов слов"}` };
   }
-  if (!current.search) return { ok: false, message: "Ключ поиска не задан" };
-  const found = await searchSources({ query: "heat pump", apiKey: current.search.apiKey, limit: 1, timeoutMs: 60000 });
-  return { ok: true, message: `Поиск работает: ${found.length} результат(ов)` };
+  if (kind === "search") {
+    if (!current.search) return { ok: false, message: "Ключ поиска не задан" };
+    const found = await searchSources({ query: "heat pump", apiKey: current.search.apiKey, limit: 1, timeoutMs: 60000 });
+    return { ok: true, message: `Поиск работает: ${found.length} результат(ов)` };
+  }
+  if (!current.media) return { ok: false, message: "Ключ Pexels не задан" };
+  const found = await searchPexels({ apiKey: current.media.apiKey, query: "nature", kind: "photo", orientation: "landscape", timeoutMs: 20000 });
+  return { ok: true, message: `Pexels работает: ${found.length} результат(ов)` };
 }
 
 async function previewVoice(input: { text?: string; referenceId?: string; model?: string }): Promise<Buffer> {

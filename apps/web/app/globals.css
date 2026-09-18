@@ -124,7 +124,16 @@ svg { flex: none; }
 .menu > button:hover, .menu > a:hover { background: var(--panel-2); }
 .menu .danger { color: var(--bad); }
 .menu.wide { width: 560px; padding: 12px; }
-.menu.queue { width: min(420px, calc(100vw - 32px)); max-height: 70vh; overflow-y: auto; padding: 8px 12px 12px; }
+.drawer { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(440px, 100vw); height: 100dvh; max-height: none; padding: 0; border: 0; border-left: 1px solid var(--line); background: var(--panel); color: inherit; box-shadow: var(--shadow); }
+.drawer[open] { animation: drawer-in .18s ease-out; }
+.drawer::backdrop { background: rgba(0, 0, 0, .35); }
+.drawer-body { height: 100%; overflow-y: auto; padding: 0 16px 16px; }
+.drawer-head { position: sticky; top: 0; z-index: 1; display: flex; gap: 10px; align-items: center; height: 48px; background: var(--panel); border-bottom: 1px solid var(--line); margin: 0 -16px 4px; padding: 0 8px 0 16px; }
+.drawer-head h2 { font-size: 14px; font-weight: 600; margin: 0; }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .drawer[open] { animation: none; } }
+.queue-list.numbered { counter-reset: q; }
+.queue-list.numbered > .queue-row::before { counter-increment: q; content: counter(q); width: 18px; flex-shrink: 0; color: var(--muted); font-family: var(--mono); font-size: 12px; }
 .queue-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 10px 0 4px; }
 .queue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .queue-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }

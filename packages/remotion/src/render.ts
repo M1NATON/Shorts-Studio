@@ -1,6 +1,6 @@
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
-import { ensureBrowser, renderMedia, renderStill, selectComposition } from "@remotion/renderer";
+import { ensureBrowser, renderMedia, renderStill, selectComposition, type OpenGlRenderer } from "@remotion/renderer";
 import type { Manifest } from "@shorts/contracts";
 import { COMPOSITION_ID } from "./Root.js";
 
@@ -55,14 +55,41 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
   const inputProps = { manifest: options.manifest };
   const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
 
-  await renderMedia({
-    composition,
-    serveUrl,
-    codec: "h264",
-    outputLocation: options.outputPath,
-    inputProps,
-    onProgress: ({ progress }) => options.onProgress?.(progress),
-  });
+  // GPU-рендер: замер на 16-ядерной RTX 4060 показал ~30% ускорение у связки
+  // gl "vulkan" (рисует кадры в Chromium на GPU) + hardwareAcceleration
+  // "if-possible" (кодирует h264_nvenc, сам откатывается на libx264, если в
+  // сборке ffmpeg нет nvenc). concurrency не переопределяем по умолчанию —
+  // ремоушен сам берёт половину ядер, это переносимо между машинами.
+  // Отключение/замена — env: RENDER_HW=off, RENDER_GL=off|angle|egl|…, RENDER_CONCURRENCY=12.
+  const hardwareAcceleration = process.env.RENDER_HW === "off" ? "disable" : "if-possible";
+  const gl = process.env.RENDER_GL === "off" ? undefined : ((process.env.RENDER_GL as OpenGlRenderer | undefined) ?? "vulkan");
+  const concurrency = process.env.RENDER_CONCURRENCY ? Number(process.env.RENDER_CONCURRENCY) : undefined;
+
+  const renderOnce = (withGl: boolean) =>
+    renderMedia({
+      composition,
+      serveUrl,
+      codec: "h264",
+      outputLocation: options.outputPath,
+      inputProps,
+      onProgress: ({ progress }) => options.onProgress?.(progress),
+      hardwareAcceleration,
+      // nvenc без битрейта даёт ~2 Мбит/с — мало для фото/видео-фона в движении;
+      // 8 Мбит/с — рекомендация YouTube для загрузки 1080p. crf с nvenc несовместим.
+      videoBitrate: "8M",
+      ...(withGl && gl ? { chromiumOptions: { gl } } : {}),
+      ...(concurrency ? { concurrency } : {}),
+    });
+
+  try {
+    await renderOnce(true);
+  } catch (err) {
+    // На машине без GPU (или без нужного драйвера) Chromium может не запуститься
+    // с выбранным gl — тогда рендерим тем же процессом без него, а не роняем job.
+    if (!gl) throw err;
+    console.warn(`renderVideo: рендер с gl="${gl}" не запустился, повтор без GPU-рендера кадров: ${String(err)}`);
+    await renderOnce(false);
+  }
 
   return options.outputPath;
 }

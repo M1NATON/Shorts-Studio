@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Settings } from "lucide-react";
+import { QueueButton } from "./QueueButton";
 import { ThemeToggle } from "./ThemeToggle";
 
 /** Шапка: знак, хлебные крошки, действия страницы, настройки и тема. */
@@ -20,6 +21,7 @@ export function Topbar({ title, children }: { title?: string; children?: React.R
       </nav>
       <div className="spacer" />
       <div className="page-actions">{children}</div>
+      <QueueButton />
       <Link href="/settings" className="btn ghost icon" aria-label="Настройки" title="Настройки">
         <Settings size={16} strokeWidth={1.75} />
       </Link>

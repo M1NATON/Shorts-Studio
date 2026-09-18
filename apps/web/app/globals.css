@@ -124,6 +124,15 @@ svg { flex: none; }
 .menu > button:hover, .menu > a:hover { background: var(--panel-2); }
 .menu .danger { color: var(--bad); }
 .menu.wide { width: 560px; padding: 12px; }
+.menu.queue { width: min(420px, calc(100vw - 32px)); max-height: 70vh; overflow-y: auto; padding: 8px 12px 12px; }
+.queue-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 10px 0 4px; }
+.queue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.queue-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.queue-row:last-child { border-bottom: 0; }
+.queue-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.queue-text > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-text progress { width: 100%; height: 3px; accent-color: var(--accent); }
+.queue-row.failed .small { color: var(--bad); }
 
 /* ---------- оболочка ---------- */
 .topbar { height: 48px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 20; }

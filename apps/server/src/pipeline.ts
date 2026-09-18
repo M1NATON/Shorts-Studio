@@ -148,7 +148,7 @@ export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<u
   deps.events.emit({ type: "project", projectId: project.id });
 
   await voiceMissing(deps, project.id, report);
-  await report({ stage: "thumbnail", message: "Обложка" });
+  await report({ stage: "thumbnail", message: "Обложка", done: null, total: null });
   await makeThumbnail(deps, project.id);
   deps.events.emit({ type: "project", projectId: project.id });
   return { scenes: result.script.scenes.length };

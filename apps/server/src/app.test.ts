@@ -319,6 +319,19 @@ describe("API", () => {
     expect((await app.inject({ url: "/api/projects?status=draft" })).json().total).toBe(2);
   });
 
+  it("панель очереди: порядок, название проекта, отмена только ждущей задачи", async () => {
+    await worker.stop();
+    await app.inject({ method: "POST", url: "/api/projects/batch", payload: { topics: ["Topic one", "Topic two"] } });
+    const queue = (await app.inject({ url: "/api/queue" })).json();
+    expect(queue.queued.map((j: { projectTitle: string }) => j.projectTitle)).toEqual(["Topic one", "Topic two"]);
+    const first = queue.queued[0].id;
+    expect((await app.inject({ method: "POST", url: `/api/jobs/${first}/cancel` })).statusCode).toBe(200);
+    expect((await app.inject({ method: "POST", url: `/api/jobs/${first}/cancel` })).statusCode).toBe(409);
+    const after = (await app.inject({ url: "/api/queue" })).json();
+    expect(after.queued).toHaveLength(1);
+    expect(after.recent[0]).toMatchObject({ id: first, status: "failed", error: "Отменено" });
+  });
+
   it("SSE: событие доходит до подписчика, закрытие сервера не ждёт открытый поток", async () => {
     await app.listen({ port: 0, host: "127.0.0.1" });
     const port = (app.server.address() as import("node:net").AddressInfo).port;

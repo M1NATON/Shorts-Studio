@@ -66,6 +66,13 @@ export interface Job {
   updatedAt: string;
 }
 
+export type QueueJob = Job & { projectTitle: string | null };
+export interface Queue {
+  running: QueueJob[];
+  queued: QueueJob[];
+  recent: QueueJob[];
+}
+
 export interface ProjectDetail {
   project: Project;
   scenes: Scene[];
@@ -142,6 +149,8 @@ export const api = {
   selectVersion: (sceneId: string, versionId: string) => post<{ ok: true }>(`/api/scenes/${sceneId}/versions/${versionId}/select`),
   jobs: (projectId?: string, active = false) =>
     request<Job[]>(`/api/jobs?${new URLSearchParams({ ...(projectId ? { projectId } : {}), ...(active ? { active: "1" } : {}) })}`),
+  queue: () => request<Queue>("/api/queue"),
+  cancelJob: (jobId: string) => post<Job>(`/api/jobs/${jobId}/cancel`),
   settings: () => request<Record<ProviderKind, ProviderInfo>>("/api/settings"),
   saveSettings: (kind: ProviderKind, fields: Record<string, string>) =>
     request<ProviderInfo>(`/api/settings/${kind}`, { method: "PUT", body: JSON.stringify(fields) }),

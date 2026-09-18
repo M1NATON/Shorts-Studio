@@ -12,7 +12,7 @@ import { loadConfig } from "./config.js";
 import { StudioEvents } from "./events.js";
 import { JobError, type PipelineDeps } from "./pipeline.js";
 import { createProviderStore, loadPreferences, type ProviderKind } from "@shorts/db";
-import { startWorker } from "./worker.js";
+import { limiter, startWorker } from "./worker.js";
 
 const config = loadConfig();
 mkdirSync(config.storageDir, { recursive: true });
@@ -35,14 +35,22 @@ async function requireTts() {
   return tts;
 }
 
+// Общие лимиты на все задачи сразу: прокси модели отдаёт 504 уже на трёх
+// одновременных запросах, рендер MP4 занимает все ядра.
+// ponytail: числа зашиты; вынести в настройки, если сменится провайдер.
+const llmSlot = limiter(2);
+const ttsSlot = limiter(2);
+const renderSlot = limiter(1);
+
 const deps: PipelineDeps = {
   repo,
   events,
   storageDir: config.storageDir,
   generationContext: async (onProgress) => {
     const [llm, { search }, prefs] = await Promise.all([requireLlm(), providers.current(), loadPreferences(repo)]);
+    const client = createOpenAiCompatibleClient(llm);
     return {
-      llm: createOpenAiCompatibleClient(llm),
+      llm: { askJson: (request) => llmSlot(() => client.askJson(request)) },
       today: todayIso(),
       concurrency: 2,
       onProgress,
@@ -50,14 +58,18 @@ const deps: PipelineDeps = {
       ...(search && prefs.research ? { firecrawlApiKey: search.apiKey } : {}),
     };
   },
-  voice: async (narration, absPath) => voiceNarration(narration, absPath, await requireTts()),
+  voice: async (narration, absPath) => {
+    const tts = await requireTts();
+    return ttsSlot(() => voiceNarration(narration, absPath, tts));
+  },
   voiceKey: async () => {
     const { tts } = await providers.current();
     return tts ? `fish:${tts.model}:${tts.referenceId}` : "none";
   },
   render: async (manifest, outputPath, onProgress) => {
-    await renderVideo({ manifest, outputPath, storageDir: config.storageDir, onProgress });
+    await renderSlot(() => renderVideo({ manifest, outputPath, storageDir: config.storageDir, onProgress }));
   },
+  // Обложка — один кадр за пару секунд: без лимита, иначе генерация стояла бы за чужим рендером.
   still: async (manifest, frame, output) => {
     await renderStills({ manifest, storageDir: config.storageDir, frames: [frame], outputPath: () => output });
   },
@@ -92,7 +104,7 @@ async function previewVoice(input: { text?: string; referenceId?: string; model?
   return Buffer.from(audio);
 }
 
-const worker = startWorker(deps, { log: (m) => console.error(m) });
+const worker = startWorker(deps, { concurrency: 3, log: (m) => console.error(m) });
 const app = await buildApp({ ...deps, config, providers, testProvider, previewVoice, worker });
 await app.listen({ host: config.host, port: config.port });
 console.log(`Shorts Studio API: http://${config.host}:${config.port}`);

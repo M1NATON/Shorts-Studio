@@ -161,6 +161,33 @@ describe("задачи", () => {
     expect(third).toBeUndefined();
   });
 
+  it("задачи одного проекта идут по одной, другой проект не ждёт", async () => {
+    const a = await repo.createProject({ topic: "a", format: "shorts" });
+    const b = await repo.createProject({ topic: "b", format: "shorts" });
+    const tick = () => new Promise((r) => setTimeout(r, 2));
+    const a1 = await repo.createJob({ kind: "generate", projectId: a.id });
+    await tick();
+    const a2 = await repo.createJob({ kind: "render", projectId: a.id });
+    await tick();
+    const b1 = await repo.createJob({ kind: "render", projectId: b.id });
+    expect((await repo.claimNextJob())?.id).toBe(a1.id);
+    expect((await repo.claimNextJob())?.id).toBe(b1.id);
+    expect(await repo.claimNextJob()).toBeUndefined();
+    await repo.updateJob(a1.id, { status: "done" });
+    expect((await repo.claimNextJob())?.id).toBe(a2.id);
+  });
+
+  it("отменить можно только ждущую задачу; отменённая генерация — проект в ошибке", async () => {
+    const project = await repo.createProject({ topic: "x", format: "shorts" });
+    const running = await repo.createJob({ kind: "render" });
+    await repo.claimNextJob();
+    const queued = await repo.createJob({ kind: "generate", projectId: project.id });
+    expect(await repo.cancelJob(running.id)).toBeUndefined();
+    expect((await repo.cancelJob(queued.id))?.status).toBe("failed");
+    expect((await repo.requireProject(project.id)).status).toBe("failed");
+    expect(await repo.claimNextJob()).toBeUndefined();
+  });
+
   it("после рестарта running → failed, проект в generating → failed", async () => {
     const project = await repo.createProject({ topic: "x", format: "shorts" });
     await repo.createJob({ kind: "generate", projectId: project.id });

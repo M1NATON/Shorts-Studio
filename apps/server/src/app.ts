@@ -366,6 +366,33 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     } as Parameters<typeof repo.listJobs>[0]),
   );
 
+  /** Очередь всех проектов для панели: что идёт, что ждёт (по порядку), что недавно закончилось. */
+  app.get("/api/queue", async () => {
+    const [active, recent] = await Promise.all([
+      repo.listJobs({ statuses: ["queued", "running"], limit: 500 }),
+      repo.listJobs({ statuses: ["done", "failed"], limit: 10 }),
+    ]);
+    const ids = [...new Set([...active, ...recent].map((j) => j.projectId).filter((id) => id !== null))];
+    // getProject, а не require: проект могли удалить между двумя запросами — панель не должна падать целиком.
+    const projects = (await Promise.all(ids.map((id) => repo.getProject(id)))).filter((p) => p !== undefined);
+    const titles = new Map(projects.map((p) => [p.id, p.title ?? p.topic]));
+    const withTitle = (job: (typeof active)[number]) => ({ ...job, projectTitle: job.projectId ? (titles.get(job.projectId) ?? null) : null });
+    const ordered = active.reverse().map(withTitle);
+    return {
+      running: ordered.filter((j) => j.status === "running"),
+      queued: ordered.filter((j) => j.status === "queued"),
+      recent: recent.map(withTitle),
+    };
+  });
+
+  app.post<{ Params: { id: string } }>("/api/jobs/:id/cancel", async (request, reply) => {
+    const job = await repo.cancelJob(request.params.id);
+    if (!job) return reply.code(409).send({ error: "only queued jobs can be cancelled" });
+    events.emit({ type: "job", job });
+    if (job.kind === "generate" && job.projectId) events.emit({ type: "project", projectId: job.projectId });
+    return job;
+  });
+
   // Открытые SSE-потоки: без их закрытия app.close() ждёт вкладки браузера вечно,
   // и сервер не останавливается по SIGTERM.
   const streams = new Set<import("node:http").ServerResponse>();

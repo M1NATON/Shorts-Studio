@@ -6,7 +6,8 @@
  * битая строка в базе — громкая ошибка, а не кадр с undefined в рендере.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, notInArray, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import {
   FORMATS,
   ManifestSchema,
@@ -642,13 +643,44 @@ export function createRepository(database: Database) {
       return toJob(row!);
     },
 
-    /** Самая старая задача в очереди → running. Атомарно: две выборки не возьмут одну задачу. */
+    /**
+     * Самая старая задача в очереди → running. Атомарно: две выборки не возьмут одну задачу.
+     * Проект, у которого задача уже идёт, пропускается: его задачи выполняются по одной,
+     * иначе рендер мог бы собрать сцену, которую в это время переписывают.
+     */
     async claimNextJob(): Promise<JobRecord | undefined> {
       return database.transaction(async (tx) => {
-        const [next] = await tx.select().from(jobs).where(eq(jobs.status, "queued")).orderBy(asc(jobs.createdAt)).limit(1);
+        const running = alias(jobs, "running");
+        const busy = tx
+          .select({ projectId: running.projectId })
+          .from(running)
+          .where(and(eq(running.status, "running"), isNotNull(running.projectId)));
+        const [next] = await tx
+          .select()
+          .from(jobs)
+          .where(and(eq(jobs.status, "queued"), or(isNull(jobs.projectId), notInArray(jobs.projectId, busy))))
+          .orderBy(asc(jobs.createdAt))
+          .limit(1);
         if (!next) return undefined;
         await tx.update(jobs).set({ status: "running", updatedAt: stamp() }).where(eq(jobs.id, next.id));
         return toJob({ ...next, status: "running" });
+      });
+    },
+
+    /**
+     * Отменить задачу, пока она ждёт в очереди; начатую не трогаем. Отменённая генерация
+     * оставляет проект в «Ошибке» — там уже есть «Повторить».
+     */
+    async cancelJob(id: string): Promise<JobRecord | undefined> {
+      return database.transaction(async (tx) => {
+        const [job] = await tx.select().from(jobs).where(and(eq(jobs.id, id), eq(jobs.status, "queued")));
+        if (!job) return undefined;
+        const reason = "Отменено";
+        await tx.update(jobs).set({ status: "failed", error: reason, updatedAt: stamp() }).where(eq(jobs.id, id));
+        if (job.kind === "generate" && job.projectId) {
+          await tx.update(projects).set({ status: "failed", error: reason, updatedAt: stamp() }).where(eq(projects.id, job.projectId));
+        }
+        return toJob({ ...job, status: "failed", error: reason });
       });
     },
 

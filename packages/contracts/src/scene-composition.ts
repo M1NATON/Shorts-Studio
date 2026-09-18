@@ -265,18 +265,19 @@ export function estimateLines(value: string, fontSize: number, width: number): n
 
 /**
  * Ширина зоны контента для композиции, в дизайн-пикселях формата.
- * У split — ширина одной колонки.
+ * У split — ширина одной колонки. `zoom` > 1 — сцена увеличена на кадре, поэтому
+ * в дизайн-пикселях ширина зоны меньше (см. stageSize).
  */
-export function contentWidth(layout: SceneLayout, format: VideoFormat = "shorts"): number {
-  const stage = stageSize(format);
+export function contentWidth(layout: SceneLayout, format: VideoFormat = "shorts", zoom = 1): number {
+  const stage = stageSize(format, zoom);
   if (layout === "split") return Math.floor((stage.width - T.splitGutter) / 2);
   return stage.width - LAYOUT_ZONE_PADDING[layout].left;
 }
 
 /** Доступная высота под блоки с учётом сдвига оптического центра. */
-export function compositionCapacity(layout: SceneLayout, format: VideoFormat = "shorts"): number {
+export function compositionCapacity(layout: SceneLayout, format: VideoFormat = "shorts", zoom = 1): number {
   const pad = LAYOUT_ZONE_PADDING[layout];
-  return stageSize(format).height - pad.top - pad.bottom;
+  return stageSize(format, zoom).height - pad.top - pad.bottom;
 }
 
 /**
@@ -392,16 +393,37 @@ export function estimateCompositionHeight(
   blocks: readonly Block[],
   layout: SceneLayout,
   format: VideoFormat = "shorts",
+  zoom = 1,
 ): number {
   if (layout === "split") {
     const { text, visual } = splitColumns(blocks);
     if (text.length > 0 && visual.length > 0) {
-      const width = contentWidth("split", format);
+      const width = contentWidth("split", format, zoom);
       return Math.round(Math.max(stackHeight(text, width), stackHeight(visual, width)));
     }
-    return Math.round(stackHeight(blocks, contentWidth("center", format)));
+    return Math.round(stackHeight(blocks, contentWidth("center", format, zoom)));
   }
-  return Math.round(stackHeight(blocks, contentWidth(layout, format)));
+  return Math.round(stackHeight(blocks, contentWidth(layout, format, zoom)));
+}
+
+/**
+ * Во сколько раз можно увеличить сцену из блоков, чтобы она заняла кадр, но влезла.
+ * (комментарий по-русски: валидатор гарантирует, что при zoom=1 влезает; крупнее —
+ * меньше ширина сцены в дизайн-пикселях, текст переносится, высота растёт; ищем максимум)
+ */
+export function fitZoom(
+  blocks: readonly Block[],
+  layout: SceneLayout,
+  format: VideoFormat,
+  maxZoom: number,
+): number {
+  const top = Math.max(1, maxZoom);
+  for (let zoom = top; zoom > 1; zoom -= 0.05) {
+    if (estimateCompositionHeight(blocks, layout, format, zoom) <= compositionCapacity(layout, format, zoom)) {
+      return zoom;
+    }
+  }
+  return 1;
 }
 
 /**

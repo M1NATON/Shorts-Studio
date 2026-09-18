@@ -28,9 +28,22 @@ export const FONT_FAMILIES = [
   "Oswald",
   "Anton",
   "PlayfairDisplay",
+  "Lora",
+  "Caveat",
+  "JetBrainsMono",
+  "BebasNeue",
 ] as const;
 export const FontFamilySchema = z.enum(FONT_FAMILIES);
 export type FontFamilyName = z.infer<typeof FontFamilySchema>;
+
+/**
+ * Стиль оформления ролика: меняет не палитру, а устройство кадра — фон, есть ли
+ * карточки, крупность типографики. Модель выбирает стиль под тему, палитра и стиль
+ * подбираются независимо (кроме требования к яркости фона, см. STYLE_CANVAS).
+ */
+export const VIDEO_STYLES = ["tech", "editorial", "poster", "kinetic", "notebook", "documentary"] as const;
+export const VideoStyleSchema = z.enum(VIDEO_STYLES);
+export type VideoStyle = z.infer<typeof VideoStyleSchema>;
 
 function channel(value: number): number {
   const c = value / 255;
@@ -57,6 +70,18 @@ export function contrastRatio(foreground: string, background: string): number {
 
 /** Пороги читаемости для крупного текста на видео (WCAG AA для large text — 3:1). */
 export const CONTRAST_MIN = { text: 7, accent: 3.5, muted: 3 } as const;
+
+/**
+ * Требования к яркости фона для стилей, где устройство кадра завязано на неё:
+ * editorial/notebook — светлая бумага, tech/documentary — тёмный кадр. poster и
+ * kinetic не ограничены и в этой таблице отсутствуют.
+ */
+export const STYLE_CANVAS: Partial<Record<VideoStyle, { min?: number; max?: number }>> = {
+  editorial: { min: 0.6 },
+  notebook: { min: 0.6 },
+  tech: { max: 0.08 },
+  documentary: { max: 0.08 },
+};
 
 /**
  * Настроение фоновой музыки. Трек с этим префиксом в имени (calm-….mp3) берётся
@@ -110,6 +135,8 @@ export const VideoThemeSchema = z
     motion: MotionProfileSchema,
     /** Необязательное: темы, сохранённые до музыки, остаются валидными. */
     musicMood: MusicMoodSchema.optional(),
+    /** Необязательное: темы, сохранённые до стилей, остаются валидными (см. themeStyle). */
+    style: VideoStyleSchema.optional(),
   })
   .superRefine((theme, ctx) => {
     const checks = [
@@ -128,9 +155,33 @@ export const VideoThemeSchema = z
         });
       }
     }
+
+    if (theme.style) {
+      const rule = STYLE_CANVAS[theme.style];
+      if (rule) {
+        const luminance = relativeLuminance(theme.canvas);
+        if (rule.min !== undefined && luminance < rule.min) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["canvas"],
+            message: `style "${theme.style}" needs a light canvas (luminance ≥ ${rule.min}), got ${luminance.toFixed(2)}`,
+          });
+        }
+        if (rule.max !== undefined && luminance > rule.max) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["canvas"],
+            message: `style "${theme.style}" needs a dark canvas (luminance ≤ ${rule.max}), got ${luminance.toFixed(2)}`,
+          });
+        }
+      }
+    }
   });
 
 export type VideoTheme = z.infer<typeof VideoThemeSchema>;
+
+/** Стиль темы с дефолтом: отсутствие поля (темы до введения стилей) значит "tech". */
+export const themeStyle = (theme: Pick<VideoTheme, "style">): VideoStyle => theme.style ?? "tech";
 
 /**
  * Тема по умолчанию — она же запасная, если генерация не прошла валидацию.
@@ -153,4 +204,5 @@ export const DEFAULT_VIDEO_THEME: VideoTheme = {
   backdropOpacity: 0.18,
   motion: { easing: [0.16, 1, 0.3, 1], enterFrames: 12, staggerFrames: 3, travelPx: 34 },
   musicMood: "calm",
+  style: "tech",
 };

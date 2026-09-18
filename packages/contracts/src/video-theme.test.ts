@@ -5,6 +5,7 @@ import {
   VideoThemeSchema,
   contrastRatio,
   relativeLuminance,
+  themeStyle,
 } from "./video-theme.js";
 
 describe("contrastRatio", () => {
@@ -93,7 +94,39 @@ describe("VideoThemeSchema", () => {
       muted: "#5A5C55",
       accent: "#8A4B1F",
       accentSoft: "#EAD9C8",
+      // без style: тема без него не проверяется на яркость фона (см. themeStyle ниже).
+      style: undefined,
     };
     expect(VideoThemeSchema.safeParse(light).success).toBe(true);
+  });
+
+  it("editorial с тёмным canvas отклоняется с issue по path canvas", () => {
+    const result = VideoThemeSchema.safeParse({ ...DEFAULT_VIDEO_THEME, style: "editorial" });
+    expect(result.success).toBe(false);
+    expect(result.error!.issues[0]!.path).toEqual(["canvas"]);
+    expect(result.error!.issues[0]!.message).toMatch(/needs a light canvas/);
+  });
+
+  it("editorial со светлым canvas проходит", () => {
+    const editorial = {
+      ...DEFAULT_VIDEO_THEME,
+      style: "editorial",
+      mood: "clean light report",
+      canvas: "#F5F3EE",
+      surface: "#FFFFFF",
+      surfaceStrong: "#E6E3DC",
+      border: "#D2CEC5",
+      text: "#1B1C1A",
+      muted: "#5A5C55",
+      accent: "#8A4B1F",
+      accentSoft: "#EAD9C8",
+    };
+    expect(VideoThemeSchema.safeParse(editorial).success).toBe(true);
+  });
+
+  it("тема без style проходит, themeStyle по умолчанию — tech", () => {
+    expect(VideoThemeSchema.safeParse({ ...DEFAULT_VIDEO_THEME, style: undefined }).success).toBe(true);
+    expect(themeStyle({ style: undefined })).toBe("tech");
+    expect(themeStyle({ style: "editorial" })).toBe("editorial");
   });
 });

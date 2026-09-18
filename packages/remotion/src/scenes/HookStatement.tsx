@@ -1,9 +1,10 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { HookStatementSpec } from "@shorts/contracts";
-import { useTheme, useThemeFont } from "../theme.js";
+import { useFormat, useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion, useStagger } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
+import { textZoom, useStyle } from "../styles.js";
 
 /** Нормализация для сравнения с emphasisWords: регистр и пунктуация не должны мешать. */
 const normalize = (value: string): string => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
@@ -104,8 +105,15 @@ const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
   );
 };
 
-export const HookStatement: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => (
-  <SceneFrame presentation={spec} gap={32}>
-    <Body spec={spec} />
-  </SceneFrame>
-);
+export const HookStatement: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
+  const format = useFormat();
+  const style = useStyle();
+  // extra: кавычка цитаты (200px × 0.7), подпись 40px и промежутки gap={32}.
+  const extra = (spec.variant === "quote" ? 140 + 32 : 0) + (spec.attribution ? 40 * 1.3 + 32 : 0);
+  const zoom = textZoom([spec.text], fontSizeFor(spec.text.length), format.name, style.maxZoom, extra);
+  return (
+    <SceneFrame presentation={spec} gap={32} zoom={zoom}>
+      <Body spec={spec} />
+    </SceneFrame>
+  );
+};

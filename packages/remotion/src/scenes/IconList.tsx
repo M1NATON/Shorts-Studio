@@ -4,6 +4,7 @@ import type { IconListSpec } from "@shorts/contracts";
 import { useTheme } from "../theme.js";
 import { useSceneMotion, useStagger } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
+import { useStyle, useSurface } from "../styles.js";
 import { Icon } from "../Icon.js";
 
 /**
@@ -19,6 +20,9 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
   const motionStyle = useMotionStyle();
   const { frame, durationInFrames } = useSceneMotion();
   const accent = useAccent();
+  const style = useStyle();
+  const surface = useSurface();
+  const flatIconBox = style.surface === "none" || style.surface === "rule";
   const count = spec.items.length;
   // Раздаём сцену по числу пунктов, оставляя последнюю четверть на «весь список целиком».
   const perItem = (durationInFrames * 0.75) / count;
@@ -55,10 +59,8 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
                 alignItems: "center",
                 gap: 30,
                 padding: "22px 30px",
-                borderRadius: theme.cornerRadius,
                 textAlign: "left",
-                backgroundColor: isFocused ? theme.surfaceStrong : theme.surface,
-                border: `2px solid ${isFocused ? accent : theme.border}`,
+                ...surface(isFocused, accent),
                 ...motionStyle(spec.motion, appear, -1),
                 opacity: appear * (isFocused ? 1 : 0.62),
               }}
@@ -69,7 +71,11 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
                   height: 92,
                   flexShrink: 0,
                   borderRadius: Math.round(theme.cornerRadius * 0.8),
-                  backgroundColor: isFocused ? theme.accentSoft : theme.surfaceStrong,
+                  backgroundColor: flatIconBox
+                    ? "transparent"
+                    : isFocused
+                      ? theme.accentSoft
+                      : theme.surfaceStrong,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

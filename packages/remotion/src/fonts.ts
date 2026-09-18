@@ -1,6 +1,10 @@
 import * as Anton from "@remotion/google-fonts/Anton";
 import * as Archivo from "@remotion/google-fonts/Archivo";
+import * as BebasNeue from "@remotion/google-fonts/BebasNeue";
+import * as Caveat from "@remotion/google-fonts/Caveat";
 import * as Inter from "@remotion/google-fonts/Inter";
+import * as JetBrainsMono from "@remotion/google-fonts/JetBrainsMono";
+import * as Lora from "@remotion/google-fonts/Lora";
 import * as Manrope from "@remotion/google-fonts/Manrope";
 import * as Oswald from "@remotion/google-fonts/Oswald";
 import * as PlayfairDisplay from "@remotion/google-fonts/PlayfairDisplay";
@@ -60,6 +64,22 @@ const REGISTRY: Record<FontFamilyName, FontEntry> = {
     load: () =>
       PlayfairDisplay.loadFont("normal", { weights: ["400", "700", "800"], subsets: ["latin"] }),
     weights: [400, 700, 800],
+  },
+  Lora: {
+    load: () => Lora.loadFont("normal", { weights: ["400", "700"], subsets: ["latin"] }),
+    weights: [400, 700],
+  },
+  Caveat: {
+    load: () => Caveat.loadFont("normal", { weights: ["400", "700"], subsets: ["latin"] }),
+    weights: [400, 700],
+  },
+  JetBrainsMono: {
+    load: () => JetBrainsMono.loadFont("normal", { weights: ["400", "700", "800"], subsets: ["latin"] }),
+    weights: [400, 700, 800],
+  },
+  BebasNeue: {
+    load: () => BebasNeue.loadFont("normal", { weights: ["400"], subsets: ["latin"] }),
+    weights: [400],
   },
 };
 

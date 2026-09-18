@@ -8,6 +8,7 @@ import {
   compositionFitIssues,
   contentWidth,
   estimateCompositionHeight,
+  fitZoom,
   splitColumns,
 } from "./scene-composition.js";
 import { SceneVisualSpecSchema, visualSpecSchemaFor } from "./scene-visual-spec.js";
@@ -163,6 +164,35 @@ describe("SceneComposition: вертикальная ёмкость", () => {
   });
 });
 
+describe("fitZoom", () => {
+  const dense = SceneCompositionSchema.parse(
+    scene([
+      { block: "heading", text: "Three reasons it matters", size: "l" },
+      { block: "row", icon: "zap", text: "Cheaper cells", at: 0.2 },
+      { block: "row", icon: "leaf", text: "Cleaner grid", at: 0.3 },
+      { block: "row", icon: "truck", text: "Electric trucks", at: 0.4 },
+      { block: "row", icon: "factory", text: "Local factories", at: 0.5 },
+    ]),
+  ).blocks;
+
+  it("одиночный короткий heading укрупняется сильно", () => {
+    const blocks = [BlockSchema.parse(heading)];
+    const zoom = fitZoom(blocks, "center", "shorts", 1.6);
+    expect(zoom).toBeGreaterThan(1.3);
+    expect(estimateCompositionHeight(blocks, "center", "shorts", zoom)).toBeLessThanOrEqual(
+      compositionCapacity("center", "shorts", zoom),
+    );
+  });
+
+  it("плотная сцена укрупняется заметно меньше, чем одиночный heading", () => {
+    const zoom = fitZoom(dense, "center", "shorts", 1.6);
+    expect(zoom).toBeLessThan(fitZoom([BlockSchema.parse(heading)], "center", "shorts", 1.6));
+    expect(estimateCompositionHeight(dense, "center", "shorts", zoom)).toBeLessThanOrEqual(
+      compositionCapacity("center", "shorts", zoom),
+    );
+  });
+});
+
 describe("blockSignature", () => {
   it("подпись — последовательность типов блоков", () => {
     expect(blockSignature([{ block: "heading" }, { block: "ring" }])).toBe("heading+ring");
@@ -181,6 +211,12 @@ describe("форматы: 16:9", () => {
     expect(stageSize("shorts")).toEqual({ width: 920, height: 1060 });
     expect(stageSize("landscape").width).toBeGreaterThan(2000);
     expect(Math.abs(stageSize("landscape").height - 1060)).toBeLessThan(10);
+  });
+
+  it("zoom уменьшает сцену в дизайн-пикселях вдвое при zoom=2", () => {
+    const base = stageSize("shorts");
+    const zoomed = stageSize("shorts", 2);
+    expect(zoomed).toEqual({ width: base.width / 2, height: base.height / 2 });
   });
 
   it("split: текст слева, визуал справа, высота — по более высокой колонке", () => {

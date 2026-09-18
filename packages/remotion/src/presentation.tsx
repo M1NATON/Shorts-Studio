@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from "react";
-import { interpolate } from "remotion";
-import { LAYOUT_ZONE_PADDING, type Presentation, type SceneMotionKind } from "@shorts/contracts";
+import { AbsoluteFill, interpolate } from "remotion";
+import { LAYOUT_ZONE_PADDING, stageSize, themeStyle, type Presentation, type SceneMotionKind } from "@shorts/contracts";
 import { Backdrop } from "./Backdrop.js";
 import { useFormat, useTheme } from "./theme.js";
 import { EASE_OUT, useMotionProfile, useSceneMotion } from "./motion.js";
@@ -113,31 +113,41 @@ const zonePadding = (layout: Presentation["layout"]): React.CSSProperties => {
  *
  * `wide`: сцена из блоков занимает всю ширину сцены; шаблонные типы ограничены
  * templateMaxWidth — абзац на 2300 дизайн-пикселей в 16:9 не читается.
+ *
+ * `zoom`: во сколько раз сцена увеличена на кадре (см. fitZoom в контрактах).
+ * При zoom > 1 сцена в дизайн-пикселях меньше (stageSize), а видимый размер на
+ * кадре тот же — блоки занимают больше места в кадре, а не расползаются в пустоте.
  */
 export const SceneFrame: React.FC<{
   presentation: Presentation;
   children: React.ReactNode;
   gap?: number;
   wide?: boolean;
-}> = ({ presentation, children, gap = 28, wide = false }) => {
+  zoom?: number;
+}> = ({ presentation, children, gap = 28, wide = false, zoom = 1 }) => {
   const theme = useTheme();
   const format = useFormat();
   const { visible } = useSceneMotion();
   const accent = shiftHue(theme.accent, presentation.accentShift);
   const isLeft = presentation.layout === "left";
-  const maxWidth = wide ? format.stage.width : Math.min(format.stage.width, format.templateMaxWidth);
+  const stage = stageSize(format.name, zoom);
+  const scale = format.scale * zoom;
+  const maxWidth = wide ? stage.width : Math.min(stage.width, format.templateMaxWidth / zoom);
 
   return (
     <AccentContext.Provider value={accent}>
+      {themeStyle(theme) === "poster" ? (
+        <AbsoluteFill style={{ backgroundColor: shiftHue(theme.canvas, presentation.accentShift * 3) }} />
+      ) : null}
       <Backdrop backdrop={presentation.backdrop} accent={accent} />
       <div
         style={{
           position: "absolute",
           top: format.zone.top,
           left: format.zone.side,
-          width: format.stage.width,
-          height: format.stage.height,
-          transform: format.scale === 1 ? undefined : `scale(${format.scale})`,
+          width: stage.width,
+          height: stage.height,
+          transform: scale === 1 ? undefined : `scale(${scale})`,
           transformOrigin: "top left",
           display: "flex",
           justifyContent: "center",

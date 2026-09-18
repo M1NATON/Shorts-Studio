@@ -1,8 +1,10 @@
 import React from "react";
 import { interpolate } from "remotion";
-import { BLOCK_TYPE, SPLIT_TEXT_BLOCKS, type Block, type SceneComposition } from "@shorts/contracts";
+import { BLOCK_TYPE, SPLIT_TEXT_BLOCKS, fitZoom, type Block, type SceneComposition } from "@shorts/contracts";
 import { useMotionProfile, useSceneMotion } from "../motion.js";
 import { SceneFrame, useMotionStyle } from "../presentation.js";
+import { useFormat } from "../theme.js";
+import { useStyle } from "../styles.js";
 import { BlockView } from "../blocks/index.js";
 
 /**
@@ -116,8 +118,13 @@ const Body: React.FC<{ spec: SceneComposition }> = ({ spec }) => {
   );
 };
 
-export const Composed: React.FC<{ spec: SceneComposition }> = ({ spec }) => (
-  <SceneFrame presentation={spec} gap={0} wide>
-    <Body spec={spec} />
-  </SceneFrame>
-);
+export const Composed: React.FC<{ spec: SceneComposition }> = ({ spec }) => {
+  const format = useFormat();
+  const style = useStyle();
+  const zoom = fitZoom(spec.blocks, spec.layout, format.name, style.maxZoom);
+  return (
+    <SceneFrame presentation={spec} gap={0} wide zoom={zoom}>
+      <Body spec={spec} />
+    </SceneFrame>
+  );
+};

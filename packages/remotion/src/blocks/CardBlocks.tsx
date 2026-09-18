@@ -4,16 +4,23 @@ import { BLOCK_TYPE } from "@shorts/contracts";
 import { useTheme, useThemeFont } from "../theme.js";
 import { useMotionProfile, useStagger } from "../motion.js";
 import { useAccent, useMotionStyle } from "../presentation.js";
+import { useStyle, useSurface } from "../styles.js";
 import { Icon } from "../Icon.js";
 import type { BlockProps } from "./types.js";
 
 const T = BLOCK_TYPE;
+
+/** Иконка внутри карточки для surface "none"/"rule" не подсвечивается подложкой. */
+const flatIconBox = (surface: ReturnType<typeof useStyle>["surface"]): boolean =>
+  surface === "none" || surface === "rule";
 
 /** Строка-карточка. emphasis — та самая строка, ради которой сцена. */
 export const RowBlock: React.FC<BlockProps<"row">> = ({ block }) => {
   const theme = useTheme();
   const font = useThemeFont();
   const accent = useAccent();
+  const style = useStyle();
+  const surface = useSurface();
 
   return (
     <div
@@ -25,9 +32,7 @@ export const RowBlock: React.FC<BlockProps<"row">> = ({ block }) => {
         padding: T.row.padding,
         boxSizing: "border-box",
         textAlign: "left",
-        borderRadius: theme.cornerRadius,
-        backgroundColor: block.emphasis ? theme.surfaceStrong : theme.surface,
-        border: `2px solid ${block.emphasis ? accent : theme.border}`,
+        ...surface(block.emphasis, accent),
       }}
     >
       <div
@@ -36,7 +41,11 @@ export const RowBlock: React.FC<BlockProps<"row">> = ({ block }) => {
           height: T.row.iconBox,
           flexShrink: 0,
           borderRadius: Math.round(theme.cornerRadius * 0.8),
-          backgroundColor: block.emphasis ? theme.accentSoft : theme.surfaceStrong,
+          backgroundColor: flatIconBox(style.surface)
+            ? "transparent"
+            : block.emphasis
+              ? theme.accentSoft
+              : theme.surfaceStrong,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -84,6 +93,17 @@ export const ChipsBlock: React.FC<BlockProps<"chips">> = ({ block, localFrame, a
   const accent = useAccent();
   const stagger = useStagger();
   const motionStyle = useMotionStyle();
+  const style = useStyle();
+  const surface = useSurface();
+  // tech/documentary — прежняя «таблетка»; у остальных стилей чип рисуется как их карточка.
+  const pill = (first: boolean): React.CSSProperties =>
+    style.surface === "fill"
+      ? {
+          borderRadius: 999,
+          backgroundColor: first ? theme.accentSoft : theme.surface,
+          border: `2px solid ${first ? accent : theme.border}`,
+        }
+      : surface(first, accent);
 
   return (
     <div
@@ -103,10 +123,8 @@ export const ChipsBlock: React.FC<BlockProps<"chips">> = ({ block, localFrame, a
             lineHeight: 1.2,
             fontWeight: 600,
             padding: `${T.chips.padY}px ${T.chips.padX}px`,
-            borderRadius: 999,
             color: index === 0 ? accent : theme.text,
-            backgroundColor: index === 0 ? theme.accentSoft : theme.surface,
-            border: `2px solid ${index === 0 ? accent : theme.border}`,
+            ...pill(index === 0),
             ...motionStyle("pop", stagger(localFrame, index, 5)),
           }}
         >
@@ -179,6 +197,7 @@ export const PairBlock: React.FC<BlockProps<"pair">> = ({ block, localFrame }) =
   const font = useThemeFont();
   const accent = useAccent();
   const motionStyle = useMotionStyle();
+  const surface = useSurface();
   const { enterFrames, easing, staggerFrames } = useMotionProfile();
 
   return (
@@ -203,13 +222,11 @@ export const PairBlock: React.FC<BlockProps<"pair">> = ({ block, localFrame }) =
             key={`${index}-${item.label}`}
             style={{
               padding: T.pair.padding,
-              borderRadius: theme.cornerRadius,
               textAlign: "left",
-              backgroundColor: highlighted ? theme.surfaceStrong : theme.surface,
-              border: `2px solid ${highlighted ? accent : theme.border}`,
               display: "flex",
               flexDirection: "column",
               gap: 10,
+              ...surface(highlighted, accent),
               ...motionStyle("slide", appear, index === 0 ? -1 : 1),
             }}
           >

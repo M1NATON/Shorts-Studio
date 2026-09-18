@@ -1,9 +1,10 @@
 import React from "react";
 import { interpolate } from "remotion";
-import type { OutroCtaSpec } from "@shorts/contracts";
-import { useTheme, useThemeFont } from "../theme.js";
+import { estimateLines, type OutroCtaSpec } from "@shorts/contracts";
+import { useFormat, useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
+import { textZoom, useStyle } from "../styles.js";
 
 /**
  * Финальная сцена.
@@ -12,6 +13,8 @@ import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
  * фиксируется, под ним прочерчивается акцентная линия. Выход не затемняем —
  * последний кадр должен остаться читаемым на превью.
  */
+const outroFontSize = (text: string): number => (text.length <= 40 ? 96 : 76);
+
 const Body: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
   const theme = useTheme();
   const font = useThemeFont();
@@ -24,7 +27,7 @@ const Body: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
     <>
       <div
         style={{
-          fontSize: spec.text.length <= 40 ? 96 : 76,
+          fontSize: outroFontSize(spec.text),
           fontWeight: font.headingWeight,
           color: theme.text,
           lineHeight: 1.1,
@@ -69,8 +72,15 @@ const Body: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
   );
 };
 
-export const OutroCta: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => (
-  <SceneFrame presentation={spec} gap={34}>
-    <Body spec={spec} />
-  </SceneFrame>
-);
+export const OutroCta: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
+  const format = useFormat();
+  const style = useStyle();
+  // extra: линия 8px, подпись 44px в maxWidth 780 и промежутки gap={34}.
+  const extra = 8 + 34 + (spec.subtext ? estimateLines(spec.subtext, 44, 780) * 44 * 1.3 + 34 : 0);
+  const zoom = textZoom([spec.text], outroFontSize(spec.text), format.name, style.maxZoom, extra);
+  return (
+    <SceneFrame presentation={spec} gap={34} zoom={zoom}>
+      <Body spec={spec} />
+    </SceneFrame>
+  );
+};

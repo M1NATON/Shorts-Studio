@@ -1,4 +1,11 @@
-import { DEFAULT_VIDEO_THEME, FONT_FAMILIES, MUSIC_MOODS, VideoThemeSchema, type VideoTheme } from "@shorts/contracts";
+import {
+  DEFAULT_VIDEO_THEME,
+  FONT_FAMILIES,
+  MUSIC_MOODS,
+  VIDEO_STYLES,
+  VideoThemeSchema,
+  type VideoTheme,
+} from "@shorts/contracts";
 import { issuesOf, log, unwrapContent, withFeedback, type GenerationContext } from "./context.js";
 
 export const THEME_SYSTEM = [
@@ -13,7 +20,8 @@ export const THEME_SYSTEM = [
   '  "cornerRadius": 0..36, "backdropOpacity": 0.04..0.4,',
   '  "motion": { "easing": [x1,y1,x2,y2] cubic-bezier, "enterFrames": 5..24,',
   '    "staggerFrames": 1..10, "travelPx": 8..160 },',
-  `  "musicMood": one of ${MUSIC_MOODS.join(" | ")} (background music under the voice) }`,
+  `  "musicMood": one of ${MUSIC_MOODS.join(" | ")} (background music under the voice),`,
+  `  "style": one of ${VIDEO_STYLES.join(" | ")} (frame device — see below) }`,
   "",
   "Rules:",
   "- The palette must carry the topic: cold and metallic for industry, warm for human stories,",
@@ -25,6 +33,21 @@ export const THEME_SYSTEM = [
   "  urgent topics get short enterFrames and snappy easing.",
   "- musicMood follows the same tone: calm for reflective topics, tech for science and gadgets,",
   "  dramatic for conflict and disasters, serious for news and money, upbeat or playful for light ones.",
+  "",
+  "style picks the frame device, not just the palette:",
+  "- tech — dark, glowing UI look; ONLY for AI, software, cybersecurity, space tech.",
+  "- editorial — light paper, serif headings (PlayfairDisplay or Lora), thin rules instead of",
+  "  cards; history, society, economics, business.",
+  "- poster — huge bold type filling the frame, flat saturated colors, no cards (Anton,",
+  "  BebasNeue, Oswald); facts, top-N lists, bold claims.",
+  "- kinetic — typography only, big words, minimal decoration; quotes, motivation, psychology.",
+  "- notebook — light grid paper, handwritten look (Caveat); explainers and \"how it works\".",
+  "- documentary — dark cinematic, for science, nature, places, people.",
+  "- Prefer non-tech styles unless the topic is genuinely about technology; tech is overused.",
+  "- The canvas must match the style: editorial and notebook need a light canvas, tech and",
+  "  documentary need a dark canvas (this is checked and enforced, same as contrast).",
+  "- Pick fontFamily to match the style: PlayfairDisplay or Lora for editorial, Anton/BebasNeue/",
+  "  Oswald for poster, Caveat for notebook, JetBrainsMono for tech.",
   `Example: ${JSON.stringify(DEFAULT_VIDEO_THEME)}`,
 ].join("\n");
 

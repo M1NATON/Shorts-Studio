@@ -4,6 +4,7 @@ import type { ComparisonSpec } from "@shorts/contracts";
 import { useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion, useStagger } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
+import { useSurface } from "../styles.js";
 import { Icon } from "../Icon.js";
 
 /**
@@ -20,6 +21,7 @@ const Body: React.FC<{ spec: ComparisonSpec }> = ({ spec }) => {
   const motionStyle = useMotionStyle();
   const { frame } = useSceneMotion();
   const accent = useAccent();
+  const surface = useSurface();
   const showVersus = spec.items.length === 2;
 
   return (
@@ -73,10 +75,8 @@ const Body: React.FC<{ spec: ComparisonSpec }> = ({ spec }) => {
                 flexDirection: "column",
                 gap: 14,
                 padding: "34px 36px",
-                borderRadius: theme.cornerRadius,
                 textAlign: "left",
-                backgroundColor: theme.surface,
-                border: `2px solid ${theme.border}`,
+                ...surface(false, accent),
                 borderLeft: `10px solid ${index === 0 ? accent : theme.surfaceStrong}`,
                 ...motionStyle(spec.motion, stagger(frame, index, 7), index % 2 === 0 ? -1 : 1),
               }}

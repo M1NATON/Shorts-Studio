@@ -4,6 +4,7 @@ import { BLOCK_TYPE } from "@shorts/contracts";
 import { useTheme, useThemeFont } from "../theme.js";
 import { useMotionProfile } from "../motion.js";
 import { useAccent } from "../presentation.js";
+import { useSurface } from "../styles.js";
 import type { BlockProps } from "./types.js";
 
 const T = BLOCK_TYPE;
@@ -160,11 +161,16 @@ export const BarsBlock: React.FC<BlockProps<"bars">> = ({ block, localFrame, rem
   const theme = useTheme();
   const font = useThemeFont();
   const accent = useAccent();
+  const surface = useSurface();
   const { staggerFrames } = useMotionProfile();
   const { fps } = useVideoConfig();
   const max = Math.max(...block.items.map((item) => item.value));
   const growFrames = Math.max(8, Math.min(Math.round(remainingFrames * 0.45), Math.round(fps * 1.6)));
   const decimals = block.items.some((item) => !Number.isInteger(item.value)) ? 1 : 0;
+  // Заливка трека под "surface", но радиус не больше половины высоты — иначе
+  // столбик перестаёт быть пилюлей.
+  const track = surface(false, accent);
+  const trackRadius = Math.min(typeof track.borderRadius === "number" ? track.borderRadius : 0, T.bars.barHeight / 2);
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: T.bars.rowGap }}>
@@ -201,10 +207,9 @@ export const BarsBlock: React.FC<BlockProps<"bars">> = ({ block, localFrame, rem
             <div
               style={{
                 height: T.bars.barHeight,
-                borderRadius: Math.min(theme.cornerRadius, T.bars.barHeight / 2),
-                backgroundColor: theme.surface,
-                border: `2px solid ${theme.border}`,
                 overflow: "hidden",
+                ...track,
+                borderRadius: trackRadius,
               }}
             >
               <div

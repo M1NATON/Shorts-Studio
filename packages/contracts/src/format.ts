@@ -63,11 +63,15 @@ export const FORMATS: Record<VideoFormat, FormatSpec> = {
   },
 };
 
-/** Размер сцены в дизайн-пикселях — пространство, в котором верстаются блоки. */
-export function stageSize(format: VideoFormat): { width: number; height: number } {
+/**
+ * Размер сцены в дизайн-пикселях — пространство, в котором верстаются блоки.
+ * `zoom` > 1 увеличивает сцену на кадре: та же зона кадра вмещает меньше
+ * дизайн-пикселей, поэтому сцена в дизайн-пикселях становится меньше.
+ */
+export function stageSize(format: VideoFormat, zoom = 1): { width: number; height: number } {
   const spec = FORMATS[format];
   return {
-    width: Math.round((spec.width - spec.zone.side * 2) / spec.scale),
-    height: Math.round((spec.height - spec.zone.top - spec.zone.bottom) / spec.scale),
+    width: Math.round((spec.width - spec.zone.side * 2) / (spec.scale * zoom)),
+    height: Math.round((spec.height - spec.zone.top - spec.zone.bottom) / (spec.scale * zoom)),
   };
 }

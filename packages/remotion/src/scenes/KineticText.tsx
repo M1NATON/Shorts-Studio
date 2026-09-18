@@ -1,9 +1,10 @@
 import React from "react";
 import { interpolate } from "remotion";
 import type { KineticTextSpec } from "@shorts/contracts";
-import { useTheme, useThemeFont } from "../theme.js";
+import { useFormat, useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
+import { textZoom, useStyle } from "../styles.js";
 
 /**
  * Кинетическая типографика: строки выходят по очереди и занимают весь кадр.
@@ -15,6 +16,11 @@ import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
  * Уже показанные строки не исчезают, а притухают и уменьшаются: зритель видит
  * всю фразу целиком, но взгляд держится на текущей строке.
  */
+const kineticFontSize = (lines: readonly string[]): number => {
+  const longest = Math.max(...lines.map((line) => line.length));
+  return longest <= 14 ? 132 : longest <= 20 ? 108 : 88;
+};
+
 const Body: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => {
   const theme = useTheme();
   const font = useThemeFont();
@@ -24,8 +30,7 @@ const Body: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => {
   const count = spec.lines.length;
   // Последнюю четверть сцены фраза стоит целиком — иначе финал читается как обрыв.
   const perLine = (durationInFrames * 0.75) / count;
-  const longest = Math.max(...spec.lines.map((line) => line.length));
-  const fontSize = longest <= 14 ? 132 : longest <= 20 ? 108 : 88;
+  const fontSize = kineticFontSize(spec.lines);
 
   return (
     <>
@@ -65,8 +70,14 @@ const Body: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => {
   );
 };
 
-export const KineticText: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => (
-  <SceneFrame presentation={spec} gap={10}>
-    <Body spec={spec} />
-  </SceneFrame>
-);
+export const KineticText: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => {
+  const format = useFormat();
+  const style = useStyle();
+  // gap={10} между строками — в extra.
+  const zoom = textZoom(spec.lines, kineticFontSize(spec.lines), format.name, style.maxZoom, spec.lines.length * 10);
+  return (
+    <SceneFrame presentation={spec} gap={10} zoom={zoom}>
+      <Body spec={spec} />
+    </SceneFrame>
+  );
+};

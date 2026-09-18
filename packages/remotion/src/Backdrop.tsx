@@ -2,6 +2,7 @@ import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import type { SceneBackdrop } from "@shorts/contracts";
 import { useTheme } from "./theme.js";
+import { useStyle } from "./styles.js";
 
 /**
  * Фактура фона сцены: слой между общим фоном ролика и контентом.
@@ -18,11 +19,15 @@ export const Backdrop: React.FC<{ backdrop: SceneBackdrop; accent: string }> = (
   accent,
 }) => {
   const theme = useTheme();
+  const style = useStyle();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const t = frame / fps;
 
   if (backdrop === "plain") return null;
+  // Фактуры (сетка, точки, пятно, лучи) — часть визуального языка tech/documentary;
+  // остальные стили задают фон через Background, здесь он лишний слой.
+  if (style.background !== "glow") return null;
 
   if (backdrop === "grid") {
     const cell = 120;

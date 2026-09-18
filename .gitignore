@@ -14,3 +14,4 @@ storage/*
 .next-e2e/
 test-results/
 playwright-report/
+docs/design/mockups/

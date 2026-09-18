@@ -460,6 +460,7 @@ export function createRepository(database: Database) {
       const { slots, totalDurationInFrames } = recomputeTimeline(
         list.map((s) => ({ sceneId: s.id, audioDurationSec: s.version.audio!.durationSec })),
         fps,
+        { gapFrames: Math.round(SCENE_PAUSE_SEC * fps) },
       );
       const size = FORMATS[project.format];
       const draft = {
@@ -728,6 +729,9 @@ export function createRepository(database: Database) {
     },
   };
 }
+
+/** Вдох между фразами соседних сцен. ponytail: одна на все ролики; в настройки — если захочется крутить. */
+export const SCENE_PAUSE_SEC = 0.35;
 
 export type Repository = ReturnType<typeof createRepository>;
 

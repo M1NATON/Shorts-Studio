@@ -31,7 +31,9 @@ describe("recomputeTimeline", () => {
 
   it("вставляет паузу между сценами, но не после последней", () => {
     const { slots, totalDurationInFrames } = recomputeTimeline(scenes(1, 1), 30, { gapFrames: 5 });
-    expect(slots[1]?.startFrame).toBe(35);
+    // Пауза — хвост первой сцены (кадр держится), у последней паузы нет.
+    expect(slots[0]).toMatchObject({ startFrame: 0, durationInFrames: 35 });
+    expect(slots[1]).toMatchObject({ startFrame: 35, durationInFrames: 30 });
     expect(totalDurationInFrames).toBe(65);
   });
 

@@ -18,7 +18,11 @@ export interface TimelineResult {
 }
 
 export interface TimelineOptions {
-  /** Пауза между сценами в кадрах (дыхание монтажа). По умолчанию 0. */
+  /**
+   * Пауза после озвучки каждой сцены, кроме последней, в кадрах. Голос молчит, кадр
+   * сцены держится: без неё фраза следующей сцены начинается встык и режет слух.
+   * Пауза входит в durationInFrames сцены, а не пустая дыра между сценами. По умолчанию 0.
+   */
   gapFrames?: number;
 }
 
@@ -50,9 +54,10 @@ export function recomputeTimeline(
       throw new Error(`Scene ${scene.sceneId}: invalid audioDurationSec ${scene.audioDurationSec}`);
     }
     // Сцена всегда занимает минимум 1 кадр: нулевая длительность сломала бы Remotion Sequence.
-    const durationInFrames = Math.max(1, Math.ceil(scene.audioDurationSec * fps));
+    const pause = index < scenes.length - 1 ? gapFrames : 0;
+    const durationInFrames = Math.max(1, Math.ceil(scene.audioDurationSec * fps)) + pause;
     slots.push({ sceneId: scene.sceneId, startFrame: cursor, durationInFrames });
-    cursor += durationInFrames + (index < scenes.length - 1 ? gapFrames : 0);
+    cursor += durationInFrames;
   }
 
   return { slots, totalDurationInFrames: Math.max(1, cursor) };

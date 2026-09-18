@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { DEFAULT_VIDEO_THEME, type VideoTheme } from "@shorts/contracts";
+import { DEFAULT_VIDEO_THEME, SCENE_ZONE, type VideoTheme } from "@shorts/contracts";
 
 /**
  * Тема ролика приходит из манифеста: её генерирует модель под конкретную тему
@@ -26,7 +26,7 @@ export const SAFE = { top: 220, bottom: 380, side: 80 } as const;
  * Зона визуала сцены. Нижняя граница = SAFE.bottom + высота бокса субтитров:
  * иначе контент сцены оказывается под субтитрами и они читаются поверх друг друга.
  */
-export const CONTENT = { top: SAFE.top, bottom: 640, side: SAFE.side } as const;
+export const CONTENT = SCENE_ZONE;
 
 /** Инсет для корневого контейнера сцены — чтобы не повторять в каждом компоненте. */
 export const CONTENT_INSET = `${CONTENT.top}px ${CONTENT.side}px ${CONTENT.bottom}px`;

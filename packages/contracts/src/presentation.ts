@@ -76,3 +76,25 @@ export const presentationFields = {
 
 export const PresentationSchema = z.object(presentationFields);
 export type Presentation = z.infer<typeof PresentationSchema>;
+
+/**
+ * Зона визуала сцены в кадре 1080×1920. Нижняя граница = safe zone платформы
+ * + бокс субтитров: иначе контент уходит под субтитры.
+ *
+ * Живёт в контрактах, а не в рендере: по этим же числам валидатор композиции
+ * считает, влезает ли сцена в кадр, до того как её увидит Remotion.
+ */
+export const SCENE_ZONE = { top: 220, bottom: 640, side: 80 } as const;
+
+/**
+ * Сдвиг оптического центра по композиции. Прямой justifyContent: flex-start
+ * оставлял под контентом 600px пустоты, поэтому "top" и "stacked" центрируют
+ * контент в подобласти зоны, а не прижимают его к краю.
+ */
+export const LAYOUT_ZONE_PADDING: Record<SceneLayout, { top: number; bottom: number; left: number }> = {
+  center: { top: 0, bottom: 0, left: 0 },
+  top: { top: 0, bottom: 240, left: 0 },
+  stacked: { top: 300, bottom: 0, left: 0 },
+  // Левая акцентная линия (6px) и отступ текста от неё (26px).
+  left: { top: 0, bottom: 0, left: 32 },
+};

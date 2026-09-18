@@ -84,6 +84,7 @@ describe("SceneVisualSpec", () => {
         case "kinetic-text":
         case "timeline":
         case "outro-cta":
+        case "composed":
           return spec.kind;
         default:
           return assertNever(spec);

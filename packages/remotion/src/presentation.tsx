@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from "react";
 import { interpolate } from "remotion";
-import type { Presentation, SceneMotionKind } from "@shorts/contracts";
+import { LAYOUT_ZONE_PADDING, type Presentation, type SceneMotionKind } from "@shorts/contracts";
 import { Backdrop } from "./Backdrop.js";
 import { CONTENT_INSET, useTheme } from "./theme.js";
 import { EASE_OUT, useMotionProfile, useSceneMotion } from "./motion.js";
@@ -93,18 +93,12 @@ export function motionStyle(
 }
 
 /**
- * Композиция задаётся не «прижать к краю», а сдвигом оптического центра.
- *
- * Прямой justifyContent: flex-start оставлял под контентом 600px пустоты — кадр
- * читался как недоделанный. Вместо этого контент центрируется в подобласти зоны:
- * для "top" это верхние две трети, для "stacked" — нижние. Сцены различимы, но
- * ни одна не выглядит пустой.
+ * Композиция задаётся сдвигом оптического центра, а не «прижать к краю»: см.
+ * LAYOUT_ZONE_PADDING в контрактах. Числа общие с валидатором композиции.
  */
-const ZONE_PADDING: Record<Presentation["layout"], React.CSSProperties> = {
-  center: {},
-  top: { paddingBottom: 240 },
-  stacked: { paddingTop: 300 },
-  left: {},
+const zonePadding = (layout: Presentation["layout"]): React.CSSProperties => {
+  const pad = LAYOUT_ZONE_PADDING[layout];
+  return { paddingTop: pad.top, paddingBottom: pad.bottom };
 };
 
 /**
@@ -135,8 +129,9 @@ export const SceneFrame: React.FC<{
           justifyContent: "center",
           alignItems: isLeft ? "flex-start" : "stretch",
           textAlign: isLeft ? "left" : "center",
-          ...ZONE_PADDING[presentation.layout],
-          paddingLeft: isLeft ? 26 : 0,
+          ...zonePadding(presentation.layout),
+          // Линия 6px входит в LAYOUT_ZONE_PADDING.left вместе с отступом текста.
+          paddingLeft: isLeft ? LAYOUT_ZONE_PADDING.left.left - 6 : 0,
           borderLeft: isLeft ? `6px solid ${accent}` : undefined,
           gap,
           opacity: visible,

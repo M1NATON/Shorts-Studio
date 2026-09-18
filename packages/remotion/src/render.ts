@@ -1,6 +1,6 @@
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
-import { ensureBrowser, renderMedia, selectComposition } from "@remotion/renderer";
+import { ensureBrowser, renderMedia, renderStill, selectComposition } from "@remotion/renderer";
 import type { Manifest } from "@shorts/contracts";
 import { COMPOSITION_ID } from "./Root.js";
 
@@ -47,4 +47,35 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
   });
 
   return options.outputPath;
+}
+
+export interface StillsOptions {
+  manifest: Manifest;
+  storageDir: string;
+  /** Номера кадров всего ролика. */
+  frames: readonly number[];
+  /** Путь к PNG по номеру кадра. */
+  outputPath: (frame: number) => string;
+  entryPoint?: string;
+}
+
+/**
+ * Отдельные кадры в PNG — один бандл на все кадры.
+ * Нужен для быстрой проверки визуала (секунды вместо рендера MP4) и для обложек.
+ */
+export async function renderStills(options: StillsOptions): Promise<string[]> {
+  const entryPoint =
+    options.entryPoint ?? path.join(path.dirname(new URL(import.meta.url).pathname), "entry.js");
+  await ensureBrowser();
+  const serveUrl = await bundle({ entryPoint, publicDir: options.storageDir, onProgress: () => undefined });
+  const inputProps = { manifest: options.manifest };
+  const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
+
+  const written: string[] = [];
+  for (const frame of options.frames) {
+    const output = options.outputPath(frame);
+    await renderStill({ composition, serveUrl, frame, output, inputProps });
+    written.push(output);
+  }
+  return written;
 }

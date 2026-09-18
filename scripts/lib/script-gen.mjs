@@ -13,6 +13,7 @@
  *     нужного типа. Ошибка чинится повтором одной сцены, а не всего сценария.
  */
 import {
+  BLOCK_AT_MAX,
   DEFAULT_VIDEO_THEME,
   FONT_FAMILIES,
   IconNameSchema,
@@ -297,8 +298,23 @@ export function planScenes(beats) {
       "plain";
   }
 
+  const heroes = assignHeroes(beats, kinds);
+  // Фактура композиции — по главному блоку: у кольца свет, у столбцов сетка.
+  heroes.forEach((hero, index) => {
+    if (hero) backdrops[index] = BACKDROP_BY_HERO[hero] ?? backdrops[index];
+  });
+  for (let i = 1; i < backdrops.length; i++) {
+    if (backdrops[i] !== backdrops[i - 1]) continue;
+    backdrops[i] =
+      BACKDROP_FALLBACK.find((option) => option !== backdrops[i - 1] && option !== backdrops[i + 1]) ??
+      "plain";
+  }
+
   return kinds.map((kind, index) => ({
-    kind,
+    // Сцена с главным блоком собирается моделью; исходный тип остаётся запасным.
+    kind: heroes[index] ? "composed" : kind,
+    fallbackKind: kind,
+    hero: heroes[index],
     presentation: {
       backdrop: backdrops[index],
       // Смещаем циклы друг относительно друга, чтобы соседние сцены не совпали
@@ -309,6 +325,100 @@ export function planScenes(beats) {
     },
   }));
 }
+
+
+/**
+ * Какие сцены собирает модель из блоков и вокруг какого блока.
+ *
+ * Свобода модели — в выборе и порядке остальных блоков. Главный блок назначает
+ * код, по кругу из допустимых для замысла: иначе модель на каждом тезисе брала бы
+ * одно и то же «заголовок + строки», и разнообразие снова стало бы просьбой.
+ *
+ * timeline и kinetic-text остаются шаблонами: у них своя сильная подача, которую
+ * блоки не повторяют. Хук и финал — тоже: первый кадр должен быть надёжным.
+ */
+const HEROES_BY_INTENT = {
+  number: ["ring", "number", "bars"],
+  contrast: ["pair", "bars", "divider"],
+  list: ["row", "chips", "icon"],
+  fact: ["icon", "quote", "chips", "row", "pair"],
+  hook: ["icon", "quote", "chips"],
+  punch: ["quote", "icon"],
+  sequence: ["row", "chips"],
+  takeaway: ["icon", "row"],
+};
+const COMPOSABLE_KINDS = new Set(["icon-list", "comparison", "stat-counter", "hook-statement"]);
+const BACKDROP_BY_HERO = {
+  ring: "spotlight",
+  number: "spotlight",
+  bars: "grid",
+  pair: "rays",
+  divider: "rays",
+  row: "dots",
+  chips: "dots",
+  icon: "spotlight",
+  quote: "plain",
+};
+
+export function assignHeroes(beats, kinds) {
+  const used = new Map();
+  return kinds.map((kind, index) => {
+    if (index === 0 || index === kinds.length - 1 || !COMPOSABLE_KINDS.has(kind)) return undefined;
+    const options = HEROES_BY_INTENT[beats[index]?.intent] ?? HEROES_BY_INTENT.fact;
+    // Самый редкий в ролике из допустимых; при равенстве — по порядку предпочтения.
+    const hero = [...options].sort((a, b) => (used.get(a) ?? 0) - (used.get(b) ?? 0))[0];
+    used.set(hero, (used.get(hero) ?? 0) + 1);
+    return hero;
+  });
+}
+
+/** Контракт блоков для промпта — компактно, как KIND_CONTRACT. */
+const BLOCK_CONTRACT = [
+  '{ "blocks": [ 1 to 5 blocks, top to bottom ] }',
+  "Every block may carry:",
+  `  "at": when it appears, share of the scene 0..${BLOCK_AT_MAX} (first block 0; never decreasing),`,
+  '  "motion": "rise" | "slide" | "pop" | "fade" (optional).',
+  "Blocks:",
+  '  { "block": "heading", "text": max 90, "emphasisWords": up to 3 words from text, "size": "xl" | "l" | "m" }',
+  '  { "block": "caption", "text": max 60 }  secondary line',
+  '  { "block": "number", "value": number, "from": number (default 0), "unit": max 8, "decimals": 0..2, "caption": max 48 }',
+  '  { "block": "ring", "percent": 0..100, "label": max 40 }  share of a whole',
+  '  { "block": "bars", "items": 2-4 of { "label": max 18, "value": number >= 0 }, "unit": max 8 }',
+  '  { "block": "row", "icon": icon name (optional), "label": max 20 (optional), "text": max 48, "emphasis": boolean }',
+  '  { "block": "chips", "items": 2-5 strings, each max 16 }  tags, names, categories',
+  '  { "block": "badge", "text": max 18 }  small kicker above a heading: year, rubric',
+  '  { "block": "icon", "icon": icon name, "caption": max 30 (optional) }  one big symbol',
+  '  { "block": "divider", "variant": "line" | "vs" | "arrow" }  only between two blocks',
+  '  { "block": "quote", "text": max 90, "attribution": max 40 (optional) }',
+  '  { "block": "pair", "items": exactly 2 of { "label": max 16, "value": max 24, "icon": optional } }',
+  "Rules checked by code:",
+  "- at most one of number / ring / bars; at least one block that is not heading, caption, badge or divider;",
+  "- the frame holds about 1000px: two rows plus a ring already fill it, so prefer 2-4 blocks;",
+  "- number: |value - from| >= 2 unless decimals > 0.",
+].join("\n");
+
+const BLOCK_EXAMPLE = JSON.stringify({
+  blocks: [
+    { block: "badge", text: "Since 2010" },
+    { block: "heading", text: "Battery packs got cheaper", emphasisWords: ["cheaper"], size: "l" },
+    { block: "ring", percent: 89, label: "Drop in price per kWh", at: 0.2, motion: "pop" },
+    { block: "caption", text: "BloombergNEF survey", at: 0.5 },
+  ],
+});
+
+/** Что главный блок значит для модели: без пояснения она ставит кольцо на любое число. */
+const HERO_HINT = {
+  ring: "a ring: the narration states a share or percentage of a whole",
+  number: "a number: one real figure from the narration or sources, counted up",
+  bars: "bars: two to four comparable values of the same unit",
+  pair: "a pair: two sides, before/after or A versus B",
+  divider: 'a "vs" or "arrow" divider between two contrasting blocks',
+  row: "rows: one to four short points, the key one with emphasis",
+  chips: "chips: several short names, tags or categories",
+  icon: "a big icon: one symbol that carries the idea",
+  quote: "a quote: a striking line, attributed only if the narration names who said it",
+};
+const DATA_HEROES = new Set(["ring", "number", "bars"]);
 
 const iconList = IconNameSchema.options.join(", ");
 
@@ -396,6 +506,78 @@ async function fillVisual(beat, plan, index) {
   return SceneVisualSpecSchema.parse({ kind: "hook-statement", text, ...plan.presentation });
 }
 
+
+/**
+ * Сцена из блоков. Главный блок обязателен (иначе разнообразие не гарантировано),
+ * остальное модель решает сама. Три неудачи — откат на шаблонный тип этой сцены.
+ */
+async function fillComposed(beat, plan, index) {
+  const allowed = [plan.hero, ...(DATA_HEROES.has(plan.hero) ? [...DATA_HEROES] : [])];
+  const system = [
+    "You design one scene of an informative vertical short video by composing blocks.",
+    "You decide which blocks, their order, emphasis, timing and motion. Make the frame visual,",
+    "not a paragraph: fewer words than the narration, one idea, a clear focal point.",
+    "",
+    `This scene must be built around ${HERO_HINT[plan.hero]}.`,
+    DATA_HEROES.has(plan.hero)
+      ? "If the narration has no figure for it, use another of number / ring / bars that fits the real figure. Never invent numbers."
+      : "",
+    "",
+    "Return JSON:",
+    BLOCK_CONTRACT,
+    "",
+    `Example (shape, not content): ${BLOCK_EXAMPLE}`,
+    "Return the object itself: no wrapper key, no prose.",
+    `\nAllowed icon values: ${iconList}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const user = [
+    `Video topic: ${beat.topic}`,
+    `Scene narration: ${beat.narration}`,
+    DATA_HEROES.has(plan.hero) && beat.brief ? `\nSOURCES:\n${beat.brief}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const feedback = [];
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const attemptUser =
+        feedback.length === 0
+          ? user
+          : `${user}\n\nYour previous answer was rejected:\n${feedback.map((f) => `- ${f}`).join("\n")}\nFix exactly these problems.`;
+      const raw = await askJson({ system, user: attemptUser, maxTokens: 1100, timeoutMs: 180000 });
+      const content = unwrapContent(raw, "composed");
+      const blocks = Array.isArray(content) ? content : content?.blocks;
+      const candidate = { kind: "composed", blocks, ...plan.presentation };
+
+      let parsed = SceneVisualSpecSchema.safeParse(candidate);
+      // Не влезло только из-за композиции со сдвигом центра — центр даёт больше высоты,
+      // и это дешевле, чем ещё один запрос к модели.
+      if (!parsed.success && plan.presentation.layout !== "center" &&
+          parsed.error.issues.every((i) => i.message.includes("do not fit"))) {
+        parsed = SceneVisualSpecSchema.safeParse({ ...candidate, layout: "center" });
+      }
+
+      const issues = parsed.success ? [] : parsed.error.issues.slice(0, 4).map((i) => `${i.path.join(".")}: ${i.message}`);
+      if (parsed.success && !parsed.data.blocks.some((b) => allowed.includes(b.block))) {
+        issues.push(`the scene must contain a "${plan.hero}" block`);
+      }
+      if (issues.length === 0) return parsed.data;
+
+      feedback.length = 0;
+      feedback.push(...issues);
+      console.log(`  scene ${index + 1} (composed/${plan.hero}) attempt ${attempt}: ${issues.join("; ")}`);
+    } catch (error) {
+      console.log(`  scene ${index + 1} (composed/${plan.hero}) attempt ${attempt}: ${error.message}`);
+    }
+  }
+  console.log(`  scene ${index + 1}: композиция не собралась, откат на ${plan.fallbackKind}`);
+  return fillVisual(beat, { ...plan, kind: plan.fallbackKind }, index);
+}
+
 export async function generateScript(topic) {
   const { sources, brief } = await research(topic);
   const theme = await generateTheme(topic);
@@ -417,10 +599,12 @@ export async function generateScript(topic) {
   if (beats.length < 5) throw new Error(`outline returned ${beats.length} beats`);
 
   const plans = planScenes(beats);
-  console.log(`  план: ${plans.map((p) => p.kind).join(", ")}`);
+  console.log(`  план: ${plans.map((p) => (p.hero ? `composed/${p.hero}` : p.kind)).join(", ")}`);
 
   const visuals = await mapLimited(beats, CONCURRENCY, (beat, index) =>
-    fillVisual({ ...beat, brief }, plans[index], index),
+    plans[index].kind === "composed"
+      ? fillComposed({ ...beat, brief }, plans[index], index)
+      : fillVisual({ ...beat, brief }, plans[index], index),
   );
 
   const script = ScriptSchema.parse({

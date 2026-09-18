@@ -1,6 +1,7 @@
 import React from "react";
 import { assertNever, type SceneVisualSpec } from "@shorts/contracts";
 import { Comparison } from "./Comparison.js";
+import { Composed } from "./Composed.js";
 import { HookStatement } from "./HookStatement.js";
 import { IconList } from "./IconList.js";
 import { KineticText } from "./KineticText.js";
@@ -32,6 +33,8 @@ export const SceneVisual: React.FC<{ spec: SceneVisualSpec }> = ({ spec }) => {
       return <Timeline spec={spec} />;
     case "outro-cta":
       return <OutroCta spec={spec} />;
+    case "composed":
+      return <Composed spec={spec} />;
     default:
       return assertNever(spec);
   }

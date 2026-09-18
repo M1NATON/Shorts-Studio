@@ -28,6 +28,7 @@ export function CaptionPicker({ value, onChange }: { value: CaptionStyle; onChan
             loop
             controls={false}
             clickToPlay={false}
+            acknowledgeRemotionLicense
             style={{ width: "100%", aspectRatio: `${CAPTION_SAMPLE.width} / ${CAPTION_SAMPLE.height}`, borderRadius: 8, pointerEvents: "none" }}
           />
           <span className="small">{CAPTION_LABEL[style]}</span>

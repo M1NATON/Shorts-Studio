@@ -12,31 +12,32 @@ test("тема → правка сцены → готовый MP4", async ({ pag
   await page.getByPlaceholder(/Тема ролика/).fill(topic);
   await page.getByRole("button", { name: "Создать ролик" }).click();
   const card = page.locator(".tile", { hasText: `Video: ${topic}` });
-  await expect(card.locator(".badge", { hasText: "Черновик" })).toBeVisible({ timeout: 180_000 });
+  await expect(card.getByText("Черновик", { exact: true })).toBeVisible({ timeout: 180_000 });
   await expect(card.locator("img")).toBeVisible();
 
   // 2. Редактор: сцены, плеер, источник таймингов.
   await card.getByRole("link").last().click();
-  await expect(page.locator(".scene-select")).toHaveCount(5);
+  const clips = page.getByRole("button", { name: /^Сцена \d+:/ });
+  await expect(clips).toHaveCount(5);
   await expect(page.locator(".player-wrap")).toBeVisible();
 
   // 3. Ручная правка кадра сцены 3: мгновенно, новая версия в истории.
-  await page.locator(".scene-select").nth(2).click();
+  await clips.nth(2).click();
   const heading = page.locator(".block-card").nth(1).locator("input.input").first();
   await heading.fill("Scale made packs cheap");
   await page.getByRole("button", { name: "Сохранить кадр" }).click();
-  await page.getByRole("button", { name: /История/ }).click();
+  await page.getByRole("tab", { name: /История/ }).click();
   await expect(page.locator(".version").first()).toContainText("вручную");
 
   // Переполненный кадр ловится до сохранения, той же схемой, что ответ модели.
-  await page.getByRole("button", { name: "Кадр" }).click();
+  await page.getByRole("tab", { name: "Кадр" }).click();
   await page.locator(".block-card").nth(1).locator("input.input").first().fill("A heading far too long for any frame ".repeat(4));
   await expect(page.locator(".issues")).toContainText("<=90 characters");
   await expect(page.getByRole("button", { name: "Сохранить кадр" })).toBeDisabled();
   await page.getByRole("button", { name: "Сбросить" }).click();
 
   // 4. ИИ: варианты кадра, выбор одного.
-  await page.getByRole("button", { name: "ИИ" }).click();
+  await page.getByRole("tab", { name: "ИИ" }).click();
   await page.getByPlaceholder(/сделай столбцами/).fill("меньше текста");
   await page.getByRole("button", { name: "Пересобрать кадр" }).click();
   await expect(page.locator(".variant")).toHaveCount(2, { timeout: 120_000 });
@@ -44,13 +45,15 @@ test("тема → правка сцены → готовый MP4", async ({ pag
   await expect(page.locator(".variant")).toHaveCount(0);
 
   // 5. Новый текст сцены — переозвучка только её.
-  await page.getByRole("button", { name: "Текст" }).click();
-  await page.locator("textarea").fill("Scale, chemistry and competition cut the price.");
+  await page.getByRole("tab", { name: "Текст" }).click();
+  await page.getByLabel("Текст озвучки").fill("Scale, chemistry and competition cut the price.");
   await page.getByRole("button", { name: "Сохранить и озвучить" }).click();
-  await expect(page.locator(".scene-select").nth(2)).toContainText("Scale, chemistry and competition", { timeout: 60_000 });
+  await expect(page.getByRole("button", { name: /^Сцена 3: Scale, chemistry and competition/ })).toBeVisible({ timeout: 60_000 });
 
   // 6. Стиль субтитров.
-  await page.getByLabel(/Субтитры/).selectOption("outline");
+  await page.getByRole("button", { name: /Субтитры/ }).click();
+  await page.getByRole("radio", { name: "с обводкой" }).click();
+  await expect(page.getByRole("button", { name: "Субтитры: с обводкой" })).toBeVisible();
 
   // 7. Экспорт MP4 и скачивание.
   await page.getByRole("button", { name: /Экспорт MP4/ }).click();
@@ -62,7 +65,7 @@ test("тема → правка сцены → готовый MP4", async ({ pag
   expect(video.status()).toBe(200);
   expect(video.headers()["content-type"]).toBe("video/mp4");
   expect((await video.body()).length).toBeGreaterThan(20_000);
-  await expect(page.locator("aside .badge").first()).toHaveText("Готов");
+  await expect(page.locator(".topbar .status")).toHaveText("готов");
 });
 
 test("настройки: ключи не приходят в браузер, у кнопок есть имена", async ({ page }) => {

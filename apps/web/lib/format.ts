@@ -48,6 +48,12 @@ export function jobProgress(job: Job): string {
 export const formatDate = (iso: string | null): string =>
   iso ? new Date(iso.length === 10 ? `${iso}T00:00:00` : iso).toLocaleDateString("ru-RU") : "";
 
+/** «18 сен», для прошлых лет — «18 сен 2025». */
+export const formatShortDate = (iso: string): string => {
+  const d = new Date(iso);
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) }).replace(".", "");
+};
+
 export const formatDuration = (sec: number | null): string => {
   if (!sec) return "";
   const m = Math.floor(sec / 60);

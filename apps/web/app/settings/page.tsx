@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Check, PlugZap, Volume2 } from "lucide-react";
+import { Topbar } from "@/components/Topbar";
 import { api, ApiError, type ProviderInfo, type ProviderKind } from "@/lib/api";
 
 const PROVIDERS: { kind: ProviderKind; title: string; hint: string; fields: { name: string; label: string; placeholder?: string }[] }[] = [
@@ -87,18 +89,17 @@ function ProviderForm({ spec, info, onSaved }: { spec: (typeof PROVIDERS)[number
     }
   }
 
+  const state = info.configured ? (info.source === "ui" ? "задано здесь" : "из .env") : "не задано";
   return (
-    <section className="card stack" style={{ padding: 16 }} aria-labelledby={`p-${spec.kind}`}>
+    <section aria-labelledby={`p-${spec.kind}`}>
       <div className="row">
-        <h3 id={`p-${spec.kind}`} style={{ margin: 0, fontSize: 15 }}>{spec.title}</h3>
-        <span className={`badge ${info.configured ? "ready" : "failed"}`}>
-          {info.configured ? (info.source === "ui" ? "настроено здесь" : "из .env") : "не настроено"}
-        </span>
+        <h2 id={`p-${spec.kind}`}>{spec.title}</h2>
+        <span className={`status small ${info.configured ? "ready" : "failed"}`}>{state}</span>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>{spec.hint}</p>
+      <p className="small muted">{spec.hint}</p>
       {spec.fields.map((field) => (
-        <label key={field.name} className="field" style={{ gridTemplateColumns: "180px 1fr" }}>
-          <span className="muted">{field.label}</span>
+        <label key={field.name} className="field">
+          <span>{field.label}</span>
           <input
             className="input"
             type={field.name === "apiKey" ? "password" : "text"}
@@ -109,15 +110,22 @@ function ProviderForm({ spec, info, onSaved }: { spec: (typeof PROVIDERS)[number
           />
         </label>
       ))}
-      <div className="row">
-        <button className="btn primary" disabled={busy} onClick={() => void save()}>Сохранить</button>
-        <button className="btn" disabled={busy || !info.configured} onClick={() => void test()}>Проверить</button>
+      <div className="row" style={{ paddingLeft: 188 }}>
+        <button className="btn pri" disabled={busy} onClick={() => void save()}>Сохранить</button>
+        <button className="btn" disabled={busy || !info.configured} onClick={() => void test()}>
+          <PlugZap size={16} strokeWidth={1.75} />Проверить
+        </button>
         {spec.kind === "tts" ? (
           <button className="btn" disabled={busy || !info.configured} onClick={() => void listen()} title="Короткая фраза этим голосом; сохранять не нужно">
-            Прослушать
+            <Volume2 size={16} strokeWidth={1.75} />Прослушать
           </button>
         ) : null}
-        {status ? <span className={`small ${status.ok ? "" : "error"}`} role="status">{status.ok ? "✓ " : ""}{status.message}</span> : null}
+        {status ? (
+          <span className={`small row ${status.ok ? "" : "error"}`} style={{ gap: 4 }} role="status">
+            {status.ok ? <Check size={14} strokeWidth={2} style={{ color: "var(--ok)" }} /> : null}
+            {status.message}
+          </span>
+        ) : null}
       </div>
     </section>
   );
@@ -131,18 +139,21 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <main className="page stack" style={{ maxWidth: 760 }}>
-      <h2 style={{ marginBottom: 0 }}>Провайдеры</h2>
-      <p className="muted" style={{ marginTop: 0 }}>
-        Ключи хранятся только на сервере (в базе в <code>storage/</code>) и в браузер не передаются — здесь видна только маска.
-        Значения из <code>.env</code> действуют, пока их не заменили здесь.
-      </p>
-      {error ? <p className="error">{error}</p> : null}
-      {data
-        ? PROVIDERS.map((spec) => (
-            <ProviderForm key={spec.kind} spec={spec} info={data[spec.kind]} onSaved={(info) => setData({ ...data, [spec.kind]: info })} />
-          ))
-        : null}
-    </main>
+    <>
+      <Topbar title="Настройки" />
+      <main className="settings">
+        <h1>Провайдеры</h1>
+        <p className="lead">
+          Ключи хранятся только на сервере (в базе в <code>storage/</code>) и в браузер не передаются — здесь видна только маска.
+          Значения из <code>.env</code> действуют, пока их не заменили здесь.
+        </p>
+        {error ? <p className="error">{error}</p> : null}
+        {data
+          ? PROVIDERS.map((spec) => (
+              <ProviderForm key={spec.kind} spec={spec} info={data[spec.kind]} onSaved={(info) => setData({ ...data, [spec.kind]: info })} />
+            ))
+          : null}
+      </main>
+    </>
   );
 }

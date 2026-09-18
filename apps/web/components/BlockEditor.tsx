@@ -19,7 +19,17 @@ import {
   type VideoFormat,
 } from "@shorts/contracts";
 
+import { BookOpen, Braces, ChartColumn, ChevronDown, ChevronUp, CircleDashed, Columns2, Hash, Heading, List, Minus, Plus, Quote, Shapes, Tag, Tags, Type, X, type LucideIcon } from "lucide-react";
+import { BLOCK_LABEL, fieldLabel, KIND_LABEL, valueLabel } from "@/lib/labels";
 import { KIND_DEFAULTS, NEW_BLOCK, type Json } from "@/lib/visual-defaults";
+
+const BLOCK_ICON: Record<string, LucideIcon> = {
+  heading: Heading, caption: Type, number: Hash, ring: CircleDashed, bars: ChartColumn, row: List, chips: Tags,
+  badge: Tag, icon: Shapes, divider: Minus, quote: Quote, pair: Columns2, chapter: BookOpen,
+};
+const ICON = { size: 14, strokeWidth: 1.75 } as const;
+/** Короткие перечисления — сегментами, остальные — списком. */
+const SEGMENTED = new Set(["size"]);
 
 const ENUMS: Record<string, readonly string[]> = {
   icon: IconNameSchema.options,
@@ -38,11 +48,20 @@ function FieldInput({ name, value, onChange }: { name: string; value: Json; onCh
   if (typeof value === "number") {
     return <input className="input" type="number" step="any" value={value} onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))} />;
   }
+  if (typeof value === "string" && ENUMS[name] && SEGMENTED.has(name)) {
+    return (
+      <div className="seg" role="radiogroup" aria-label={fieldLabel(name)}>
+        {ENUMS[name]!.map((option) => (
+          <button key={option} type="button" role="radio" aria-checked={value === option} onClick={() => onChange(option)}>{valueLabel(name, option)}</button>
+        ))}
+      </div>
+    );
+  }
   if (typeof value === "string" && ENUMS[name]) {
     return (
       <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
         {ENUMS[name]!.map((option) => (
-          <option key={option} value={option}>{option}</option>
+          <option key={option} value={option}>{valueLabel(name, option)}</option>
         ))}
       </select>
     );
@@ -64,13 +83,15 @@ function FieldInput({ name, value, onChange }: { name: string; value: Json; onCh
     return (
       <div className="stack" style={{ gap: 6 }}>
         {value.map((item, i) => (
-          <div key={i} className="block-card" style={{ padding: 8 }}>
-            <ObjectFields value={item as { [key: string]: Json }} onChange={(next) => onChange(value.map((v, j) => (j === i ? next : v)))} />
-            <button className="btn sm ghost danger" onClick={() => onChange(value.filter((_, j) => j !== i))}>Убрать</button>
+          <div key={i} className="block-card">
+            <div className="body">
+              <ObjectFields value={item as { [key: string]: Json }} onChange={(next) => onChange(value.map((v, j) => (j === i ? next : v)))} />
+              <button className="btn sm ghost danger" style={{ justifySelf: "end" }} onClick={() => onChange(value.filter((_, j) => j !== i))}><X {...ICON} />Убрать</button>
+            </div>
           </div>
         ))}
         {value.length > 0 ? (
-          <button className="btn sm ghost" onClick={() => onChange([...value, structuredClone(value[value.length - 1]!)])}>+ элемент</button>
+          <button className="btn sm ghost" style={{ justifySelf: "start" }} onClick={() => onChange([...value, structuredClone(value[value.length - 1]!)])}><Plus {...ICON} />Элемент</button>
         ) : null}
       </div>
     );
@@ -85,7 +106,7 @@ function ObjectFields({ value, onChange }: { value: { [key: string]: Json }; onC
         .filter(([key]) => !HIDDEN.has(key))
         .map(([key, field]) => (
           <label key={key} className="field">
-            <span className="muted">{key}</span>
+            <span>{fieldLabel(key)}</span>
             <FieldInput name={key} value={field} onChange={(next) => onChange({ ...value, [key]: next })} />
           </label>
         ))}
@@ -133,7 +154,7 @@ export function BlockEditor({
     }
     return (
       <div className="stack">
-        <textarea className="textarea" style={{ minHeight: 320, fontFamily: "ui-monospace, monospace", fontSize: 12 }} value={raw} onChange={(e) => setRaw(e.target.value)} />
+        <textarea className="textarea mono" aria-label="Кадр в JSON" style={{ minHeight: 320, fontSize: 12 }} value={raw} onChange={(e) => setRaw(e.target.value)} />
         <div className="row">
           <button className="btn sm" disabled={!parsedOk} onClick={() => { setDraft(JSON.parse(raw)); setRaw(undefined); }}>Применить JSON</button>
           <button className="btn sm ghost" onClick={() => setRaw(undefined)}>Отмена</button>
@@ -146,8 +167,9 @@ export function BlockEditor({
   return (
     <div className="stack">
       <div className="block-card">
+        <div className="body">
         <label className="field">
-          <span className="muted">тип кадра</span>
+          <span>Тип кадра</span>
           <select
             className="select"
             value={String(draft.kind)}
@@ -160,7 +182,7 @@ export function BlockEditor({
             }}
           >
             {Object.keys(KIND_DEFAULTS).map((kind) => (
-              <option key={kind} value={kind}>{kind === "composed" ? "из блоков" : kind}</option>
+              <option key={kind} value={kind}>{KIND_LABEL[kind as SceneVisualSpec["kind"]] ?? kind}</option>
             ))}
           </select>
         </label>
@@ -168,24 +190,33 @@ export function BlockEditor({
           value={Object.fromEntries(Object.entries(draft).filter(([k]) => k !== "blocks"))}
           onChange={(next) => setDraft({ ...next, ...(blocks ? { blocks } : {}) })}
         />
+        </div>
       </div>
       {blocks
-        ? blocks.map((block, i) => (
-            <div key={i} className="block-card">
-              <div className="row">
-                <strong className="small">{String(block.block)}</strong>
-                <div className="spacer" />
-                <button className="btn sm ghost" disabled={i === 0} onClick={() => setBlocks(blocks.map((b, j) => (j === i - 1 ? blocks[i]! : j === i ? blocks[i - 1]! : b)))}>↑</button>
-                <button className="btn sm ghost" disabled={i === blocks.length - 1} onClick={() => setBlocks(blocks.map((b, j) => (j === i + 1 ? blocks[i]! : j === i ? blocks[i + 1]! : b)))}>↓</button>
-                <button className="btn sm ghost danger" onClick={() => setBlocks(blocks.filter((_, j) => j !== i))}>✕</button>
+        ? blocks.map((block, i) => {
+            const Icon = BLOCK_ICON[String(block.block)] ?? Shapes;
+            return (
+              <div key={i} className="block-card">
+                <header>
+                  <Icon {...ICON} />
+                  <span>{BLOCK_LABEL[String(block.block)] ?? String(block.block)}</span>
+                  {typeof block.at === "number" ? <span className="at" title="Когда появится: доля длительности сцены">{Math.round(block.at * 100)}%</span> : null}
+                  <div className="spacer" />
+                  <button className="btn ghost sm icon" aria-label="Выше" title="Выше" disabled={i === 0} onClick={() => setBlocks(blocks.map((b, j) => (j === i - 1 ? blocks[i]! : j === i ? blocks[i - 1]! : b)))}><ChevronUp {...ICON} /></button>
+                  <button className="btn ghost sm icon" aria-label="Ниже" title="Ниже" disabled={i === blocks.length - 1} onClick={() => setBlocks(blocks.map((b, j) => (j === i + 1 ? blocks[i]! : j === i ? blocks[i + 1]! : b)))}><ChevronDown {...ICON} /></button>
+                  <button className="btn ghost sm icon danger" aria-label="Убрать блок" title="Убрать блок" onClick={() => setBlocks(blocks.filter((_, j) => j !== i))}><X {...ICON} /></button>
+                </header>
+                <div className="body">
+                  <ObjectFields value={block} onChange={(next) => setBlocks(blocks.map((b, j) => (j === i ? next : b)))} />
+                </div>
               </div>
-              <ObjectFields value={block} onChange={(next) => setBlocks(blocks.map((b, j) => (j === i ? next : b)))} />
-            </div>
-          ))
+            );
+          })
         : null}
       {blocks ? (
         <select
           className="select"
+          aria-label="Добавить блок"
           value=""
           onChange={(e) => {
             const type = e.target.value as (typeof BLOCK_TYPES)[number];
@@ -194,9 +225,9 @@ export function BlockEditor({
             setBlocks([...blocks, { ...NEW_BLOCK[type], at: blocks.length === 0 ? 0 : at }]);
           }}
         >
-          <option value="">+ добавить блок</option>
+          <option value="">+ Добавить блок</option>
           {BLOCK_TYPES.filter((t) => t !== "chapter" || format === "landscape").map((type) => (
-            <option key={type} value={type}>{type}</option>
+            <option key={type} value={type}>{BLOCK_LABEL[type] ?? type}</option>
           ))}
         </select>
       ) : null}
@@ -208,10 +239,10 @@ export function BlockEditor({
         </div>
       ) : null}
       <div className="row">
-        <button className="btn primary" disabled={!dirty || issues.length > 0 || saving} onClick={() => void save()}>Сохранить кадр</button>
+        <button className="btn pri" disabled={!dirty || issues.length > 0 || saving} onClick={() => void save()}>Сохранить кадр</button>
         <button className="btn ghost" disabled={!dirty} onClick={() => setDraft(structuredClone(visual) as unknown as { [key: string]: Json })}>Сбросить</button>
         <div className="spacer" />
-        <button className="btn sm ghost" onClick={() => setRaw(JSON.stringify(draft, null, 2))}>JSON</button>
+        <button className="btn sm ghost" title="Править кадр как JSON" onClick={() => setRaw(JSON.stringify(draft, null, 2))}><Braces {...ICON} />JSON</button>
       </div>
     </div>
   );

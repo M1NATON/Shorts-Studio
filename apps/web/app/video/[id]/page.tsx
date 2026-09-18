@@ -2,20 +2,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
+import { Captions, Download, ExternalLink, Library, RotateCcw, ScanLine, TriangleAlert, Upload } from "lucide-react";
 import type { PlayerRef } from "@remotion/player";
-import { FORMATS, type Manifest } from "@shorts/contracts";
+import { FORMATS, type CaptionStyle, type Manifest } from "@shorts/contracts";
+import { CaptionPicker } from "@/components/CaptionPicker";
+import { GenerationProgress } from "@/components/GenerationProgress";
+import { Popover } from "@/components/Popover";
 import { SceneInspector } from "@/components/SceneInspector";
+import { Topbar } from "@/components/Topbar";
+import { Transport } from "@/components/Transport";
 import { api, videoUrl, type Job, type ProjectDetail } from "@/lib/api";
 import { useStudioEvents } from "@/lib/events";
-import { formatDate, jobProgress, STATUS_HINT, STATUS_LABEL, CAPTION_LABEL } from "@/lib/format";
+import { CAPTION_LABEL, formatDate, jobProgress, STATUS_HINT, STATUS_LABEL } from "@/lib/format";
 
-// Плеер только в браузере: Remotion трогает window при импорте.
+// Плеер и таймлайн только в браузере: Remotion трогает window при импорте.
 const VideoPlayer = dynamic(() => import("@/components/VideoPlayer").then((m) => m.VideoPlayer), { ssr: false });
+const Timeline = dynamic(() => import("@/components/Timeline").then((m) => m.Timeline), { ssr: false });
 
-/** Короткое описание кадра для списка сцен: «ring + caption». */
-function describe(visual: ProjectDetail["scenes"][number]["version"]["visual"]): string {
-  return visual.kind === "composed" ? visual.blocks.map((b) => b.block).join(" + ") : visual.kind;
-}
+const ICON = { size: 16, strokeWidth: 1.75 } as const;
 
 export default function VideoEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +29,13 @@ export default function VideoEditorPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState<string>();
   const [safeZone, setSafeZone] = useState(false);
-  const player = useRef<PlayerRef>(null);
+  // Ссылка и состояние: транспорт и таймлайн подписываются на события плеера, когда он появится.
+  const player = useRef<PlayerRef | null>(null);
+  const [playerApi, setPlayerApi] = useState<PlayerRef | null>(null);
+  const attachPlayer = useCallback((ref: PlayerRef | null) => {
+    player.current = ref;
+    setPlayerApi(ref);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -54,170 +64,215 @@ export default function VideoEditorPage() {
     }
   });
 
-  // ↑/↓ — соседняя сцена, когда фокус не в поле ввода.
+  const scenes = detail?.scenes ?? [];
+  const act = (action: () => Promise<unknown>) => void action().then(load).catch((e: Error) => setError(e.message));
+
+  const selectScene = useCallback((index: number) => {
+    setSelected(index);
+    const target = manifest?.scenes[index];
+    // В начале сцены блоки ещё не вошли — показываем момент, когда кадр собран.
+    if (target) player.current?.seekTo(target.startFrame + Math.round(target.durationInFrames * 0.6));
+  }, [manifest]);
+
+  // Во время воспроизведения выбранная сцена идёт за плейхедом.
+  useEffect(() => {
+    if (!playerApi || !manifest) return;
+    const onFrame = (e: { detail: { frame: number } }) => {
+      if (!playerApi.isPlaying()) return;
+      const index = manifest.scenes.findIndex((s) => e.detail.frame < s.startFrame + s.durationInFrames);
+      if (index >= 0) setSelected((prev) => (prev === index ? prev : index));
+    };
+    playerApi.addEventListener("frameupdate", onFrame);
+    return () => playerApi.removeEventListener("frameupdate", onFrame);
+  }, [playerApi, manifest]);
+
+  // Пробел — пуск/пауза; ←/→ — соседняя сцена; Alt+←/→ — переставить сцену.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
-      const count = detail?.scenes.length ?? 0;
-      if (e.key === "ArrowDown" && selected < count - 1) { e.preventDefault(); selectScene(selected + 1); }
-      if (e.key === "ArrowUp" && selected > 0) { e.preventDefault(); selectScene(selected - 1); }
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
+      const count = scenes.length;
+      const scene = scenes[selected];
+      if (e.key === " ") {
+        e.preventDefault();
+        player.current?.toggle();
+      } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        const next = selected + (e.key === "ArrowRight" ? 1 : -1);
+        if (next < 0 || next >= count) return;
+        e.preventDefault();
+        if (e.altKey && scene) {
+          setSelected(next);
+          act(() => api.moveScene(scene.id, next));
+        } else selectScene(next);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const act = (action: () => Promise<unknown>) => void action().then(load).catch((e: Error) => setError(e.message));
-
-  const selectScene = (index: number) => {
-    setSelected(index);
-    const target = manifest?.scenes[index];
-    // В начале сцены блоки ещё не вошли — показываем момент, когда кадр собран.
-    if (target) player.current?.seekTo(target.startFrame + Math.round(target.durationInFrames * 0.6));
-  };
-
-  if (!detail) return <main className="page">{error ? <p className="error">{error}</p> : <p className="muted">Загрузка…</p>}</main>;
-  const { project, scenes } = detail;
+  if (!detail) {
+    return (
+      <>
+        <Topbar title="…" />
+        <main className="page">{error ? <p className="error">{error}</p> : <p className="muted">Загрузка…</p>}</main>
+      </>
+    );
+  }
+  const { project } = detail;
   const scene = scenes[selected];
   const renderJob = jobs.find((j) => j.kind === "render");
   const generateJob = jobs.find((j) => j.kind === "generate");
   const sceneJob = scene ? jobs.find((j) => j.sceneIndex === scene.position && j.kind !== "render" && j.kind !== "generate") : undefined;
-  const chapterAt = new Map(project.chapters.map((c) => [c.firstScene, c.title]));
+  const busyScene = jobs.find((j) => j.sceneIndex !== null && j.kind !== "render" && j.kind !== "generate")?.sceneIndex ?? undefined;
+  const barJob = generateJob ?? renderJob ?? sceneJob;
+  const barShare = barJob?.total ? (barJob.done ?? 0) / barJob.total : undefined;
+  const title = project.title ?? project.topic;
 
   return (
-    <div className="editor">
-      <aside className="card pane">
-        <div style={{ padding: 12 }}>
-          <div style={{ fontWeight: 600 }}>{project.title ?? project.topic}</div>
-          <div className="small muted">
-            <span className={`badge ${project.status}`} title={STATUS_HINT[project.status]}>{STATUS_LABEL[project.status]}</span>{" "}
-            {project.format === "landscape" ? "16:9" : "9:16"}
-            {project.researchedAt ? ` · факты на ${formatDate(project.researchedAt)}` : ""}
-          </div>
-        </div>
-        {scenes.map((s, i) => (
-          <div key={s.id}>
-            {chapterAt.has(i) ? <div className="chapter-label">{chapterAt.get(i)}</div> : null}
-            <div className={`scene-item${i === selected ? " on" : ""}`}>
-              <button className="scene-select" onClick={() => selectScene(i)} aria-current={i === selected ? "true" : undefined}>
-                <span className="meta">
-                  <span>{i + 1}</span>
-                  <span>{describe(s.version.visual)}</span>
-                  {s.version.audio ? <span>{s.version.audio.durationSec.toFixed(1)} с</span> : null}
-                  {s.version.unverifiedNumbers.length ? <span className="warn" title="Числа не подтверждены источниками">⚠ {s.version.unverifiedNumbers.join(", ")}</span> : null}
-                  {!s.version.audio ? <span className="warn">без озвучки</span> : null}
-                </span>
-                <span className="small">{s.version.narration}</span>
-              </button>
-              {i === selected ? (
-                <div className="scene-actions" role="toolbar" aria-label="Действия со сценой">
-                  <button className="btn sm ghost" disabled={i === 0} title="Выше" aria-label="Переместить выше" onClick={() => act(() => api.moveScene(s.id, i - 1))}>↑</button>
-                  <button className="btn sm ghost" disabled={i === scenes.length - 1} title="Ниже" aria-label="Переместить ниже" onClick={() => act(() => api.moveScene(s.id, i + 1))}>↓</button>
-                  <button className="btn sm ghost" onClick={() => act(() => api.duplicateScene(s.id))}>Дублировать</button>
-                  <button
-                    className="btn sm ghost"
-                    onClick={() => {
-                      const text = window.prompt("Текст озвучки новой сцены (кадр и озвучку соберёт ИИ):");
-                      if (text?.trim()) act(() => api.addScene(id, i, text.trim()));
-                    }}
-                  >
-                    + сцена после
-                  </button>
-                  <button
-                    className="btn sm ghost danger"
-                    disabled={scenes.length <= 1}
-                    onClick={() => {
-                      if (window.confirm(`Удалить сцену ${i + 1}? Её версии тоже будут удалены.`)) {
-                        setSelected(Math.max(0, i - 1));
-                        act(() => api.deleteScene(s.id));
-                      }
-                    }}
-                  >
-                    Удалить
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ))}
-        {scenes.length === 0 && generateJob ? <p className="small muted" style={{ padding: 12 }}>{jobProgress(generateJob)}</p> : null}
+    <>
+      <Topbar title={title}>
+        <span className="pill" title={STATUS_HINT[project.status]}>
+          {project.format === "landscape" ? "16:9" : "9:16"} · <span className={`status ${project.status}`}>{STATUS_LABEL[project.status].toLowerCase()}</span>
+        </span>
         {project.sources.length > 0 ? (
-          <details style={{ padding: 12 }}>
-            <summary>Источники ({project.sources.length})</summary>
-            <div className="stack small" style={{ marginTop: 8 }}>
-              {project.sources.map((s) => (
-                <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="muted">
-                  {s.title}{s.publishedAt ? ` · ${formatDate(s.publishedAt)}` : ""}{s.kind === "news" ? " · новости" : ""}
-                </a>
-              ))}
-            </div>
-          </details>
+          <Popover
+            className="btn ghost"
+            label={`Источники: ${project.sources.length}`}
+            button={<><Library {...ICON} />Источники <span className="mono muted">{project.sources.length}</span></>}
+          >
+            {() => (
+              <>
+                {project.researchedAt ? <p className="small muted" style={{ padding: "4px 8px" }}>Факты на {formatDate(project.researchedAt)}</p> : null}
+                {project.sources.map((s) => (
+                  <a key={s.url} href={s.url} target="_blank" rel="noreferrer" style={{ maxWidth: 420 }}>
+                    <ExternalLink size={14} strokeWidth={1.75} />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</span>
+                    <span className="muted small">{s.publishedAt ? formatDate(s.publishedAt) : ""}{s.kind === "news" ? " · новости" : ""}</span>
+                  </a>
+                ))}
+              </>
+            )}
+          </Popover>
         ) : null}
-      </aside>
-
-      <section className="center">
-        <div className="jobs-bar">
-          {generateJob ? <span>⏳ {jobProgress(generateJob)}</span> : null}
-          {renderJob ? <span>⏳ {jobProgress(renderJob)}</span> : null}
-          {error ? <span className="error">{error}</span> : null}
-          <div className="spacer" />
-          <label className="row small muted" title="Меняет MP4 — после смены ролик нужно экспортировать заново">
-            Субтитры
-            <select className="select" value={project.captionStyle} onChange={(e) => void api.setCaptionStyle(id, e.target.value as typeof project.captionStyle).then(load)}>
-              {Object.entries(CAPTION_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </label>
-          {project.status === "failed" ? <button className="btn" onClick={() => void api.retry(id).then(load)}>Повторить генерацию</button> : null}
-          <button className="btn primary" disabled={!manifest || Boolean(renderJob)} onClick={() => void api.render(id).then(load)}>
-            {project.status === "ready" ? "Экспортировать снова" : "Экспорт MP4"}
-          </button>
-          {detail.render ? <a className="btn" href={videoUrl(id)}>Скачать{project.status === "stale" ? " (устарел)" : ""}</a> : null}
-        </div>
-        <div className="player-wrap">
-          {manifest ? (
-            <div className="player-stage" style={{ aspectRatio: `${manifest.width} / ${manifest.height}` }}>
-              <VideoPlayer ref={player} manifest={manifest} />
-              {safeZone ? (() => {
-                // Зона контента формата: сюда валидатор укладывает блоки; снаружи — UI платформы и субтитры.
-                const f = FORMATS[manifest.format];
-                return (
-                  <div
-                    className="safe-zone"
-                    style={{
-                      top: `${(f.zone.top / f.height) * 100}%`,
-                      bottom: `${(f.zone.bottom / f.height) * 100}%`,
-                      left: `${(f.zone.side / f.width) * 100}%`,
-                      right: `${(f.zone.side / f.width) * 100}%`,
-                    }}
-                  />
-                );
-              })() : null}
+        <Popover
+          label={`Субтитры: ${CAPTION_LABEL[project.captionStyle]}`}
+          menuClass="menu wide"
+          button={<><Captions {...ICON} />{CAPTION_LABEL[project.captionStyle]}</>}
+        >
+          {(close) => (
+            <div className="stack">
+              <p className="small muted">Стиль меняет MP4 — после смены ролик нужно экспортировать заново.</p>
+              <CaptionPicker
+                value={project.captionStyle}
+                onChange={(style: CaptionStyle) => { close(); act(() => api.setCaptionStyle(id, style)); }}
+              />
             </div>
-          ) : (
-            <p className="muted">{generateJob ? jobProgress(generateJob) : "Превью появится, когда у всех сцен будет озвучка"}</p>
           )}
-        </div>
-        <label className="row small muted">
-          <input type="checkbox" checked={safeZone} onChange={(e) => setSafeZone(e.target.checked)} /> Рамка safe-зоны
-        </label>
-      </section>
-
-      <aside className="card pane">
-        {scene ? (
-          <SceneInspector
-            key={scene.id}
-            scene={scene}
-            format={project.format}
-            {...(manifest ? { manifest } : {})}
-            {...(sceneJob ? { activeJob: sceneJob } : {})}
-            onChanged={() => void load()}
-          />
+        </Popover>
+        <button className="btn" aria-pressed={safeZone} onClick={() => setSafeZone((v) => !v)} title="Рамка зоны контента: снаружи — интерфейс платформы и субтитры">
+          <ScanLine {...ICON} />Safe-зона
+        </button>
+        {project.status === "failed" ? (
+          <button className="btn" onClick={() => act(() => api.retry(id))}><RotateCcw {...ICON} />Повторить генерацию</button>
+        ) : null}
+        {project.status === "stale" ? <span className="warn small row" style={{ gap: 4 }}><TriangleAlert size={14} strokeWidth={1.75} />MP4 устарел</span> : null}
+        {detail.render && project.status === "ready" ? (
+          <>
+            <button className="btn icon" disabled={Boolean(renderJob)} onClick={() => act(() => api.render(id))} aria-label="Экспортировать снова" title="Экспортировать снова">
+              <RotateCcw {...ICON} />
+            </button>
+            <a className="btn pri" href={videoUrl(id)}><Download {...ICON} />Скачать MP4</a>
+          </>
         ) : (
-          <p className="muted" style={{ padding: 16 }}>Сцен пока нет.</p>
+          <>
+            {detail.render ? <a className="btn ghost" href={videoUrl(id)}><Download {...ICON} />Скачать старый</a> : null}
+            <button className="btn pri" disabled={!manifest || Boolean(renderJob)} onClick={() => act(() => api.render(id))}>
+              <Upload {...ICON} />Экспорт MP4
+            </button>
+          </>
         )}
-      </aside>
-    </div>
+      </Topbar>
+
+      <div className="editor">
+        {barJob || error ? (
+          <div className="jobs-bar" role="status">
+            {barJob ? <span>{barJob.kind === "render" ? "Экспорт: " : ""}{jobProgress(barJob)}</span> : null}
+            {error ? <span className="error">{error}</span> : null}
+            {barJob ? <div className={`bar${barShare === undefined ? " indeterminate" : ""}`} style={{ width: `${(barShare ?? 0) * 100}%` }} /> : null}
+          </div>
+        ) : <div />}
+
+        <div className="editor-main">
+          <section className="stage" aria-label="Превью">
+            <div className="player-wrap">
+              {manifest ? (
+                <div className="player-stage" style={{ aspectRatio: `${manifest.width} / ${manifest.height}` }}>
+                  <VideoPlayer ref={attachPlayer} manifest={manifest} controls={false} />
+                  {safeZone ? (() => {
+                    // Зона контента формата: сюда валидатор укладывает блоки; снаружи — UI платформы и субтитры.
+                    const f = FORMATS[manifest.format];
+                    return (
+                      <div
+                        className="safe-zone"
+                        style={{
+                          top: `${(f.zone.top / f.height) * 100}%`,
+                          bottom: `${(f.zone.bottom / f.height) * 100}%`,
+                          left: `${(f.zone.side / f.width) * 100}%`,
+                          right: `${(f.zone.side / f.width) * 100}%`,
+                        }}
+                      />
+                    );
+                  })() : null}
+                </div>
+              ) : generateJob ? (
+                <GenerationProgress job={generateJob} format={project.format} topic={project.topic} large />
+              ) : (
+                <p className="stage-empty">{project.status === "failed" ? "Генерация не удалась" : "Превью появится, когда у всех сцен будет озвучка"}</p>
+              )}
+            </div>
+            {manifest ? (
+              <Transport
+                player={playerApi}
+                fps={manifest.fps}
+                total={manifest.totalDurationInFrames}
+                canPrev={selected > 0}
+                canNext={selected < scenes.length - 1}
+                onPrev={() => selectScene(selected - 1)}
+                onNext={() => selectScene(selected + 1)}
+              />
+            ) : null}
+          </section>
+
+          <aside className="inspector-pane" aria-label="Инспектор сцены">
+            {scene ? (
+              <SceneInspector
+                key={scene.id}
+                scene={scene}
+                count={scenes.length}
+                format={project.format}
+                {...(manifest ? { manifest } : {})}
+                {...(sceneJob ? { activeJob: sceneJob } : {})}
+                onChanged={() => void load()}
+                onSelect={setSelected}
+                act={act}
+                projectId={id}
+              />
+            ) : (
+              <p className="muted" style={{ padding: 16 }}>Сцен пока нет.</p>
+            )}
+          </aside>
+        </div>
+
+        <Timeline
+          {...(manifest ? { manifest } : {})}
+          scenes={scenes}
+          chapters={project.chapters}
+          selected={selected}
+          {...(busyScene !== undefined ? { busyScene } : {})}
+          player={playerApi}
+          onSelect={selectScene}
+        />
+      </div>
+    </>
   );
 }

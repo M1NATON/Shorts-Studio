@@ -19,6 +19,7 @@ export interface Project {
   researchedAt: string | null;
   minutes: number | null;
   theme: VideoTheme | null;
+  music: ProjectMusic | null;
   sources: { url: string; title: string; kind?: "web" | "news"; publishedAt?: string }[];
   chapters: { title: string; firstScene: number }[];
   thumbnailPath: string | null;
@@ -64,6 +65,15 @@ export interface Job {
   error: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProjectMusic {
+  track: string;
+  volume: number;
+}
+export interface MusicTrack {
+  file: string;
+  mood: string | null;
 }
 
 export type QueueJob = Job & { projectTitle: string | null };
@@ -134,6 +144,9 @@ export const api = {
   manifest: (id: string) => request<{ manifest: Manifest; hash: string }>(`/api/projects/${id}/manifest`),
   setCaptionStyle: (id: string, captionStyle: CaptionStyle) =>
     request<Project>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify({ captionStyle }) }),
+  setMusic: (id: string, music: ProjectMusic | null) =>
+    request<Project>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify({ music }) }),
+  music: () => request<MusicTrack[]>("/api/music"),
   deleteProject: (id: string) => request<void>(`/api/projects/${id}`, { method: "DELETE" }),
   duplicate: (id: string) => post<{ project: Project }>(`/api/projects/${id}/duplicate`),
   retry: (id: string) => post<{ job: Job }>(`/api/projects/${id}/retry`),

@@ -58,6 +58,14 @@ export function contrastRatio(foreground: string, background: string): number {
 /** Пороги читаемости для крупного текста на видео (WCAG AA для large text — 3:1). */
 export const CONTRAST_MIN = { text: 7, accent: 3.5, muted: 3 } as const;
 
+/**
+ * Настроение фоновой музыки. Трек с этим префиксом в имени (calm-….mp3) берётся
+ * из storage/music; модель выбирает настроение вместе с палитрой.
+ */
+export const MUSIC_MOODS = ["calm", "upbeat", "tech", "dramatic", "playful", "serious"] as const;
+export const MusicMoodSchema = z.enum(MUSIC_MOODS);
+export type MusicMood = z.infer<typeof MusicMoodSchema>;
+
 export const MotionProfileSchema = z.object({
   /**
    * Кривая входа как cubic-bezier. Модель задаёт характер: резкий вход с мягкой
@@ -100,6 +108,8 @@ export const VideoThemeSchema = z
     /** Насколько заметна фактура фона. */
     backdropOpacity: z.number().min(0.04).max(0.4),
     motion: MotionProfileSchema,
+    /** Необязательное: темы, сохранённые до музыки, остаются валидными. */
+    musicMood: MusicMoodSchema.optional(),
   })
   .superRefine((theme, ctx) => {
     const checks = [
@@ -142,4 +152,5 @@ export const DEFAULT_VIDEO_THEME: VideoTheme = {
   cornerRadius: 28,
   backdropOpacity: 0.18,
   motion: { easing: [0.16, 1, 0.3, 1], enterFrames: 12, staggerFrames: 3, travelPx: 34 },
+  musicMood: "calm",
 };

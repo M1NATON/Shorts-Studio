@@ -1,4 +1,4 @@
-import { DEFAULT_VIDEO_THEME, FONT_FAMILIES, VideoThemeSchema, type VideoTheme } from "@shorts/contracts";
+import { DEFAULT_VIDEO_THEME, FONT_FAMILIES, MUSIC_MOODS, VideoThemeSchema, type VideoTheme } from "@shorts/contracts";
 import { issuesOf, log, unwrapContent, withFeedback, type GenerationContext } from "./context.js";
 
 export const THEME_SYSTEM = [
@@ -12,7 +12,8 @@ export const THEME_SYSTEM = [
   '  "headingWeight": 600 | 700 | 800, "letterSpacing": -0.06..0.04 (em),',
   '  "cornerRadius": 0..36, "backdropOpacity": 0.04..0.4,',
   '  "motion": { "easing": [x1,y1,x2,y2] cubic-bezier, "enterFrames": 5..24,',
-  '    "staggerFrames": 1..10, "travelPx": 8..160 } }',
+  '    "staggerFrames": 1..10, "travelPx": 8..160 },',
+  `  "musicMood": one of ${MUSIC_MOODS.join(" | ")} (background music under the voice) }`,
   "",
   "Rules:",
   "- The palette must carry the topic: cold and metallic for industry, warm for human stories,",
@@ -22,6 +23,8 @@ export const THEME_SYSTEM = [
   "- Light backgrounds are allowed and welcome when they fit the topic.",
   "- Motion must match the tone: calm topics get long enterFrames and small travelPx,",
   "  urgent topics get short enterFrames and snappy easing.",
+  "- musicMood follows the same tone: calm for reflective topics, tech for science and gadgets,",
+  "  dramatic for conflict and disasters, serious for news and money, upbeat or playful for light ones.",
   `Example: ${JSON.stringify(DEFAULT_VIDEO_THEME)}`,
 ].join("\n");
 

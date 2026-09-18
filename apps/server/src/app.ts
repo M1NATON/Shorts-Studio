@@ -4,7 +4,7 @@
  * приходит через SSE (/api/events).
  */
 import { createReadStream, existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -21,7 +21,7 @@ import { fallbackStatement, presentationAt } from "@shorts/llm-core";
 import { z } from "zod";
 import type { ServerConfig } from "./config.js";
 import type { ProviderKind, ProviderStore } from "@shorts/db";
-import { saveManualVisual, type PipelineDeps } from "./pipeline.js";
+import { listMusic, saveManualVisual, type PipelineDeps } from "./pipeline.js";
 import type { Worker } from "./worker.js";
 
 // Не переданные формат, свежесть и длина берутся из предпочтений (Настройки).
@@ -47,7 +47,11 @@ const RegenerateBody = z.object({
 const RewriteBody = z.object({ instruction: z.string().trim().max(500).optional() });
 const NarrationBody = z.object({ narration: z.string().trim().min(1).max(320) });
 const VisualBody = z.object({ visual: z.unknown() });
-const ProjectPatchBody = z.object({ captionStyle: z.enum(["clean", "karaoke", "boxed", "outline"]) });
+const ProjectPatchBody = z.object({
+  captionStyle: z.enum(["clean", "karaoke", "boxed", "outline"]).optional(),
+  /** null — без музыки. Файл проверяется по списку storage/music, не по пути из запроса. */
+  music: z.object({ track: z.string().min(1), volume: z.number().min(0).max(1) }).nullable().optional(),
+});
 
 const MoveBody = z.object({ position: z.number().int().min(0) });
 const AddSceneBody = z.object({
@@ -115,6 +119,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     decorateReply: false,
   });
 
+  // Фоновая музыка: storage/music, в манифесте — "music/<файл>", staticFile даёт "/music/…".
+  await mkdir(path.join(deps.config.storageDir, "music"), { recursive: true });
+  await app.register(fastifyStatic, {
+    root: path.join(deps.config.storageDir, "music"),
+    prefix: "/music/",
+    decorateReply: false,
+  });
+
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof NotFoundError) return reply.code(404).send({ error: error.message });
     if (error instanceof NotReadyError) return reply.code(409).send({ error: error.message });
@@ -154,6 +166,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const audio = await deps.previewVoice(VoicePreviewBody.parse(request.body ?? {}));
     return reply.type("audio/wav").header("cache-control", "no-store").send(audio);
   });
+
+  app.get("/api/music", async () => listMusic(deps.config.storageDir));
 
   app.get("/api/preferences", async () => loadPreferences(repo));
   app.put("/api/preferences", async (request) => savePreferences(repo, request.body));
@@ -208,10 +222,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return { project, scenes, render: render ?? null, jobs };
   });
 
-  app.patch<{ Params: { id: string } }>("/api/projects/:id", async (request) => {
+  app.patch<{ Params: { id: string } }>("/api/projects/:id", async (request, reply) => {
     const project = await repo.requireProject(request.params.id);
     const body = ProjectPatchBody.parse(request.body);
-    await repo.setCaptionStyle(project.id, body.captionStyle);
+    if (body.music) {
+      const track = body.music.track;
+      if (!(await listMusic(deps.config.storageDir)).some((t) => t.file === track)) {
+        return reply.code(400).send({ error: `unknown music track: ${track}` });
+      }
+    }
+    if (body.captionStyle) await repo.setCaptionStyle(project.id, body.captionStyle);
+    if (body.music !== undefined) await repo.setMusic(project.id, body.music);
     events.emit({ type: "project", projectId: project.id });
     return repo.requireProject(project.id);
   });

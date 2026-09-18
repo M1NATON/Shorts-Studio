@@ -34,6 +34,7 @@ export const projects = sqliteTable(
     researchedAt: text("researched_at"),
     minutes: real("minutes"),
     theme: text("theme", { mode: "json" }),
+    music: text("music", { mode: "json" }),
     sources: text("sources", { mode: "json" }),
     /** Сводка источников: по ней пересобираются сцены без нового поиска. */
     brief: text("brief"),

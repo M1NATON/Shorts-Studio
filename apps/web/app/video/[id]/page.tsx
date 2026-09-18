@@ -2,11 +2,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { Captions, Download, ExternalLink, Library, RotateCcw, ScanLine, TriangleAlert, Upload } from "lucide-react";
+import { Captions, Download, ExternalLink, Library, Music, RotateCcw, ScanLine, TriangleAlert, Upload } from "lucide-react";
 import type { PlayerRef } from "@remotion/player";
 import { FORMATS, type CaptionStyle, type Manifest } from "@shorts/contracts";
 import { CaptionPicker } from "@/components/CaptionPicker";
 import { GenerationProgress } from "@/components/GenerationProgress";
+import { MusicPicker, trackLabel } from "@/components/MusicPicker";
 import { Popover } from "@/components/Popover";
 import { SceneInspector } from "@/components/SceneInspector";
 import { Topbar } from "@/components/Topbar";
@@ -168,6 +169,13 @@ export default function VideoEditorPage() {
               />
             </div>
           )}
+        </Popover>
+        <Popover
+          label={project.music ? `Музыка: ${trackLabel(project.music.track)}` : "Музыка: нет"}
+          menuClass="menu wide"
+          button={<><Music {...ICON} />{project.music ? "Музыка" : "Без музыки"}</>}
+        >
+          {() => <MusicPicker value={project.music} onChange={(music) => act(() => api.setMusic(id, music))} />}
         </Popover>
         <button className="btn" aria-pressed={safeZone} onClick={() => setSafeZone((v) => !v)} title="Рамка зоны контента: снаружи — интерфейс платформы и субтитры">
           <ScanLine {...ICON} />Safe-зона

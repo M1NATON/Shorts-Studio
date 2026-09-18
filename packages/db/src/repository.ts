@@ -49,6 +49,9 @@ export interface SourceRecord {
   readonly excerpt?: string;
 }
 
+const ProjectMusicSchema = z.object({ track: z.string().min(1), volume: z.number().min(0).max(1) });
+export type ProjectMusic = z.infer<typeof ProjectMusicSchema>;
+
 export interface ProjectRecord {
   readonly id: string;
   readonly topic: string;
@@ -61,6 +64,8 @@ export interface ProjectRecord {
   readonly researchedAt: string | null;
   readonly minutes: number | null;
   readonly theme: VideoTheme | null;
+  /** Фоновая музыка: файл из storage/music и громкость; null — без музыки. */
+  readonly music: ProjectMusic | null;
   readonly sources: SourceRecord[];
   readonly brief: string | null;
   readonly chapters: { title: string; firstScene: number }[];
@@ -141,6 +146,7 @@ function toProject(row: ProjectRow): ProjectRecord {
     ...row,
     format: row.format,
     theme: row.theme ? VideoThemeSchema.parse(row.theme) : null,
+    music: row.music ? ProjectMusicSchema.parse(row.music) : null,
     sources: SourcesSchema.parse(row.sources ?? []),
     chapters: ChaptersSchema.parse(row.chapters ?? []),
   };
@@ -302,6 +308,13 @@ export function createRepository(database: Database) {
     },
 
     /** Стиль субтитров меняет MP4, поэтому готовый ролик становится stale. */
+    async setMusic(id: string, music: ProjectMusic | null): Promise<void> {
+      await database.transaction(async (tx) => {
+        await tx.update(projects).set({ music }).where(eq(projects.id, id));
+        await markEdited(tx, id);
+      });
+    },
+
     async setCaptionStyle(id: string, captionStyle: CaptionStyle): Promise<void> {
       await database.transaction(async (tx) => {
         await tx.update(projects).set({ captionStyle }).where(eq(projects.id, id));
@@ -470,6 +483,7 @@ export function createRepository(database: Database) {
         fps,
         format: project.format,
         captionStyle: project.captionStyle,
+        ...(project.music ? { music: { src: `music/${project.music.track}`, volume: project.music.volume } } : {}),
         width: size.width,
         height: size.height,
         totalDurationInFrames,

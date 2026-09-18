@@ -319,6 +319,33 @@ describe("API", () => {
     expect((await app.inject({ url: "/api/projects?status=draft" })).json().total).toBe(2);
   });
 
+  it("музыка: трек по настроению темы, смена в редакторе, чужой файл — 400, пауза между сценами", async () => {
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(path.join(dir, "music"), { recursive: true });
+    for (const file of ["calm-drift.mp3", "tech-pulse.mp3", "notes.txt"]) await writeFile(path.join(dir, "music", file), "x");
+    expect((await app.inject({ url: "/api/music" })).json()).toEqual([
+      { file: "calm-drift.mp3", mood: "calm" },
+      { file: "tech-pulse.mp3", mood: "tech" },
+    ]);
+
+    // Заглушка модели не отдаёт тему → дефолтная, её настроение calm.
+    const { id } = await createGenerated();
+    const manifest = async () => (await app.inject({ url: `/api/projects/${id}/manifest` })).json().manifest;
+    const first = await manifest();
+    expect(first.music).toEqual({ src: "music/calm-drift.mp3", volume: 0.12 });
+    // Озвучка 2 с = 60 кадров, плюс 0.35 с паузы у всех сцен, кроме последней.
+    expect(first.scenes[0].durationInFrames).toBe(71);
+    expect(first.scenes.at(-1).durationInFrames).toBe(60);
+
+    const patch = (music: unknown) => app.inject({ method: "PATCH", url: `/api/projects/${id}`, payload: { music } });
+    expect((await patch({ track: "../studio.sqlite", volume: 0.2 })).statusCode).toBe(400);
+    expect((await patch({ track: "tech-pulse.mp3", volume: 0.2 })).statusCode).toBe(200);
+    expect((await manifest()).music).toEqual({ src: "music/tech-pulse.mp3", volume: 0.2 });
+    expect((await patch(null)).statusCode).toBe(200);
+    expect((await manifest()).music).toBeUndefined();
+    expect((await app.inject({ url: "/music/calm-drift.mp3" })).statusCode).toBe(200);
+  });
+
   it("панель очереди: порядок, название проекта, отмена только ждущей задачи", async () => {
     await worker.stop();
     await app.inject({ method: "POST", url: "/api/projects/batch", payload: { topics: ["Topic one", "Topic two"] } });

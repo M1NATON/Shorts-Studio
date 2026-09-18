@@ -36,6 +36,15 @@ export type WordTiming = z.infer<typeof WordTimingSchema>;
 export const CaptionStyleSchema = z.enum(["clean", "karaoke", "boxed", "outline"]);
 export type CaptionStyle = z.infer<typeof CaptionStyleSchema>;
 
+/** Громкость музыки под голосом по умолчанию: около −18 dB, голос остаётся главным. */
+export const DEFAULT_MUSIC_VOLUME = 0.12;
+
+export const MusicSchema = z.object({
+  src: z.string().min(1),
+  volume: z.number().min(0).max(1),
+});
+export type Music = z.infer<typeof MusicSchema>;
+
 export const ManifestSceneSchema = z.object({
   sceneId: z.string().min(1),
   intent: SceneIntentSchema.optional(),
@@ -100,6 +109,8 @@ export const ManifestSchema = z
   /** Дефолт shorts: манифесты до 16:9 остаются валидными без смены версии. */
   format: VideoFormatSchema.default("shorts"),
   captionStyle: CaptionStyleSchema.default("karaoke"),
+  /** Фоновая музыка под голосом; нет поля — ролик без музыки. src — относительно storage. */
+  music: MusicSchema.optional(),
   })
   .superRefine((manifest, ctx) => {
     const size = FORMATS[manifest.format];

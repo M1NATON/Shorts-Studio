@@ -97,4 +97,6 @@ export const MIGRATIONS: readonly string[] = [
   );`,
   // 4: пачка вариантов кадра (id задачи пересборки). Только добавление nullable-колонки.
   `ALTER TABLE scene_versions ADD COLUMN batch_id TEXT;`,
+  // 5: фоновая музыка проекта (JSON: файл из storage/music и громкость). NULL — без музыки.
+  `ALTER TABLE projects ADD COLUMN music TEXT;`,
 ];

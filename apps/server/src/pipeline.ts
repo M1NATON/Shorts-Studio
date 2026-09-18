@@ -6,10 +6,19 @@
  * Правило точечной правки: меняется одна сцена — перегенерируется, озвучивается
  * и пересчитывается только она. Озвучка переиспользуется по хешу текста и голоса.
  */
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { visualSpecSchemaFor, type Manifest, type SceneIntent, type SceneVisualSpec } from "@shorts/contracts";
+import {
+  DEFAULT_MUSIC_VOLUME,
+  MUSIC_MOODS,
+  visualSpecSchemaFor,
+  type Manifest,
+  type MusicMood,
+  type SceneIntent,
+  type SceneVisualSpec,
+} from "@shorts/contracts";
 import {
   audioHash,
   projectPaths,
@@ -120,6 +129,34 @@ function sourcesOf(project: ProjectRecord): ResearchSource[] {
   return project.sources.filter((s) => s.excerpt).map((s) => ({ url: s.url, title: s.title, excerpt: s.excerpt ?? "", kind: s.kind ?? "web", ...(s.publishedAt ? { publishedAt: s.publishedAt } : {}) }));
 }
 
+export interface MusicTrack {
+  readonly file: string;
+  readonly mood: MusicMood | null;
+}
+
+/** Треки из storage/music; настроение — префикс имени файла (calm-drift.mp3). */
+export async function listMusic(storageDir: string): Promise<MusicTrack[]> {
+  const files = await readdir(path.join(storageDir, "music")).catch(() => [] as string[]);
+  return files
+    .filter((file) => /\.(mp3|ogg|wav|m4a)$/i.test(file))
+    .sort()
+    .map((file) => {
+      const prefix = file.split("-")[0]!.toLowerCase();
+      return { file, mood: (MUSIC_MOODS as readonly string[]).includes(prefix) ? (prefix as MusicMood) : null };
+    });
+}
+
+/**
+ * Трек под настроение темы. Выбор детерминирован по id проекта: повторная сборка
+ * того же ролика даёт тот же трек, а разные ролики одного настроения — разные.
+ */
+export function pickTrack(tracks: readonly MusicTrack[], mood: MusicMood, seed: string): string | undefined {
+  const matching = tracks.filter((t) => t.mood === mood);
+  const pool = matching.length ? matching : tracks;
+  if (!pool.length) return undefined;
+  return pool[createHash("sha1").update(seed).digest().readUInt32BE(0) % pool.length]!.file;
+}
+
 export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<unknown> {
   const project = await deps.repo.requireProject(job.projectId!);
   const report = progressOf(deps, job);
@@ -145,6 +182,8 @@ export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<u
     chapters: "chapters" in result ? (result as { chapters: { title: string; firstScene: number }[] }).chapters : [],
     unverified: result.unverified,
   });
+  const track = pickTrack(await listMusic(deps.storageDir), result.theme.musicMood ?? "calm", project.id);
+  await deps.repo.setMusic(project.id, track ? { track, volume: DEFAULT_MUSIC_VOLUME } : null);
   deps.events.emit({ type: "project", projectId: project.id });
 
   await voiceMissing(deps, project.id, report);

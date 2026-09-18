@@ -19,6 +19,8 @@ const config: NextConfig = {
       { source: "/api/:path*", destination: `${API}/api/:path*` },
       // staticFile() в плеере даёт "/projects/<id>/audio/<hash>.wav".
       { source: "/projects/:path*", destination: `${API}/projects/:path*` },
+      // Фоновая музыка: "/music/<файл>" из storage/music.
+      { source: "/music/:path*", destination: `${API}/music/:path*` },
     ];
   },
 };

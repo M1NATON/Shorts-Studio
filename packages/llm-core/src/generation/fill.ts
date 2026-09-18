@@ -17,6 +17,7 @@ import {
 import { extractNumbers } from "../fact-check.js";
 import { dateRule, issuesOf, log, unwrapContent, withFeedback, type GenerationContext } from "./context.js";
 import {
+  dataHeroesFor,
   DATA_HEROES,
   heroAlternatives,
   SKELETONS,
@@ -163,6 +164,20 @@ export function compositionIssues(
   if (narration !== undefined && !narrationHasFigure(narration)) {
     const data = blocks.find((b) => DATA_BLOCKS.has(b.block));
     if (data) issues.push(`the narration has no figure: remove the "${data.block}" block and show the idea without numbers`);
+  }
+  // Кольцо и столбцы честны только части фраз: кольцо — доле, столбцы — нескольким числам.
+  // Иначе модель рисовала кольцо «99%» на фразе про «+$500 к цене» — число есть, доли нет.
+  if (narration !== undefined) {
+    const fits = new Set(dataHeroesFor(narration));
+    for (const block of blocks) {
+      if (block.block !== "ring" && block.block !== "bars") continue;
+      if (fits.has(block.block)) continue;
+      issues.push(
+        block.block === "ring"
+          ? 'the narration has no share: replace the "ring" block with a "number" block'
+          : 'the narration does not have several numbers: replace the "bars" block with a "number" block',
+      );
+    }
   }
   if (!plan.hero) return issues;
   const allowed = heroAlternatives(plan.hero);

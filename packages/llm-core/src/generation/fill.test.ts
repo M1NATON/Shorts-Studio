@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fillComposed, fillScene } from "./fill.js";
+import { compositionIssues, fillComposed, fillScene } from "./fill.js";
 import type { ScenePlan } from "./plan.js";
 import { fakeLlm, testContext } from "./test-helpers.js";
 
@@ -89,5 +89,20 @@ describe("выдуманные числа", () => {
     expect(llm.calls[0]!.system).toContain("no figure");
     expect(llm.calls[1]!.user).toContain("the narration has no figure");
     expect(visual.kind === "composed" && visual.blocks[0]!.block).toBe("icon");
+  });
+});
+
+describe("кольцо без доли в озвучке", () => {
+  const numberPlan: ScenePlan = { kind: "composed", fallbackKind: "stat-counter", hero: "number", presentation };
+  const ringBlocks = [{ block: "ring", percent: 99, label: "Price drop", at: 0 }, { block: "caption", text: "This year", at: 0.4 }];
+
+  it("нет доли в тексте — кольцо получает замечание, а не проходит как число", () => {
+    const issues = compositionIssues(ringBlocks as never, numberPlan, true, "Battery prices fell another $500 per kWh this year.");
+    expect(issues.some((i) => i.includes('"ring"'))).toBe(true);
+  });
+
+  it("доля есть в тексте — кольцо замечаний не получает", () => {
+    const issues = compositionIssues(ringBlocks as never, numberPlan, true, "Battery prices fell 20% this year.");
+    expect(issues.some((i) => i.includes('"ring"'))).toBe(false);
   });
 });

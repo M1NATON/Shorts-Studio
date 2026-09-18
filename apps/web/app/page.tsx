@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CreateForm } from "@/components/CreateForm";
 import { ProjectTile } from "@/components/ProjectTile";
@@ -18,6 +19,14 @@ export default function LibraryPage() {
   const [jobs, setJobs] = useState<Record<string, Job>>({});
   const [error, setError] = useState<string>();
   const limit = useRef(PAGE);
+  // Первый запуск: без модели и озвучки ролик не собрать — сразу ведём в Настройки.
+  const [missing, setMissing] = useState<string[]>([]);
+  useEffect(() => {
+    api.settings().then((s) => setMissing([
+      ...(s.llm.configured ? [] : ["модель"]),
+      ...(s.tts.configured ? [] : ["озвучку"]),
+    ])).catch(() => undefined);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -54,6 +63,12 @@ export default function LibraryPage() {
 
   return (
     <main className="page">
+      {missing.length > 0 ? (
+        <p className="card" role="alert" style={{ padding: 12 }}>
+          Чтобы создавать ролики, настройте {missing.join(" и ")}: <Link href="/settings">Настройки → Провайдеры</Link>.
+          Ключи хранятся на этом компьютере, в браузер не передаются.
+        </p>
+      ) : null}
       <CreateForm onCreated={() => void load()} />
       <div className="row" style={{ marginBottom: 18 }}>
         <input className="input" style={{ minWidth: 280 }} placeholder="Поиск по названию и теме" value={search} onChange={(e) => setSearch(e.target.value)} />

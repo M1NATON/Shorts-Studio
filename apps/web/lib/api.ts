@@ -38,6 +38,8 @@ export interface SceneVersion {
   unverifiedNumbers: string[];
   origin: "ai" | "manual" | "revoice" | "rewrite" | "variant";
   note: string | null;
+  /** Пачка вариантов одной пересборки. */
+  batchId: string | null;
   createdAt: string;
 }
 
@@ -79,6 +81,15 @@ export interface ProviderInfo {
   fields: Record<string, string | null>;
 }
 
+/** Значения по умолчанию для новых роликов (Настройки → Предпочтения). */
+export interface Preferences {
+  format: VideoFormat;
+  minutes: number;
+  freshness: Freshness | "auto";
+  captionStyle: CaptionStyle;
+  research: boolean;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -108,7 +119,7 @@ export const api = {
     for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value));
     return request<{ items: Project[]; total: number }>(`/api/projects?${params}`);
   },
-  createProjects: (input: { topics: string[]; format: VideoFormat; freshness?: Freshness; minutes?: number }) =>
+  createProjects: (input: { topics: string[]; format?: VideoFormat; freshness?: Freshness; minutes?: number }) =>
     input.topics.length === 1
       ? post<{ project: Project }>("/api/projects", { ...input, topic: input.topics[0], topics: undefined }).then((r) => [r.project])
       : post<{ items: { project: Project }[] }>("/api/projects/batch", input).then((r) => r.items.map((i) => i.project)),
@@ -135,6 +146,19 @@ export const api = {
   saveSettings: (kind: ProviderKind, fields: Record<string, string>) =>
     request<ProviderInfo>(`/api/settings/${kind}`, { method: "PUT", body: JSON.stringify(fields) }),
   testSettings: (kind: ProviderKind) => post<{ ok: boolean; message: string }>(`/api/settings/${kind}/test`),
+  /** Образец голоса: WAV как Blob. Голос и модель — из формы, ключ сервер берёт сохранённый. */
+  previewVoice: async (input: { referenceId?: string; model?: string }) => {
+    const res = await fetch("/api/settings/tts/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) throw new ApiError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${res.status}`, res.status);
+    return res.blob();
+  },
+  preferences: () => request<Preferences>("/api/preferences"),
+  savePreferences: (patch: Partial<Preferences>) =>
+    request<Preferences>("/api/preferences", { method: "PUT", body: JSON.stringify(patch) }),
   moveScene: (sceneId: string, position: number) => post<{ ok: true }>(`/api/scenes/${sceneId}/move`, { position }),
   duplicateScene: (sceneId: string) => post<{ sceneId: string }>(`/api/scenes/${sceneId}/duplicate`),
   deleteScene: (sceneId: string) => request<void>(`/api/scenes/${sceneId}`, { method: "DELETE" }),

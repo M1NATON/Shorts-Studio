@@ -1,26 +1,20 @@
 /**
  * Вертикальный срез пайплайна: тема → сценарий (LLM) → озвучка (Fish) → манифест → MP4.
- * Запуск: set -a; . ./.env; set +a; node scripts/make-video.mjs "Тема" [--freshness=current|evergreen]
+ * Запуск: node scripts/make-video.mjs "Тема" [--freshness=current|evergreen]
  *   [--format=shorts|landscape] [--minutes=3]
  * Без --freshness режим поиска выбирает модель по теме. --minutes только для landscape.
  *
  * Генерация сценария живёт в @shorts/llm-core (generateScript): поиск и дизайн,
  * план тезисов, раскладка кодом, наполнение по сцене. Здесь только обёртка:
- * ключи из окружения, озвучка, манифест, рендер.
+ * ключи из Настроек студии (или .env), озвучка, манифест, рендер.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { FORMATS, ManifestSchema } from "@shorts/contracts";
-import {
-  assembleFishStream,
-  mapTimingsToOriginalText,
-  parseSseEvents,
-  probeDurationSec,
-  recomputeTimeline,
-} from "@shorts/media-core";
+import { recomputeTimeline, voiceNarration } from "@shorts/media-core";
 import { renderVideo } from "@shorts/remotion";
 import { generateLongScript, generateScript } from "@shorts/llm-core";
-import { cliContext } from "./lib/cli-context.mjs";
+import { cliContext, cliTts } from "./lib/cli-context.mjs";
 
 const args = process.argv.slice(2);
 const TOPIC = args.find((a) => !a.startsWith("--")) ?? "Will AI actually rebel in 2026";
@@ -35,39 +29,19 @@ if (!(MINUTES > 0 && MINUTES <= 20)) throw new Error("--minutes: от 1 до 20"
 const STORAGE = path.resolve("storage");
 const FPS = 30;
 
+const tts = await cliTts();
+
 async function synthesize(scene) {
-  const res = await fetch("https://api.fish.audio/v1/tts/stream/with-timestamp", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.FISH_API_KEY}`,
-      "Content-Type": "application/json",
-      model: process.env.FISH_MODEL,
-    },
-    body: JSON.stringify({
-      text: scene.narration,
-      reference_id: process.env.FISH_REFERENCE_ID,
-      format: "wav",
-    }),
-    signal: AbortSignal.timeout(180000),
-  });
-  if (!res.ok) throw new Error(`Fish HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const { audio, words } = assembleFishStream(parseSseEvents(await res.text()));
-
   const relPath = path.join("audio", `${scene.id}.wav`);
-  const absPath = path.join(STORAGE, relPath);
-  await mkdir(path.dirname(absPath), { recursive: true });
-  await writeFile(absPath, audio);
-
-  const durationSec = await probeDurationSec(absPath);
-  const mapped = mapTimingsToOriginalText(scene.narration, words);
-  return { relPath, durationSec, words: mapped.words, unmatched: mapped.unmatched };
+  const result = await voiceNarration(scene.narration, path.join(STORAGE, relPath), tts);
+  return { relPath, ...result };
 }
 
 console.log(`\n1/4 Сценарий (${FORMAT}${FORMAT === "landscape" ? `, ~${MINUTES} мин` : ""}): "${TOPIC}"`);
 const generated =
   FORMAT === "landscape"
-    ? await generateLongScript(cliContext(), TOPIC, { freshness: freshnessArg, minutes: MINUTES })
-    : await generateScript(cliContext(), TOPIC, { freshness: freshnessArg });
+    ? await generateLongScript(await cliContext(), TOPIC, { freshness: freshnessArg, minutes: MINUTES })
+    : await generateScript(await cliContext(), TOPIC, { freshness: freshnessArg });
 const { script, sources, brief, theme, unverified, freshness, researchedAt } = generated;
 if (generated.chapters) {
   console.log(`  главы: ${generated.chapters.map((c) => `${c.firstScene + 1}. ${c.title}`).join(" · ")}`);
@@ -117,7 +91,7 @@ const manifest = ManifestSchema.parse({
     audioDurationSec: audio[i].durationSec,
     audioSrc: audio[i].relPath,
     words: audio[i].words,
-    timingSource: "native",
+    timingSource: audio[i].timingSource,
     unverifiedNumbers: unverified[i],
   })),
 });

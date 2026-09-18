@@ -16,7 +16,7 @@ import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { StudioEvents } from "./events.js";
 import type { PipelineDeps } from "./pipeline.js";
-import { createProviderStore } from "./providers.js";
+import { createProviderStore } from "@shorts/db";
 import { startWorker } from "./worker.js";
 
 const BEATS = [
@@ -106,8 +106,9 @@ const worker = startWorker(deps, { pollMs: 300, log: (m) => console.error(m) });
 const app = await buildApp({
   ...deps,
   config,
-  providers: createProviderStore(repo, config),
+  providers: createProviderStore(repo, config.envProviders),
   testProvider: async (kind) => ({ ok: true, message: `e2e ${kind}` }),
+  previewVoice: async () => Buffer.from("RIFF"),
   worker,
 });
 await app.listen({ host: config.host, port: config.port });

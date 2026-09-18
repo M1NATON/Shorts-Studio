@@ -11,7 +11,7 @@ import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { StudioEvents } from "./events.js";
 import { JobError, type PipelineDeps } from "./pipeline.js";
-import { createProviderStore, type ProviderKind } from "./providers.js";
+import { createProviderStore, loadPreferences, type ProviderKind } from "@shorts/db";
 import { startWorker } from "./worker.js";
 
 const config = loadConfig();
@@ -19,7 +19,7 @@ mkdirSync(config.storageDir, { recursive: true });
 const database = openDatabase(config.dbPath);
 const repo = createRepository(database);
 const events = new StudioEvents();
-const providers = createProviderStore(repo, config);
+const providers = createProviderStore(repo, config.envProviders);
 
 const interrupted = await repo.failInterruptedJobs();
 if (interrupted > 0) console.log(`незавершённых задач после рестарта: ${interrupted} → failed`);
@@ -40,14 +40,14 @@ const deps: PipelineDeps = {
   events,
   storageDir: config.storageDir,
   generationContext: async (onProgress) => {
-    const [llm, { search }] = await Promise.all([requireLlm(), providers.current()]);
+    const [llm, { search }, prefs] = await Promise.all([requireLlm(), providers.current(), loadPreferences(repo)]);
     return {
       llm: createOpenAiCompatibleClient(llm),
       today: todayIso(),
       concurrency: 2,
       onProgress,
       log: (m) => console.log(`  ${m}`),
-      ...(search ? { firecrawlApiKey: search.apiKey } : {}),
+      ...(search && prefs.research ? { firecrawlApiKey: search.apiKey } : {}),
     };
   },
   voice: async (narration, absPath) => voiceNarration(narration, absPath, await requireTts()),
@@ -81,8 +81,19 @@ async function testProvider(kind: ProviderKind): Promise<{ ok: boolean; message:
   return { ok: true, message: `Поиск работает: ${found.length} результат(ов)` };
 }
 
+async function previewVoice(input: { text?: string; referenceId?: string; model?: string }): Promise<Buffer> {
+  const tts = await requireTts();
+  const { audio } = await synthesizeFish(input.text ?? "This is how your videos will sound.", {
+    ...tts,
+    ...(input.referenceId ? { referenceId: input.referenceId } : {}),
+    ...(input.model ? { model: input.model } : {}),
+    timeoutMs: 60000,
+  });
+  return Buffer.from(audio);
+}
+
 const worker = startWorker(deps, { log: (m) => console.error(m) });
-const app = await buildApp({ ...deps, config, providers, testProvider, worker });
+const app = await buildApp({ ...deps, config, providers, testProvider, previewVoice, worker });
 await app.listen({ host: config.host, port: config.port });
 console.log(`Shorts Studio API: http://${config.host}:${config.port}`);
 

@@ -7,7 +7,7 @@ import { FORMATS, type Manifest } from "@shorts/contracts";
 import { SceneInspector } from "@/components/SceneInspector";
 import { api, videoUrl, type Job, type ProjectDetail } from "@/lib/api";
 import { useStudioEvents } from "@/lib/events";
-import { formatDate, jobProgress, STATUS_HINT, STATUS_LABEL } from "@/lib/format";
+import { formatDate, jobProgress, STATUS_HINT, STATUS_LABEL, CAPTION_LABEL } from "@/lib/format";
 
 // Плеер только в браузере: Remotion трогает window при импорте.
 const VideoPlayer = dynamic(() => import("@/components/VideoPlayer").then((m) => m.VideoPlayer), { ssr: false });
@@ -164,10 +164,9 @@ export default function VideoEditorPage() {
           <label className="row small muted" title="Меняет MP4 — после смены ролик нужно экспортировать заново">
             Субтитры
             <select className="select" value={project.captionStyle} onChange={(e) => void api.setCaptionStyle(id, e.target.value as typeof project.captionStyle).then(load)}>
-              <option value="karaoke">караоке</option>
-              <option value="clean">чистые</option>
-              <option value="boxed">на плашке</option>
-              <option value="outline">с обводкой</option>
+              {Object.entries(CAPTION_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </label>
           {project.status === "failed" ? <button className="btn" onClick={() => void api.retry(id).then(load)}>Повторить генерацию</button> : null}

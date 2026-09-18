@@ -88,6 +88,7 @@ export interface SceneVersionRecord {
   readonly unverifiedNumbers: string[];
   readonly origin: VersionOrigin;
   readonly note: string | null;
+  readonly batchId: string | null;
   readonly createdAt: string;
 }
 
@@ -165,6 +166,7 @@ function toVersion(row: VersionRow): SceneVersionRecord {
     unverifiedNumbers: z.array(z.string()).catch([]).parse(row.unverifiedNumbers ?? []),
     origin: row.origin,
     note: row.note,
+    batchId: row.batchId,
     createdAt: row.createdAt,
   };
 }
@@ -210,6 +212,7 @@ export interface NewVersion {
   readonly unverifiedNumbers?: string[];
   readonly origin: VersionOrigin;
   readonly note?: string | null;
+  readonly batchId?: string | null;
 }
 
 export function createRepository(database: Database) {
@@ -254,6 +257,7 @@ export function createRepository(database: Database) {
       format: VideoFormat;
       freshness?: Freshness;
       minutes?: number;
+      captionStyle?: CaptionStyle;
     }): Promise<ProjectRecord> {
       const id = randomUUID();
       await db.insert(projects).values({
@@ -263,6 +267,7 @@ export function createRepository(database: Database) {
         status: "generating",
         freshnessRequested: input.freshness ?? null,
         minutes: input.minutes ?? null,
+        ...(input.captionStyle ? { captionStyle: input.captionStyle } : {}),
       });
       return requireProject(id);
     },
@@ -393,6 +398,7 @@ export function createRepository(database: Database) {
           unverifiedNumbers: input.unverifiedNumbers ?? [],
           origin: input.origin,
           note: input.note ?? null,
+          batchId: input.batchId ?? null,
           createdAt: stamp(),
         });
         if (options.makeCurrent ?? true) {

@@ -1,4 +1,15 @@
+import type { CaptionStyle } from "@shorts/contracts";
 import type { Job, ProjectStatus } from "./api";
+
+/** Длины 16:9 в минутах — одинаковый список в форме создания и в Предпочтениях. */
+export const MINUTES_OPTIONS = [2, 3, 5, 8, 10, 15] as const;
+
+export const CAPTION_LABEL: Record<CaptionStyle, string> = {
+  karaoke: "караоке",
+  clean: "чистые",
+  boxed: "на плашке",
+  outline: "с обводкой",
+};
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
   generating: "Генерация",

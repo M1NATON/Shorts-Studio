@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { VideoFormat } from "@shorts/contracts";
 import { api, ApiError, type Freshness } from "@/lib/api";
+import { MINUTES_OPTIONS } from "@/lib/format";
 
 /**
  * Создание ролика. Несколько тем — по одной на строку: они встают в очередь и
@@ -14,6 +15,14 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
   const [minutes, setMinutes] = useState(3);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  // Начальные значения — из Настроек → Предпочтения; здесь их можно поменять для одного запуска.
+  useEffect(() => {
+    api.preferences().then((p) => {
+      setFormat(p.format);
+      setFreshness(p.freshness);
+      setMinutes(p.minutes);
+    }).catch(() => undefined);
+  }, []);
   const topics = text.split("\n").map((t) => t.trim()).filter((t) => t.length >= 3);
 
   async function submit() {
@@ -56,7 +65,7 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
           <label className="row small muted">
             Длина
             <select className="select" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
-              {[2, 3, 5, 8, 10, 15].map((m) => (
+              {MINUTES_OPTIONS.map((m) => (
                 <option key={m} value={m}>{m} мин</option>
               ))}
             </select>

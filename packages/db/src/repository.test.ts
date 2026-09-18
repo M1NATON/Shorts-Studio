@@ -3,6 +3,7 @@ import { getTableColumns, getTableName } from "drizzle-orm";
 import { DEFAULT_VIDEO_THEME, ManifestSchema, type Script } from "@shorts/contracts";
 import { openDatabase, type Database } from "./client.js";
 import { audioHash, createRepository, NotReadyError, projectPaths, type Repository } from "./repository.js";
+import { MIGRATIONS } from "./migrations.js";
 import * as schema from "./schema.js";
 
 const visual = (text: string) => ({ kind: "hook-statement", text }) as const;
@@ -60,7 +61,7 @@ describe("миграции", () => {
   });
 
   it("повторное открытие не применяет миграции заново", () => {
-    expect(Number((database.raw.prepare("PRAGMA user_version").get() as { user_version: number }).user_version)).toBe(3);
+    expect(Number((database.raw.prepare("PRAGMA user_version").get() as { user_version: number }).user_version)).toBe(MIGRATIONS.length);
   });
 });
 

@@ -95,4 +95,6 @@ export const MIGRATIONS: readonly string[] = [
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );`,
+  // 4: пачка вариантов кадра (id задачи пересборки). Только добавление nullable-колонки.
+  `ALTER TABLE scene_versions ADD COLUMN batch_id TEXT;`,
 ];

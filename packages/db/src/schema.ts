@@ -80,6 +80,8 @@ export const sceneVersions = sqliteTable(
     origin: text("origin", { enum: VERSION_ORIGINS }).notNull(),
     /** Пожелание пользователя или подпись варианта — видно в истории версий. */
     note: text("note"),
+    /** Варианты из одной пересборки: выбор одного закрывает всю пачку. */
+    batchId: text("batch_id"),
     createdAt: text("created_at").notNull().default(now),
   },
   (t) => [index("versions_scene_idx").on(t.sceneId, t.createdAt)],

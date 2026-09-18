@@ -11,7 +11,7 @@ import { loadConfig } from "./config.js";
 import { StudioEvents, type StudioEvent } from "./events.js";
 import type { PipelineDeps } from "./pipeline.js";
 import { startWorker, type Worker } from "./worker.js";
-import { createProviderStore } from "./providers.js";
+import { createProviderStore } from "@shorts/db";
 
 /** Фальшивый ключ: проверяем, что он нигде не всплывает в ответах API. */
 const SECRET = "sk-test-0123456789abcdef-SECRET";
@@ -81,8 +81,9 @@ beforeEach(async () => {
   app = await buildApp({
     ...deps,
     config,
-    providers: createProviderStore(repo, config),
+    providers: createProviderStore(repo, config.envProviders),
     testProvider: async (kind) => ({ ok: kind === "llm", message: kind }),
+    previewVoice: async (input) => Buffer.from(`RIFF:${input.referenceId ?? "saved"}`),
     worker,
   });
 });
@@ -102,6 +103,29 @@ async function createGenerated() {
 }
 
 describe("API", () => {
+  it("предпочтения: по умолчанию, частичное сохранение, применяются к новому ролику", async () => {
+    expect((await app.inject({ url: "/api/preferences" })).json()).toEqual({
+      format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true,
+    });
+    const bad = await app.inject({ method: "PUT", url: "/api/preferences", payload: { captionStyle: "neon" } });
+    expect(bad.statusCode).toBe(400);
+    const saved = await app.inject({ method: "PUT", url: "/api/preferences", payload: { format: "landscape", minutes: 5, captionStyle: "boxed" } });
+    expect(saved.json()).toMatchObject({ format: "landscape", minutes: 5, captionStyle: "boxed", research: true });
+
+    const created = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps explained" } });
+    expect(created.json().project).toMatchObject({ format: "landscape", minutes: 5, captionStyle: "boxed" });
+    const explicit = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps short", format: "shorts" } });
+    expect(explicit.json().project).toMatchObject({ format: "shorts", minutes: null });
+    await worker.idle();
+  });
+
+  it("образец голоса: WAV, голос из формы подставляется", async () => {
+    const res = await app.inject({ method: "POST", url: "/api/settings/tts/preview", payload: { referenceId: "voice-2" } });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toBe("audio/wav");
+    expect(res.body).toBe("RIFF:voice-2");
+  });
+
   it("настройки: ключ из .env виден только маской, сохранение из UI без ключа оставляет прежний", async () => {
     const res = await app.inject({ url: "/api/settings" });
     expect(res.json().llm).toMatchObject({ configured: true, source: "env", fields: { apiKey: "••••CRET", model: "env-model" } });

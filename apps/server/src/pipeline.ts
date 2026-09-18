@@ -240,6 +240,7 @@ export async function runRegenerateScene(deps: PipelineDeps, job: JobRecord): Pr
         audio: scene.version.audio,
         unverifiedNumbers: unverified,
         origin: "variant",
+        batchId: job.id,
         note: payload.instruction ? `${variant.label}: ${payload.instruction}` : variant.label,
       },
       { makeCurrent: false },

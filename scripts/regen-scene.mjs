@@ -3,7 +3,7 @@
  * трогания остальных сцен. Варианты пишутся отдельными манифестами с кадром
  * каждого; исходный манифест не меняется.
  *
- * Запуск: set -a && . ./.env && set +a &&
+ * Запуск (ключи из Настроек студии или .env):
  *   node scripts/regen-scene.mjs <номер сцены с 1> ["пожелание"] [--variants=2] [--manifest=storage/manifest.json]
  * Применить вариант: cp storage/variants/variant-N.json storage/manifest.json
  */
@@ -33,7 +33,7 @@ const briefPath = resolve(storageDir, "research-brief.txt");
 const brief = existsSync(briefPath) ? readFileSync(briefPath, "utf8") : "";
 
 console.log(`Сцена ${sceneNumber}: «${manifest.scenes[index].narration}»${instruction ? `\nПожелание: ${instruction}` : ""}`);
-const result = await regenerateSceneVisual(cliContext(), {
+const result = await regenerateSceneVisual(await cliContext(), {
   topic: manifest.title,
   brief,
   scenes: manifest.scenes.map((s) => ({ narration: s.narration, visual: s.visual, intent: s.intent })),

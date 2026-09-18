@@ -4,15 +4,15 @@
  * и имена моделей, но не значения ключей.
  */
 import path from "node:path";
+import { providersFromEnv, type Providers } from "@shorts/db";
 
 export interface ServerConfig {
   readonly host: string;
   readonly port: number;
   readonly storageDir: string;
   readonly dbPath: string;
-  readonly llm?: { readonly baseUrl: string; readonly apiKey: string; readonly model: string };
-  readonly fish?: { readonly apiKey: string; readonly model: string; readonly referenceId: string };
-  readonly firecrawlApiKey?: string;
+  /** Провайдеры из .env — запасные: сохранённые в UI важнее. .env необязателен. */
+  readonly envProviders: Providers;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): ServerConfig {
@@ -23,13 +23,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
     port: Number(env.PORT ?? 3001),
     storageDir,
     dbPath: path.resolve(storageDir, env.DB_FILE ?? "studio.sqlite"),
-    ...(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_MODEL
-      ? { llm: { baseUrl: env.LLM_BASE_URL, apiKey: env.LLM_API_KEY, model: env.LLM_MODEL } }
-      : {}),
-    ...(env.FISH_API_KEY && env.FISH_MODEL && env.FISH_REFERENCE_ID
-      ? { fish: { apiKey: env.FISH_API_KEY, model: env.FISH_MODEL, referenceId: env.FISH_REFERENCE_ID } }
-      : {}),
-    ...(env.FIRECRAWL_API_KEY ? { firecrawlApiKey: env.FIRECRAWL_API_KEY } : {}),
+    envProviders: providersFromEnv(env),
   };
 }
 

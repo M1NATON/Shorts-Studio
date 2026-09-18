@@ -4,6 +4,7 @@ import type { Manifest, VideoFormat } from "@shorts/contracts";
 import { api, type Job, type Scene, type SceneVersion } from "@/lib/api";
 import { useStudioEvents } from "@/lib/events";
 import { formatDate } from "@/lib/format";
+import { pendingVariants } from "@/lib/variants";
 import { BlockEditor } from "./BlockEditor";
 import { sceneManifest, VideoPlayer } from "./VideoPlayer";
 
@@ -70,12 +71,7 @@ export function SceneInspector({
     }
   };
 
-  // Варианты — версии, созданные после текущей и ещё не выбранные.
-  const current = versions.find((v) => v.id === scene.version.id);
-  const variants = versions
-    .filter((v) => v.origin === "variant" && v.id !== scene.version.id && (!current || v.createdAt > current.createdAt))
-    // В порядке создания: «По пожеланию» первым, как его поставил сервер.
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const variants = pendingVariants(versions, scene.version.id);
   const sceneIndex = manifest?.scenes.findIndex((s) => s.sceneId === scene.id) ?? -1;
 
   return (
@@ -184,3 +180,4 @@ export function SceneInspector({
     </div>
   );
 }
+

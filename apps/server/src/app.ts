@@ -8,26 +8,30 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
-import { PROJECT_STATUSES, NotFoundError, NotReadyError, projectPaths, type JobKind } from "@shorts/db";
+import {
+  loadPreferences,
+  NotFoundError,
+  NotReadyError,
+  PROJECT_STATUSES,
+  projectPaths,
+  savePreferences,
+  type JobKind,
+} from "@shorts/db";
 import { fallbackStatement, presentationAt } from "@shorts/llm-core";
 import { z } from "zod";
 import type { ServerConfig } from "./config.js";
-import type { ProviderKind, ProviderStore } from "./providers.js";
+import type { ProviderKind, ProviderStore } from "@shorts/db";
 import { saveManualVisual, type PipelineDeps } from "./pipeline.js";
 import type { Worker } from "./worker.js";
 
-const CreateProjectBody = z.object({
-  topic: z.string().trim().min(3).max(200),
-  format: z.enum(["shorts", "landscape"]).default("shorts"),
+// Не переданные формат, свежесть и длина берутся из предпочтений (Настройки).
+const CreateOptions = {
+  format: z.enum(["shorts", "landscape"]).optional(),
   freshness: z.enum(["current", "evergreen"]).optional(),
   minutes: z.number().min(1).max(20).optional(),
-});
-const BatchBody = z.object({
-  topics: z.array(z.string().trim().min(3).max(200)).min(1).max(20),
-  format: z.enum(["shorts", "landscape"]).default("shorts"),
-  freshness: z.enum(["current", "evergreen"]).optional(),
-  minutes: z.number().min(1).max(20).optional(),
-});
+};
+const CreateProjectBody = z.object({ topic: z.string().trim().min(3).max(200), ...CreateOptions });
+const BatchBody = z.object({ topics: z.array(z.string().trim().min(3).max(200)).min(1).max(20), ...CreateOptions });
 const ListQuery = z.object({
   search: z.string().optional(),
   status: z.enum(PROJECT_STATUSES).optional(),
@@ -50,12 +54,19 @@ const AddSceneBody = z.object({
   narration: z.string().trim().min(1).max(320),
 });
 const ProviderParam = z.enum(["llm", "tts", "search"]);
+const VoicePreviewBody = z.object({
+  text: z.string().trim().min(1).max(200).optional(),
+  referenceId: z.string().trim().min(1).max(200).optional(),
+  model: z.string().trim().min(1).max(200).optional(),
+});
 
 export interface AppDeps extends PipelineDeps {
   readonly config: ServerConfig;
   readonly providers: ProviderStore;
   /** Лёгкий запрос к провайдеру по кнопке «Проверить»; ключ в ответ не попадает. */
   readonly testProvider: (kind: ProviderKind) => Promise<{ ok: boolean; message: string }>;
+  /** Образец голоса (WAV). Голос и модель можно подставить из формы до сохранения; ключ — всегда сохранённый. */
+  readonly previewVoice: (input: z.infer<typeof VoicePreviewBody>) => Promise<Buffer>;
   readonly worker?: Worker;
 }
 
@@ -106,22 +117,44 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
   });
 
+  app.post("/api/settings/tts/preview", async (request, reply) => {
+    const audio = await deps.previewVoice(VoicePreviewBody.parse(request.body ?? {}));
+    return reply.type("audio/wav").header("cache-control", "no-store").send(audio);
+  });
+
+  app.get("/api/preferences", async () => loadPreferences(repo));
+  app.put("/api/preferences", async (request) => savePreferences(repo, request.body));
+
+  /** Параметры нового ролика: переданные в запросе, иначе из предпочтений. */
+  async function createOptions(body: { format?: "shorts" | "landscape"; freshness?: "current" | "evergreen"; minutes?: number }) {
+    const prefs = await loadPreferences(repo);
+    const format = body.format ?? prefs.format;
+    const freshness = body.freshness ?? (prefs.freshness === "auto" ? undefined : prefs.freshness);
+    return {
+      format,
+      captionStyle: prefs.captionStyle,
+      ...(freshness ? { freshness } : {}),
+      ...(format === "landscape" ? { minutes: body.minutes ?? prefs.minutes } : {}),
+    };
+  }
+
   // ── библиотека ────────────────────────────────────────────────────────────
   app.get("/api/projects", async (request) => repo.listProjects(ListQuery.parse(request.query)));
 
   app.post("/api/projects", async (request, reply) => {
-    const body = CreateProjectBody.parse(request.body);
-    const project = await repo.createProject(body);
+    const { topic, ...options } = CreateProjectBody.parse(request.body);
+    const project = await repo.createProject({ topic, ...(await createOptions(options)) });
     const job = await enqueue("generate", project.id);
     return reply.code(201).send({ project, job });
   });
 
   /** Очередь тем: генерируются по одной, в порядке ввода. */
   app.post("/api/projects/batch", async (request, reply) => {
-    const { topics, ...rest } = BatchBody.parse(request.body);
+    const { topics, ...options } = BatchBody.parse(request.body);
+    const resolved = await createOptions(options);
     const created = [];
     for (const topic of topics) {
-      const project = await repo.createProject({ topic, ...rest });
+      const project = await repo.createProject({ topic, ...resolved });
       created.push({ project, job: await enqueue("generate", project.id) });
     }
     return reply.code(201).send({ items: created });

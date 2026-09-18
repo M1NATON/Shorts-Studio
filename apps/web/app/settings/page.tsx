@@ -1,6 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
-import { api, ApiError, type ProviderInfo, type ProviderKind } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import type { CaptionStyle, VideoFormat } from "@shorts/contracts";
+import { api, ApiError, type Preferences, type ProviderInfo, type ProviderKind } from "@/lib/api";
+import { CAPTION_LABEL, MINUTES_OPTIONS } from "@/lib/format";
 
 const PROVIDERS: { kind: ProviderKind; title: string; hint: string; fields: { name: string; label: string; placeholder?: string }[] }[] = [
   {
@@ -41,6 +43,26 @@ function ProviderForm({ spec, info, onSaved }: { spec: (typeof PROVIDERS)[number
   );
   const [status, setStatus] = useState<{ ok: boolean; message: string }>();
   const [busy, setBusy] = useState(false);
+  const player = useRef<HTMLAudioElement | null>(null);
+
+  /** Образец голоса из формы — до сохранения, чтобы выбирать голос на слух. */
+  async function listen() {
+    setBusy(true);
+    setStatus(undefined);
+    try {
+      const blob = await api.previewVoice({
+        ...(values.referenceId?.trim() ? { referenceId: values.referenceId.trim() } : {}),
+        ...(values.model?.trim() ? { model: values.model.trim() } : {}),
+      });
+      if (player.current) URL.revokeObjectURL(player.current.src);
+      player.current = new Audio(URL.createObjectURL(blob));
+      await player.current.play();
+    } catch (e) {
+      setStatus({ ok: false, message: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save() {
     setBusy(true);
@@ -92,8 +114,79 @@ function ProviderForm({ spec, info, onSaved }: { spec: (typeof PROVIDERS)[number
       <div className="row">
         <button className="btn primary" disabled={busy} onClick={() => void save()}>Сохранить</button>
         <button className="btn" disabled={busy || !info.configured} onClick={() => void test()}>Проверить</button>
+        {spec.kind === "tts" ? (
+          <button className="btn" disabled={busy || !info.configured} onClick={() => void listen()} title="Короткая фраза этим голосом; сохранять не нужно">
+            Прослушать
+          </button>
+        ) : null}
         {status ? <span className={`small ${status.ok ? "" : "error"}`} role="status">{status.ok ? "✓ " : ""}{status.message}</span> : null}
       </div>
+    </section>
+  );
+}
+
+/** Предпочтения: чем заполнена форма нового ролика. Сохраняются сразу при изменении. */
+function PreferencesForm({ searchConfigured }: { searchConfigured: boolean }) {
+  const [prefs, setPrefs] = useState<Preferences>();
+  const [status, setStatus] = useState<{ ok: boolean; message: string }>();
+  useEffect(() => {
+    api.preferences().then(setPrefs).catch((e: Error) => setStatus({ ok: false, message: e.message }));
+  }, []);
+
+  async function change(patch: Partial<Preferences>) {
+    try {
+      setPrefs(await api.savePreferences(patch));
+      setStatus({ ok: true, message: "Сохранено" });
+    } catch (e) {
+      setStatus({ ok: false, message: (e as Error).message });
+    }
+  }
+
+  if (!prefs) return status ? <p className="error">{status.message}</p> : null;
+  const labelStyle = { gridTemplateColumns: "180px 1fr" };
+  return (
+    <section className="card stack" style={{ padding: 16 }} aria-labelledby="prefs">
+      <h3 id="prefs" style={{ margin: 0, fontSize: 15 }}>Новые ролики по умолчанию</h3>
+      <p className="small muted" style={{ margin: 0 }}>Форма создания открывается с этими значениями; для одного ролика их можно поменять там же.</p>
+      <label className="field" style={labelStyle}>
+        <span className="muted">Формат</span>
+        <select className="select" value={prefs.format} onChange={(e) => void change({ format: e.target.value as VideoFormat })}>
+          <option value="shorts">Shorts 9:16</option>
+          <option value="landscape">Длинный 16:9</option>
+        </select>
+      </label>
+      <label className="field" style={labelStyle}>
+        <span className="muted">Длина 16:9</span>
+        <select className="select" value={prefs.minutes} onChange={(e) => void change({ minutes: Number(e.target.value) })}>
+          {MINUTES_OPTIONS.map((m) => (
+            <option key={m} value={m}>{m} мин</option>
+          ))}
+        </select>
+      </label>
+      <label className="field" style={labelStyle}>
+        <span className="muted">Субтитры</span>
+        <select className="select" value={prefs.captionStyle} onChange={(e) => void change({ captionStyle: e.target.value as CaptionStyle })}>
+          {Object.entries(CAPTION_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="field" style={labelStyle}>
+        <span className="muted">Факты</span>
+        <select className="select" value={prefs.freshness} onChange={(e) => void change({ freshness: e.target.value as Preferences["freshness"] })}>
+          <option value="auto">авто — решает модель по теме</option>
+          <option value="current">свежие (новости за год)</option>
+          <option value="evergreen">вечнозелёные</option>
+        </select>
+      </label>
+      <label className="field" style={labelStyle}>
+        <span className="muted">Поиск источников</span>
+        <span className="row small">
+          <input type="checkbox" checked={prefs.research} onChange={(e) => void change({ research: e.target.checked })} />
+          {searchConfigured ? "искать факты в сети (Firecrawl)" : "ключ Firecrawl не задан — поиск не работает"}
+        </span>
+      </label>
+      {status ? <span className={`small ${status.ok ? "" : "error"}`} role="status">{status.ok ? "✓ " : ""}{status.message}</span> : null}
     </section>
   );
 }
@@ -107,6 +200,8 @@ export default function SettingsPage() {
 
   return (
     <main className="page stack" style={{ maxWidth: 760 }}>
+      <h2 style={{ marginBottom: 0 }}>Настройки</h2>
+      {data ? <PreferencesForm searchConfigured={data.search.configured} /> : null}
       <h2 style={{ marginBottom: 0 }}>Провайдеры</h2>
       <p className="muted" style={{ marginTop: 0 }}>
         Ключи хранятся только на сервере (в базе в <code>storage/</code>) и в браузер не передаются — здесь видна только маска.

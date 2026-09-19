@@ -7,6 +7,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { WordTiming } from "@shorts/contracts";
+import { postProcessNarration } from "./audio-post.js";
 import { probeDurationSec } from "./ffprobe.js";
 import { assembleFishStream, parseSseEvents, type FishStreamResult } from "./fish-stream.js";
 import { speakNumbers } from "./spoken-numbers.js";
@@ -53,16 +54,38 @@ export interface VoicedNarration {
 export async function voiceNarration(
   narration: string,
   absPath: string,
-  options: FishOptions & { synthesize?: typeof synthesizeFish; probe?: typeof probeDurationSec },
+  options: FishOptions & {
+    synthesize?: typeof synthesizeFish;
+    probe?: typeof probeDurationSec;
+    postProcess?: typeof postProcessNarration;
+  },
 ): Promise<VoicedNarration> {
   // В TTS — числа словами (Fish путает "1900" и "2,000"); тайминги и субтитры — на оригинале с цифрами.
   const { audio, words } = await (options.synthesize ?? synthesizeFish)(speakNumbers(narration), options);
   await mkdir(path.dirname(absPath), { recursive: true });
   await writeFile(absPath, audio);
-  const durationSec = await (options.probe ?? probeDurationSec)(absPath);
+  // Обрезка тишины по краям + ускорение + громкость — здесь же, одним проходом по файлу.
+  const post = await (options.postProcess ?? postProcessNarration)(absPath, options);
+  const durationSec = post.durationSec;
   if (words.length === 0) {
+    // estimateTimings уже считает по финальной (пост-обработанной) длительности — сдвиг не нужен.
     return { durationSec, words: estimateTimings(narration, durationSec), timingSource: "estimated", unmatched: 0 };
   }
   const mapped = mapTimingsToOriginalText(narration, words);
-  return { durationSec, words: mapped.words, timingSource: "native", unmatched: mapped.unmatched };
+  return {
+    durationSec,
+    words: shiftTimings(mapped.words, post.leadTrimSec, post.tempo),
+    timingSource: "native",
+    unmatched: mapped.unmatched,
+  };
+}
+
+/** Тайминги провайдера — в координатах исходного (не обрезанного, не ускоренного) файла. */
+function shiftTimings(words: readonly WordTiming[], leadTrimSec: number, tempo: number): WordTiming[] {
+  if (leadTrimSec === 0 && tempo === 1) return [...words];
+  return words.map((w) => ({
+    text: w.text,
+    start: Math.max(0, (w.start - leadTrimSec) / tempo),
+    end: Math.max(0, (w.end - leadTrimSec) / tempo),
+  }));
 }

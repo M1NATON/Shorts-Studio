@@ -44,7 +44,7 @@ describe("generateLongScript", () => {
       if (req.system.includes('"chapters"')) {
         return {
           title: "Why batteries got cheap",
-          hook: [{ narration: long(130), intent: "hook" }],
+          hook: [{ narration: long(130), intent: "hook", mediaQuery: "lithium mine aerial", mediaKind: "photo" }],
           chapters: [
             { title: "Scale", summary: "Factories grew" },
             { title: "Chemistry", summary: "LFP took over" },
@@ -53,7 +53,13 @@ describe("generateLongScript", () => {
         };
       }
       if (req.system.includes("one chapter")) {
-        return { beats: Array.from({ length: 6 }, (_, i) => ({ narration: long(120 + i), intent: i % 2 ? "list" : "fact" })) };
+        return {
+          beats: Array.from({ length: 6 }, (_, i) => ({
+            narration: long(120 + i),
+            intent: i % 2 ? "list" : "fact",
+            ...(i === 0 ? { mediaQuery: "battery factory line", mediaKind: "video" } : {}),
+          })),
+        };
       }
       if (req.system.includes("several consecutive scenes")) {
         const count = (req.user.match(/\nScene \d+/g) ?? []).length;
@@ -91,6 +97,14 @@ describe("generateLongScript", () => {
     expect(card.narration).toBe("Chapter 1. Scale.");
     // Пачка: по одному запросу наполнения на главу, а не на сцену.
     expect(llm.calls.filter((c) => c.system.includes("several consecutive scenes"))).toHaveLength(2);
+
+    // mediaQuery доходит от хука и от первой сцены каждой главы до готового сценария.
+    expect(script.scenes[0]).toMatchObject({ mediaQuery: "lithium mine aerial", mediaKind: "photo" });
+    expect(script.scenes[1]).not.toHaveProperty("mediaQuery"); // карточка главы — без медиа
+    expect(script.scenes[2]).toMatchObject({ mediaQuery: "battery factory line", mediaKind: "video" });
+    expect(script.scenes[3]!.mediaQuery).toBeUndefined(); // не первая сцена главы
+    expect(script.scenes[9]).toMatchObject({ mediaQuery: "battery factory line", mediaKind: "video" });
+    expect(llm.calls.some((c) => c.system.includes("mediaQuery"))).toBe(true);
   });
 });
 

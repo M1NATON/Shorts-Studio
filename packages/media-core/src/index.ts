@@ -2,6 +2,7 @@ export * from "./timeline.js";
 export * from "./wav.js";
 export * from "./fish-stream.js";
 export * from "./ffprobe.js";
+export * from "./audio-post.js";
 export * from "./word-mapping.js";
 export * from "./fish-client.js";
 export * from "./pexels.js";

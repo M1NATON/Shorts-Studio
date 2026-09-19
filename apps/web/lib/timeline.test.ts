@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutTimeline, rulerStep } from "./timeline";
+import { clipLabelLevel, layoutTimeline, rulerStep, zoomAtAnchor } from "./timeline";
 
 describe("layoutTimeline", () => {
   it("ширина ∝ длительности, короткий клип не уже минимума, x↔кадр согласованы", () => {
@@ -22,5 +22,29 @@ describe("layoutTimeline", () => {
     expect(rulerStep(100)).toBe(1);
     expect(rulerStep(20)).toBe(5);
     expect(rulerStep(1)).toBe(60);
+  });
+});
+
+describe("zoomAtAnchor", () => {
+  it("точка под курсором остаётся на месте после зума", () => {
+    const r = zoomAtAnchor(10, 2, 50, 100, 1, 400);
+    expect(r.pxPerSecond).toBe(20);
+    // время под курсором: (100+50)/10 = 15с; при новом масштабе оно должно быть на x = anchorX
+    expect(r.scrollLeft + 50).toBeCloseTo(15 * 20, 5);
+  });
+
+  it("зажимает масштаб границами min/max", () => {
+    expect(zoomAtAnchor(10, 100, 0, 0, 1, 400).pxPerSecond).toBe(400);
+    expect(zoomAtAnchor(10, 0.001, 0, 0, 5, 400).pxPerSecond).toBe(5);
+  });
+});
+
+describe("clipLabelLevel", () => {
+  it("широкий клип — номер и длительность, средний — только номер, узкий — ничего", () => {
+    expect(clipLabelLevel(120)).toBe("full");
+    expect(clipLabelLevel(90)).toBe("full");
+    expect(clipLabelLevel(50)).toBe("number");
+    expect(clipLabelLevel(30)).toBe("number");
+    expect(clipLabelLevel(20)).toBe("none");
   });
 });

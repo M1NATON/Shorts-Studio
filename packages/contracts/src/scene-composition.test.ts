@@ -144,7 +144,7 @@ describe("SceneComposition: вертикальная ёмкость", () => {
     expect(messages(scene(tall))).toEqual([]);
     const result = visualSpecSchemaFor("shorts").safeParse(scene(tall));
     expect(result.success).toBe(false);
-    expect(result.error!.issues.map((i) => i.message)).toEqual([expect.stringMatching(/about \d+px of 1060px/)]);
+    expect(result.error!.issues.map((i) => i.message)).toEqual([expect.stringMatching(/about \d+px of 930px/)]);
   });
 
   it("ёмкость зависит от композиции: stacked теснее center", () => {
@@ -208,7 +208,7 @@ describe("форматы: 16:9", () => {
   ];
 
   it("сцена 16:9 в дизайн-пикселях: шире вертикальной, той же высоты", () => {
-    expect(stageSize("shorts")).toEqual({ width: 920, height: 1060 });
+    expect(stageSize("shorts")).toEqual({ width: 830, height: 930 });
     expect(stageSize("landscape").width).toBeGreaterThan(2000);
     expect(Math.abs(stageSize("landscape").height - 1060)).toBeLessThan(10);
   });

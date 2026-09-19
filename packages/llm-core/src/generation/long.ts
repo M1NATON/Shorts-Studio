@@ -11,6 +11,7 @@ import {
   SceneIntentSchema,
   ScriptSchema,
   SceneVisualSpecSchema,
+  SPEECH_CHARS_PER_SEC,
   type SceneVisualSpec,
   type VideoTheme,
 } from "@shorts/contracts";
@@ -19,7 +20,7 @@ import { buildResearchBrief, searchMany, type ResearchSource } from "../firecraw
 import { dateRule, log, withFeedback, type GenerationContext } from "./context.js";
 import { acceptComposed, fillScene, videoNoun, type SceneFillInput } from "./fill.js";
 import { mapLimited } from "./llm-client.js";
-import { beatTells, sourcesBlock } from "./outline.js";
+import { beatTells, MEDIA_QUERY_HINT, sourcesBlock } from "./outline.js";
 import { skill } from "./skills.js";
 import { planScenes, SKELETONS, type Beat, type ScenePlan } from "./plan.js";
 import { BLOCK_CONTRACT, HERO_EXAMPLE, HERO_HINT, ICON_LIST } from "./prompts.js";
@@ -60,7 +61,12 @@ export function longShape(minutes: number): { chapters: number; beatsPerChapter:
 }
 
 const narration = z.string().trim().min(1).max(PACING.hardMax);
-const BeatSchema = z.object({ narration, intent: SceneIntentSchema.catch("fact") });
+const BeatSchema = z.object({
+  narration,
+  intent: SceneIntentSchema.catch("fact"),
+  mediaQuery: z.string().trim().min(2).max(60).optional(),
+  mediaKind: z.enum(["photo", "video"]).optional(),
+});
 
 const LongOutlineSchema = z.object({
   title: z.string().trim().min(1).transform((t) => t.slice(0, 120)),
@@ -72,7 +78,7 @@ const LongOutlineSchema = z.object({
 function narrationRule(): string {
   return [
     `narration: one to three spoken sentences, ${PACING.min}-${PACING.max} characters, hard maximum ${PACING.hardMax}.`,
-    "Speech runs at ~13 characters per second: one scene is 6 to 15 seconds.",
+    `Speech runs at ~${SPEECH_CHARS_PER_SEC} characters per second: one scene is 6 to 15 seconds.`,
   ].join("\n");
 }
 
@@ -86,9 +92,11 @@ export async function longOutline(
     `You plan an informative ${videoNoun("landscape")} in English. Return JSON:`,
     '{ "title": string max 110, "hook": [1-2 beats], "chapters": [ { "title": max 60, "summary": what the chapter covers, max 300 } ],',
     '  "takeaway": beat }',
-    'A beat is { "narration": string, "intent": "hook" | "takeaway" }.',
+    'A beat is { "narration": string, "intent": "hook" | "takeaway", "mediaQuery"?: string, "mediaKind"?: "photo" | "video" }.',
     `Exactly ${chapterCount} chapters, each a distinct angle, in a logical order.`,
     narrationRule(),
+    MEDIA_QUERY_HINT,
+    "Give mediaQuery (and mediaKind) to the first hook beat; it doubles as the opening shot of the video.",
     dateRule(ctx.today),
     "",
     skill("narration"),
@@ -129,13 +137,16 @@ export async function chapterBeats(
   const chapter = input.outline.chapters[input.chapterIndex]!;
   const system = [
     `You write one chapter of an informative ${videoNoun("landscape")}, in English. Return JSON:`,
-    '{ "beats": [ { "narration": string, "intent": string } ] }',
+    '{ "beats": [ { "narration": string, "intent": string, "mediaQuery"?: string, "mediaKind"?: "photo" | "video" } ] }',
     `Exactly ${input.count} beats, each one idea that the next builds on.`,
     narrationRule(),
     `intent: one of ${SceneIntentSchema.options.filter((i) => i !== "hook" && i !== "takeaway").join(", ")}.`,
     'Use "number" only for a real figure from SOURCES; "contrast" for A-versus-B; "list" for 2-4 parallel points;',
     '"sequence" for ordered steps; "punch" for a short striking line; "fact" otherwise. Mix them.',
     "Do not repeat what other chapters cover. Use only facts and numbers from SOURCES.",
+    MEDIA_QUERY_HINT,
+    "Give mediaQuery (and mediaKind) to the first beat of this chapter, plus about a third of the",
+    "remaining beats — pick the most visual ones.",
     dateRule(ctx.today),
     "",
     skill("narration"),
@@ -165,6 +176,8 @@ export async function chapterBeats(
         return parsed.data.beats.slice(0, input.count).map((b) => ({
           narration: b.narration,
           intent: b.intent === "hook" || b.intent === "takeaway" ? "fact" : b.intent,
+          ...(b.mediaQuery ? { mediaQuery: b.mediaQuery } : {}),
+          ...(b.mediaKind ? { mediaKind: b.mediaKind } : {}),
         }));
       }
       feedback.splice(0, feedback.length, ...parsed.error.issues.slice(0, 4).map((i) => `${i.path.join(".")}: ${i.message}`));
@@ -353,11 +366,14 @@ export async function generateLongScript(
         visual: chapterCard(slot.chapter + 1, title),
       };
     }
+    const beat = beats[slot.beat]!;
     return {
       id: `scene-${position + 1}`,
-      intent: beats[slot.beat]!.intent,
-      narration: beats[slot.beat]!.narration,
+      intent: beat.intent,
+      narration: beat.narration,
       visual: visuals.get(position)!,
+      ...(beat.mediaQuery ? { mediaQuery: beat.mediaQuery } : {}),
+      ...(beat.mediaKind ? { mediaKind: beat.mediaKind } : {}),
     };
   });
 

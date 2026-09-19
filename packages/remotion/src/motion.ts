@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react";
 import { Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { useTheme } from "./theme.js";
 
@@ -5,6 +6,18 @@ import { useTheme } from "./theme.js";
 export const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
 
 const EXIT_FRAMES = 8;
+
+/**
+ * Позиция сцены в ролике: первая/последняя. Раздаётся из ShortsVideo per-сцене
+ * (см. HasSceneMediaContext) — при зацикленном показе конец должен без чёрного
+ * кадра переходить в начало, поэтому последняя сцена не гаснет (exit), а первая
+ * не проявляется из пустоты (см. HookStatement).
+ */
+export const ScenePositionContext = createContext<{ isFirst: boolean; isLast: boolean }>({
+  isFirst: false,
+  isLast: false,
+});
+export const useScenePosition = (): { isFirst: boolean; isLast: boolean } => useContext(ScenePositionContext);
 
 /**
  * Профиль движения ролика: кривая, длительность входа, шаг каскада и дистанция.
@@ -49,17 +62,22 @@ export function useSceneMotion(): SceneMotion {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const profile = useMotionProfile();
+  const { isLast } = useScenePosition();
 
   const enter = interpolate(frame, [0, profile.enterFrames], [0, 1], {
     easing: profile.easing,
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const exit = interpolate(frame, [durationInFrames - EXIT_FRAMES, durationInFrames], [1, 0], {
-    easing: Easing.linear,
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  // Последняя сцена ролика не гаснет: при зацикленном показе её конец должен
+  // без чёрного кадра переходить в начало следующего показа.
+  const exit = isLast
+    ? 1
+    : interpolate(frame, [durationInFrames - EXIT_FRAMES, durationInFrames], [1, 0], {
+        easing: Easing.linear,
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
 
   return { enter, exit, visible: enter * exit, frame, fps, durationInFrames };
 }

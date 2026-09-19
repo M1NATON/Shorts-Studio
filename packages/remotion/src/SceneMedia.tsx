@@ -48,10 +48,10 @@ export const SceneMedia: React.FC<{
       <AbsoluteFill
         style={{
           // Сильнее всего там, где текст сцены (≈12–66% высоты) и субтитры (низ); у верхней кромки картинка видна лучше.
-          background: `linear-gradient(180deg, ${rgba(theme.canvas, 0.45)} 0%, ${rgba(theme.canvas, 0.72)} 14%, ${rgba(
+          background: `linear-gradient(180deg, ${rgba(theme.canvas, 0.3)} 0%, ${rgba(theme.canvas, 0.55)} 14%, ${rgba(
             theme.canvas,
-            0.72,
-          )} 66%, ${rgba(theme.canvas, 0.88)} 100%)`,
+            0.55,
+          )} 66%, ${rgba(theme.canvas, 0.8)} 100%)`,
         }}
       />
     </AbsoluteFill>

@@ -18,4 +18,4 @@ You design a video frame, not a web page and not a slide.
 - Motion is for meaning: "pop" for a reveal or a number, "rise" for steady build-up, "slide" for a sequence or a contrast, "fade" for calm or quotes. Do not give every block a different motion.
 - Icons must depict the literal idea (battery for batteries, factory for manufacturing). If none fits, leave the icon out.
 - Consecutive frames should look different: vary the main element and the structure, not only the words.
-- Same writing rules as the narration: no hype words (revolutionary, game-changer, unlock), no dashes, no questions you do not answer.
+- Same writing rules as the narration: no hype words (revolutionary, game-changer, unlock), no dashes; a question is fine only if the video answers it elsewhere.

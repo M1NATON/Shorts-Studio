@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { outline } from "./outline.js";
+import { HOOK_TARGET_CHARS, outline, outlineSystem } from "./outline.js";
 import { narrationTells, skill } from "./skills.js";
 import { fakeLlm, testContext } from "./test-helpers.js";
 
@@ -7,6 +7,12 @@ describe("skills", () => {
   it("loads skill bodies without frontmatter", () => {
     expect(skill("narration")).toMatch(/^# Writing the voiceover/);
     expect(skill("on-screen")).toMatch(/^# Designing the frame/);
+  });
+
+  it("narration skill: хук короткий и явно разрешает открытый вопрос, если он закрыт позже", () => {
+    expect(skill("narration")).toMatch(/8-10 words max/);
+    expect(skill("narration")).toMatch(/Open loop/);
+    expect(skill("narration")).toMatch(/never answers is a bug/);
   });
 
   it("flags AI tells and passes plain sentences", () => {
@@ -17,6 +23,14 @@ describe("skills", () => {
     expect(narrationTells("Experts say it matters.")).toHaveLength(1);
     expect(narrationTells("In 2023, pack prices fell to $139 per kWh, down 14 percent in a year.")).toEqual([]);
     expect(narrationTells("China built 216 GW of solar, not the EU.")).toEqual([]);
+  });
+
+  it("outline system: хук короче остальных тезисов и требует петлю в конце", () => {
+    const system = outlineSystem("2026-09-19", 8);
+    expect(system).toContain(`${HOOK_TARGET_CHARS.min}-${HOOK_TARGET_CHARS.max} characters`);
+    expect(system).toMatch(/8-10 words/);
+    expect(system).toMatch(/Loop close/);
+    expect(system).toMatch(/No spoken call to action/);
   });
 
   it("outline retries once with tells as feedback, then accepts", async () => {

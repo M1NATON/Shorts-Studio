@@ -16,7 +16,8 @@ The viewer hears this once, at speaking speed, while scrolling. Write for the ea
 - Use "is", "are", "has". Not "serves as", "stands as", "boasts", "represents".
 
 ## The video as a whole
-- Scene 1 is the hook: the most surprising true fact or a concrete question, in the first two seconds. No greeting, no "In this video".
+- Scene 1 is the hook: one sentence, 8-10 words max, the single most shocking true fact, number or contradiction. No warm-up clause, no greeting, no "In this video" — the fact itself is the first words.
+- Open loop: scene 1 may pose a concrete question instead of a fact, but only if a later scene names the answer outright. A question the video never answers is a bug, not suspense.
 - Each scene answers the question the previous one raised. The viewer should feel pulled forward, not handed a list.
 - The last scene lands one concrete takeaway the viewer can repeat. Not a slogan, not "the future looks bright".
 - Do not repeat a fact already said, even in other words.

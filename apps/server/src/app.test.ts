@@ -362,8 +362,8 @@ describe("API", () => {
     const manifest = async () => (await app.inject({ url: `/api/projects/${id}/manifest` })).json().manifest;
     const first = await manifest();
     expect(first.music).toEqual({ src: "music/calm-drift.mp3", volume: 0.12 });
-    // Озвучка 2 с = 60 кадров, плюс 0.35 с паузы у всех сцен, кроме последней.
-    expect(first.scenes[0].durationInFrames).toBe(71);
+    // Озвучка 2 с = 60 кадров, плюс 0.12 с паузы у всех сцен, кроме последней.
+    expect(first.scenes[0].durationInFrames).toBe(64);
     expect(first.scenes.at(-1).durationInFrames).toBe(60);
 
     const patch = (music: unknown) => app.inject({ method: "PATCH", url: `/api/projects/${id}`, payload: { music } });

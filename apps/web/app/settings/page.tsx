@@ -13,6 +13,8 @@ const PROVIDERS: { kind: ProviderKind; title: string; hint: string; fields: { na
       { name: "baseUrl", label: "Base URL", placeholder: "https://api.openai.com/v1" },
       { name: "model", label: "Модель" },
       { name: "apiKey", label: "API key" },
+      { name: "maxConcurrency", label: "Одновременных запросов к модели", placeholder: "2" },
+      { name: "fastModel", label: "Быстрая модель для кадров (необязательно)" },
     ],
   },
   {
@@ -108,7 +110,8 @@ function ProviderForm({ spec, info, onSaved }: { spec: (typeof PROVIDERS)[number
           <span>{field.label}</span>
           <input
             className="input"
-            type={field.name === "apiKey" ? "password" : "text"}
+            type={field.name === "apiKey" ? "password" : field.name === "maxConcurrency" ? "number" : "text"}
+            {...(field.name === "maxConcurrency" ? { min: 1, max: 8 } : {})}
             autoComplete="off"
             placeholder={field.name === "apiKey" ? (info.fields.apiKey ? `${info.fields.apiKey} — оставьте пустым, чтобы не менять` : "не задан") : field.placeholder}
             value={values[field.name] ?? ""}

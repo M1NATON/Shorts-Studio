@@ -49,3 +49,27 @@ export function layoutTimeline(clips: ClipSpan[], available: number, minWidth = 
 export function rulerStep(pxPerSecond: number): number {
   return [1, 2, 5, 10, 15, 30, 60, 120, 300, 600].find((s) => s * pxPerSecond >= 56) ?? 600;
 }
+
+export interface ZoomResult {
+  pxPerSecond: number;
+  scrollLeft: number;
+}
+
+/**
+ * Масштаб (px/сек) вокруг точки под курсором: после смены масштаба время,
+ * которое было под anchorX, остаётся под ним же (курсор — «якорь» зума).
+ */
+export function zoomAtAnchor(pxPerSecond: number, factor: number, anchorX: number, scrollLeft: number, min: number, max: number): ZoomResult {
+  const next = Math.min(max, Math.max(min, pxPerSecond * factor));
+  const timeAtAnchor = pxPerSecond > 0 ? (scrollLeft + anchorX) / pxPerSecond : 0;
+  return { pxPerSecond: next, scrollLeft: Math.max(0, timeAtAnchor * next - anchorX) };
+}
+
+export type ClipLabelLevel = "full" | "number" | "none";
+
+/** Что поместится в бейдж клипа: номер+длительность, только номер, или ничего (узко). */
+export function clipLabelLevel(width: number): ClipLabelLevel {
+  if (width >= 90) return "full";
+  if (width >= 30) return "number";
+  return "none";
+}

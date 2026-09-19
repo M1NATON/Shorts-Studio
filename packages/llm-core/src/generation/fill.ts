@@ -129,7 +129,7 @@ export async function fillTemplate(ctx: GenerationContext, input: SceneFillInput
   const feedback: string[] = [];
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      const raw = await ctx.llm.askJson({ system, user: withFeedback(user, feedback), maxTokens: 700, timeoutMs: 180000 });
+      const raw = await (ctx.llmFast ?? ctx.llm).askJson({ system, user: withFeedback(user, feedback), maxTokens: 700, timeoutMs: 180000 });
       const content = unwrapContent(raw, kind);
       // kind и подача идут ПОСЛЕ содержимого: модель иногда возвращает своё поле kind,
       // и оно перетирало запланированный тип.
@@ -237,7 +237,7 @@ export async function fillComposed(ctx: GenerationContext, input: SceneFillInput
   const feedback: string[] = [];
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      const raw = await ctx.llm.askJson({ system, user: withFeedback(user, feedback), maxTokens: 1100, timeoutMs: 180000 });
+      const raw = await (ctx.llmFast ?? ctx.llm).askJson({ system, user: withFeedback(user, feedback), maxTokens: 1100, timeoutMs: 180000 });
       const content = unwrapContent(raw, "composed");
       const blocks = Array.isArray(content) ? content : (content as { blocks?: unknown } | null)?.blocks;
       const candidate = { kind: "composed", blocks, ...plan.presentation };

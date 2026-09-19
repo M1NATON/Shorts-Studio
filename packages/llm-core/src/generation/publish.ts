@@ -2,20 +2,33 @@ import { PublishMetaSchema, type PublishMeta, type VideoFormat } from "@shorts/c
 import { issuesOf, unwrapContent, withFeedback } from "./context.js";
 import type { LlmClient } from "./llm-client.js";
 
-export const PUBLISH_SYSTEM = [
-  "You write the YouTube publish metadata for one finished video. Return JSON only.",
-  "",
-  'Fields: { "title": string, "description": string, "hashtags": string[] }',
-  "",
-  "Rules:",
-  "- title: a strong hook, ideally under 60 characters (hard limit 100), specific to what is",
-  "  actually in the video, never a lie or clickbait, not ALL CAPS, at most one emoji or none.",
-  "- description: first line is a hook (shown in the preview), then 2-4 short sentences about",
-  "  what the video covers — use only facts that appear in the narration, never invent facts.",
-  '  If SOURCES are given, end with a line "Sources:" followed by up to 5 lines "- title: url".',
-  "  No sources given — skip that block entirely. Do not repeat the hashtags inside the description.",
-  "- hashtags: 3 to 8 relevant hashtags, each starting with #.",
-].join("\n");
+/**
+ * shorts получают #Shorts кодом (withShortsTag), поэтому просим модель на один
+ * хэштег меньше — итог всё равно 3-5. landscape пишет весь список сама.
+ */
+function publishSystem(format: VideoFormat): string {
+  const hashtagsRule =
+    format === "shorts"
+      ? "2 to 4 relevant hashtags, each starting with #. Do not add #Shorts yourself — the app adds it."
+      : "3 to 5 relevant hashtags, each starting with #.";
+  return [
+    "You write the YouTube publish metadata for one finished video. Return JSON only.",
+    "",
+    'Fields: { "title": string, "description": string, "hashtags": string[] }',
+    "",
+    "Rules:",
+    "- title: a strong hook, ideally under 60 characters (hard limit 100), specific to what is",
+    "  actually in the video, never a lie or clickbait, not ALL CAPS, at most one emoji or none.",
+    "  Put the topic's key word or name in the first 3-4 words — the viewer decides before reading the rest.",
+    "- description: first line is a hook (shown in the preview), then 2-4 short sentences about",
+    "  what the video covers — use only facts that appear in the narration, never invent facts.",
+    '  If SOURCES are given, add a line "Sources:" followed by up to 5 lines "- title: url" (skip this block',
+    "  entirely if no sources are given). The description's last line is always one specific question about",
+    '  the topic that invites viewers to comment — not a generic "what do you think?". Do not repeat the',
+    "  hashtags inside the description.",
+    `- hashtags: ${hashtagsRule}`,
+  ].join("\n");
+}
 
 export interface PublishMetaInput {
   readonly topic: string;
@@ -55,7 +68,7 @@ export async function generatePublishMeta(llm: LlmClient, input: PublishMetaInpu
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const raw = await llm.askJson({
-        system: PUBLISH_SYSTEM,
+        system: publishSystem(input.format),
         user: withFeedback(user, feedback),
         maxTokens: 900,
         timeoutMs: 150000,

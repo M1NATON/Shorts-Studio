@@ -2,7 +2,7 @@ import React from "react";
 import { interpolate } from "remotion";
 import type { HookStatementSpec } from "@shorts/contracts";
 import { useFormat, useTheme, useThemeFont } from "../theme.js";
-import { useSceneMotion, useStagger } from "../motion.js";
+import { useSceneMotion, useScenePosition, useStagger } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 import { textZoom, useStyle } from "../styles.js";
 
@@ -33,6 +33,9 @@ const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
   const stagger = useStagger();
   const motionStyle = useMotionStyle();
   const { frame } = useSceneMotion();
+  // Первая сцена ролика: хук должен читаться уже на кадре 0, а не проступать —
+  // движение остаётся (scale/сдвиг), но опора на прозрачность-с-нуля убрана.
+  const { isFirst } = useScenePosition();
   const accent = useAccent();
   const words = spec.text.split(/\s+/);
   const emphasis = new Set(spec.emphasisWords.map(normalize));
@@ -49,7 +52,7 @@ const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
             height: 110,
             color: accent,
             alignSelf: spec.layout === "left" ? "flex-start" : "center",
-            opacity: interpolate(frame, [0, 14], [0, 0.55], { extrapolateRight: "clamp" }),
+            opacity: isFirst ? 0.55 : interpolate(frame, [0, 14], [0, 0.55], { extrapolateRight: "clamp" }),
             scale: interpolate(frame, [0, 14], [0.6, 1], {
               extrapolateRight: "clamp",
               output: "perceptual-scale",
@@ -79,6 +82,8 @@ const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
               display: "inline-block",
               color: emphasis.has(normalize(word)) ? accent : theme.text,
               ...motionStyle(spec.motion, stagger(frame, index, 2), index % 2 === 0 ? 1 : -1),
+              // На первой сцене слова уже видны на кадре 0 — приезжают, но не проступают.
+              ...(isFirst ? { opacity: 1 } : {}),
             }}
           >
             {word}
@@ -108,11 +113,12 @@ const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
 export const HookStatement: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
   const format = useFormat();
   const style = useStyle();
+  const { isFirst } = useScenePosition();
   // extra: кавычка цитаты (200px × 0.7), подпись 40px и промежутки gap={32}.
   const extra = (spec.variant === "quote" ? 140 + 32 : 0) + (spec.attribution ? 40 * 1.3 + 32 : 0);
   const zoom = textZoom([spec.text], fontSizeFor(spec.text.length), format.name, style.maxZoom, extra);
   return (
-    <SceneFrame presentation={spec} gap={32} zoom={zoom}>
+    <SceneFrame presentation={spec} gap={32} zoom={zoom} instant={isFirst}>
       <Body spec={spec} />
     </SceneFrame>
   );

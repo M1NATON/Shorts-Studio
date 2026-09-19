@@ -794,7 +794,7 @@ export function createRepository(database: Database) {
 }
 
 /** Вдох между фразами соседних сцен. ponytail: одна на все ролики; в настройки — если захочется крутить. */
-export const SCENE_PAUSE_SEC = 0.35;
+export const SCENE_PAUSE_SEC = 0.12;
 
 export type Repository = ReturnType<typeof createRepository>;
 

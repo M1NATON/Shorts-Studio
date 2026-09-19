@@ -37,6 +37,7 @@ import {
   generateLongScript,
   generatePublishMeta,
   generateScript,
+  mapLimited,
   regenerateSceneVisual,
   rewriteNarration,
   type GenerationContext,
@@ -111,13 +112,24 @@ export async function voiceScene(deps: PipelineDeps, projectId: string, narratio
   return { path: rel, hash, durationSec: voiced.durationSec, words: voiced.words, timingSource: voiced.timingSource };
 }
 
+// Сцены озвучиваются параллельно; реальная сетевая параллельность всё равно
+// ограничена ttsSlot(2) в main.ts, здесь только защита от лавины промисов на длинных роликах.
+const VOICE_CONCURRENCY = 2;
+
 async function voiceMissing(deps: PipelineDeps, projectId: string, report: Progress): Promise<void> {
   const scenes = await deps.repo.currentScenes(projectId);
   const pending = scenes.filter((s) => !s.version.audio);
-  for (const [i, scene] of pending.entries()) {
-    await report({ stage: "voice", message: `Озвучка: сцена ${scene.position + 1} из ${scenes.length}`, done: i, total: pending.length });
-    await deps.repo.setAudio(scene.version.id, await voiceScene(deps, projectId, scene.version.narration));
-  }
+  // Одинаковый текст — один файл озвучки (путь по хешу): синтезируем его один раз, иначе две
+  // параллельные задачи писали бы один и тот же файл.
+  const byText = new Map<string, ReturnType<typeof voiceScene>>();
+  let done = 0;
+  await mapLimited(pending, VOICE_CONCURRENCY, async (scene) => {
+    const text = scene.version.narration;
+    if (!byText.has(text)) byText.set(text, voiceScene(deps, projectId, text));
+    await deps.repo.setAudio(scene.version.id, await byText.get(text)!);
+    done++;
+    await report({ stage: "voice", message: `Озвучка: ${done} из ${pending.length}`, done, total: pending.length });
+  });
 }
 
 /** Обложка библиотеки: кадр первой сцены, когда её текст уже вошёл. */
@@ -357,16 +369,21 @@ export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<u
   const mediaJobs = result.script.scenes.flatMap((scene, i) =>
     scene.mediaQuery ? [{ sceneId: savedScenes[i]!.id, query: scene.mediaQuery, kind: scene.mediaKind ?? ("photo" as const) }] : [],
   );
-  await fillMedia(deps, project, mediaJobs, report);
-
-  await voiceMissing(deps, project.id, report);
-
-  await report({ stage: "publish", message: "Название и описание" });
-  try {
-    await refreshPublishMeta(deps, project.id);
-  } catch (error) {
-    console.error(`publish meta for project ${project.id}: ${(error as Error).message}`);
-  }
+  // Медиа, озвучка и мета публикации не зависят друг от друга (мета — только от текста
+  // сцен, он уже сохранён): запускаются одновременно. Ошибка озвучки по-прежнему валит
+  // всю задачу (voiceMissing не ловит её сама), медиа и публикация — как раньше, не бросают.
+  await Promise.all([
+    fillMedia(deps, project, mediaJobs, report),
+    voiceMissing(deps, project.id, report),
+    (async () => {
+      await report({ stage: "publish", message: "Название и описание" });
+      try {
+        await refreshPublishMeta(deps, project.id);
+      } catch (error) {
+        console.error(`publish meta for project ${project.id}: ${(error as Error).message}`);
+      }
+    })(),
+  ]);
 
   await report({ stage: "thumbnail", message: "Обложка", done: null, total: null });
   await makeThumbnail(deps, project.id);
@@ -448,25 +465,28 @@ export async function runRegenerateScene(deps: PipelineDeps, job: JobRecord): Pr
     format: project.format,
   });
   const sources = sourcesOf(project);
-  const ids: string[] = [];
-  for (const variant of variants) {
-    const unverified = checkNumbers([{ narration: scene.version.narration, visual: variant.visual }], sources)[0] ?? [];
-    const version = await deps.repo.addVersion(
-      scene.id,
-      {
-        narration: scene.version.narration,
-        intent: scene.version.intent,
-        visual: variant.visual,
-        audio: scene.version.audio,
-        unverifiedNumbers: unverified,
-        origin: "variant",
-        batchId: job.id,
-        note: payload.instruction ? `${variant.label}: ${payload.instruction}` : variant.label,
-      },
-      { makeCurrent: false },
-    );
-    ids.push(version.id);
-  }
+  // Сами варианты уже сгенерированы (regenerateSceneVisual ограничена llmSlot);
+  // здесь только проверка чисел и запись версий — независимо друг от друга.
+  const versions = await Promise.all(
+    variants.map((variant) => {
+      const unverified = checkNumbers([{ narration: scene.version.narration, visual: variant.visual }], sources)[0] ?? [];
+      return deps.repo.addVersion(
+        scene.id,
+        {
+          narration: scene.version.narration,
+          intent: scene.version.intent,
+          visual: variant.visual,
+          audio: scene.version.audio,
+          unverifiedNumbers: unverified,
+          origin: "variant",
+          batchId: job.id,
+          note: payload.instruction ? `${variant.label}: ${payload.instruction}` : variant.label,
+        },
+        { makeCurrent: false },
+      );
+    }),
+  );
+  const ids = versions.map((v) => v.id);
   deps.events.emit({ type: "project", projectId: project.id });
   return { versionIds: ids };
 }

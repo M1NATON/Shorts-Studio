@@ -130,10 +130,17 @@ export const SceneFrame: React.FC<{
   gap?: number;
   wide?: boolean;
   zoom?: number;
-}> = ({ presentation, children, gap = 28, wide = false, zoom = 1 }) => {
+  /**
+   * Пропустить фейд появления — контейнер сразу непрозрачен. Нужно первой сцене
+   * ролика: на кадре 0 текст должен уже читаться, а не проступать из пустоты
+   * (см. HookStatement). Уход в конце сцены не трогает — он работает как обычно.
+   */
+  instant?: boolean;
+}> = ({ presentation, children, gap = 28, wide = false, zoom = 1, instant = false }) => {
   const theme = useTheme();
   const format = useFormat();
-  const { visible } = useSceneMotion();
+  const { enter, exit } = useSceneMotion();
+  const visible = instant ? exit : enter * exit;
   const hasMedia = useHasSceneMedia();
   const accent = shiftHue(theme.accent, presentation.accentShift);
   const isLeft = presentation.layout === "left";

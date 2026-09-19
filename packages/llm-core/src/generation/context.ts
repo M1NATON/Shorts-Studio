@@ -17,6 +17,8 @@ export interface GenerationProgress {
  */
 export interface GenerationContext {
   readonly llm: LlmClient;
+  /** Быстрая/дешёвая модель для заполнения кадров сцен, если настроена; иначе используется llm. */
+  readonly llmFast?: LlmClient;
   /** Сегодняшняя дата YYYY-MM-DD: уходит в каждый промпт. */
   readonly today: string;
   /** Ключ Firecrawl. Без него факты только из модели, и об этом пишется в лог. */

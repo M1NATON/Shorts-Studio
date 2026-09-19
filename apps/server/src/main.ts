@@ -37,8 +37,10 @@ async function requireTts() {
 
 // Общие лимиты на все задачи сразу: прокси модели отдаёт 504 уже на трёх
 // одновременных запросах, рендер MP4 занимает все ядра.
-// ponytail: числа зашиты; вынести в настройки, если сменится провайдер.
-const llmSlot = limiter(2);
+// llmMax — из настроек (Настройки → Модель → «Одновременных запросов к модели»),
+// читается заново в generationContext на каждую задачу; limiter подхватывает новое значение сразу.
+let llmMax = 2;
+const llmSlot = limiter(() => llmMax);
 const ttsSlot = limiter(2);
 const renderSlot = limiter(1);
 const mediaSlot = limiter(2);
@@ -49,11 +51,16 @@ const deps: PipelineDeps = {
   storageDir: config.storageDir,
   generationContext: async (onProgress) => {
     const [llm, { search }, prefs] = await Promise.all([requireLlm(), providers.current(), loadPreferences(repo)]);
+    llmMax = llm.maxConcurrency ?? 2;
     const client = createOpenAiCompatibleClient(llm);
+    // Быстрая модель (Настройки → Модель → «Быстрая модель для кадров») делит тот же
+    // лимит запросов, что и основная: это тот же прокси, только другое имя модели.
+    const fastClient = llm.fastModel ? createOpenAiCompatibleClient({ ...llm, model: llm.fastModel }) : undefined;
     return {
       llm: { askJson: (request) => llmSlot(() => client.askJson(request)) },
+      ...(fastClient ? { llmFast: { askJson: (request) => llmSlot(() => fastClient.askJson(request)) } } : {}),
       today: todayIso(),
-      concurrency: 2,
+      concurrency: llmMax,
       onProgress,
       log: (m) => console.log(`  ${m}`),
       ...(search && prefs.research ? { firecrawlApiKey: search.apiKey } : {}),

@@ -40,6 +40,27 @@ describe("generatePublishMeta", () => {
     expect(result.hashtags).not.toContain("#Shorts");
   });
 
+  it("shorts: промпт просит 2-4 хэштега (без #Shorts — его добавляет код)", async () => {
+    const llm = fakeLlm(() => validAnswer);
+    await generatePublishMeta(llm, input);
+    expect(llm.calls[0]!.system).toMatch(/2 to 4 relevant hashtags/);
+    expect(llm.calls[0]!.system).toMatch(/do not add #Shorts yourself/i);
+  });
+
+  it("landscape: промпт просит 3-5 хэштегов целиком от модели", async () => {
+    const llm = fakeLlm(() => validAnswer);
+    await generatePublishMeta(llm, { ...input, format: "landscape" });
+    expect(llm.calls[0]!.system).toMatch(/3 to 5 relevant hashtags/);
+  });
+
+  it("промпт требует ключевое слово темы в начале title и вопрос в конце description", async () => {
+    const llm = fakeLlm(() => validAnswer);
+    await generatePublishMeta(llm, input);
+    const system = llm.calls[0]!.system;
+    expect(system).toMatch(/first 3-4 words/);
+    expect(system).toMatch(/last line is always one specific question/);
+  });
+
   it("невалидный ответ уходит на повтор с замечаниями, затем принимается", async () => {
     const llm = fakeLlm((_req, call) => (call === 1 ? { title: "short" } : validAnswer));
     const result = await generatePublishMeta(llm, input);

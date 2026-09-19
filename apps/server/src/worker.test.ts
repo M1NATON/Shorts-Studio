@@ -52,4 +52,21 @@ describe("воркер", () => {
     await Promise.all(Array.from({ length: 6 }, () => slot(task)));
     expect(peak).toBe(2);
   });
+
+  it("limiter: выросший на лету лимит сразу занимают ждущие", async () => {
+    let max = 1;
+    const slot = limiter(() => max);
+    let active = 0;
+    let peak = 0;
+    const task = async () => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((r) => setTimeout(r, 20));
+      active--;
+    };
+    const all = Promise.all(Array.from({ length: 6 }, () => slot(task)));
+    max = 3;
+    await all;
+    expect(peak).toBe(3);
+  });
 });

@@ -12,7 +12,13 @@ export interface FormatSpec {
   readonly width: number;
   readonly height: number;
   /** Зона визуала сцены в пикселях кадра: поля платформы и полоса субтитров. */
-  readonly zone: { readonly top: number; readonly bottom: number; readonly side: number };
+  readonly zone: {
+    readonly top: number;
+    readonly bottom: number;
+    readonly side: number;
+    /** Правый отступ, если отличается от левого (см. shorts: колонка кнопок YouTube справа). */
+    readonly sideRight?: number;
+  };
   /**
    * Масштаб кеглей. Блоки свёрстаны в «дизайн-пикселях» кадра 1080×1920; в 16:9
    * та же вёрстка рисуется на сцене большего размера и уменьшается целиком.
@@ -42,10 +48,13 @@ export const FORMATS: Record<VideoFormat, FormatSpec> = {
   shorts: {
     width: 1080,
     height: 1920,
-    zone: { top: 220, bottom: 640, side: 80 },
+    // Справа — колонка кнопок YouTube (лайк/шер/подписка, ≈x≥950): отступ шире, чем слева.
+    // bottom = captions.bottom + captions.boxHeight + запас — контент не залезает под субтитры.
+    zone: { top: 220, bottom: 770, side: 80, sideRight: 170 },
     scale: 1,
     templateMaxWidth: 920,
-    captions: { maxWordsPerPage: 3, maxCharsPerPage: 24, fontSize: 68, boxHeight: 230, bottom: 380, side: 80 },
+    // Подняты выше подписи/описания YouTube снизу; крупнее и по 1-2 слова — легче читать на ходу.
+    captions: { maxWordsPerPage: 2, maxCharsPerPage: 18, fontSize: 86, boxHeight: 290, bottom: 450, side: 80 },
     // Замер Fish: 13.2 символа в секунду; 110 символов ≈ 8 с — потолок сцены Shorts.
     pacing: { sceneCount: { min: 5, max: 9 }, narration: { min: 40, max: 70, hardMax: 110 } },
   },
@@ -70,8 +79,9 @@ export const FORMATS: Record<VideoFormat, FormatSpec> = {
  */
 export function stageSize(format: VideoFormat, zoom = 1): { width: number; height: number } {
   const spec = FORMATS[format];
+  const sideRight = spec.zone.sideRight ?? spec.zone.side;
   return {
-    width: Math.round((spec.width - spec.zone.side * 2) / (spec.scale * zoom)),
+    width: Math.round((spec.width - spec.zone.side - sideRight) / (spec.scale * zoom)),
     height: Math.round((spec.height - spec.zone.top - spec.zone.bottom) / (spec.scale * zoom)),
   };
 }

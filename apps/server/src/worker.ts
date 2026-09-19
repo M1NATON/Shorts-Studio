@@ -15,18 +15,24 @@ export interface Worker {
   idle(): Promise<void>;
 }
 
-/** Не больше `max` вызовов одновременно; остальные ждут своей очереди. */
-export function limiter(max: number): <T>(task: () => Promise<T>) => Promise<T> {
+/**
+ * Не больше `max` вызовов одновременно; остальные ждут своей очереди.
+ * `max` — функция: значение из настроек (maxConcurrency) читается на каждую проверку,
+ * правка в UI действует без перезапуска сервера.
+ */
+export function limiter(max: number | (() => number)): <T>(task: () => Promise<T>) => Promise<T> {
+  const limit = typeof max === "function" ? max : () => max;
   let active = 0;
   const waiting: (() => void)[] = [];
   return async (task) => {
-    while (active >= max) await new Promise<void>((resolve) => waiting.push(resolve));
+    while (active >= limit()) await new Promise<void>((resolve) => waiting.push(resolve));
     active++;
     try {
       return await task();
     } finally {
       active--;
-      waiting.shift()?.();
+      // Будим всех: каждый перепроверит лимит сам — так рост maxConcurrency на лету сразу занимает новые места.
+      waiting.splice(0).forEach((wake) => wake());
     }
   };
 }

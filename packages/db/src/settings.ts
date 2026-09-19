@@ -15,6 +15,10 @@ export const LlmSettingsSchema = z.object({
   baseUrl: z.string().trim().url().max(300),
   apiKey: z.string().trim().min(1).max(500),
   model: z.string().trim().min(1).max(200),
+  /** Одновременных запросов к модели; применяется сразу, без перезапуска сервера. Пусто — 2. */
+  maxConcurrency: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().int().min(1).max(8).optional()),
+  /** Модель для заполнения кадров сцен — быстрее/дешевле основной; пусто — используется основная модель. */
+  fastModel: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().min(1).max(200).optional()),
 });
 export const TtsSettingsSchema = z.object({
   apiKey: z.string().trim().min(1).max(500),
@@ -108,7 +112,7 @@ export function createProviderStore(repo: Repository, fromEnv: Providers): Provi
         const source = (await stored(kind)) ? "ui" : fromEnv[kind] ? "env" : null;
         const fields: Record<string, string | null> = {};
         for (const field of Object.keys(SCHEMAS[kind].shape)) {
-          fields[field] = field === "apiKey" ? maskKey(value?.apiKey) : (value?.[field] ?? null);
+          fields[field] = field === "apiKey" ? maskKey(value?.apiKey) : (value?.[field] != null ? String(value[field]) : null);
         }
         out[kind] = { configured: Boolean(value), source, fields };
       }

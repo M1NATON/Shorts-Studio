@@ -13,12 +13,20 @@ import { narrationTells, skill } from "./skills.js";
 
 export const DEFAULT_SCENE_COUNT = 8;
 
+/** Первая фраза — цель для промпта: 8-10 слов, заметно короче остальных тезисов. */
+export const HOOK_TARGET_CHARS = { min: 30, max: 55 } as const;
+
+/** Общее описание поля mediaQuery/mediaKind: что писать, когда есть числа. Общее для shorts и long. */
+export const MEDIA_QUERY_HINT = [
+  'mediaQuery: OPTIONAL, 2-4 English words describing a CONCRETE filmable subject for a stock',
+  'photo/video search (e.g. "lithium mine aerial", "server room lights"), not an abstract idea.',
+  'mediaKind: "video" when motion matters, otherwise "photo".',
+].join("\n");
+
 /** Правило mediaQuery для промпта: каждой сцене у "documentary", иначе только хуку и 1-2 ключевым. */
 export function mediaQueryRule(style: VideoStyle): string {
   return [
-    'mediaQuery: OPTIONAL, 2-4 English words describing a CONCRETE filmable subject for a stock',
-    'photo/video search (e.g. "lithium mine aerial", "server room lights"), not an abstract idea.',
-    'mediaKind: "video" when motion matters, otherwise "photo".',
+    MEDIA_QUERY_HINT,
     style === "documentary"
       ? "Give mediaQuery (and mediaKind) to every beat."
       : "Give mediaQuery (and mediaKind) only to the hook beat and 1-2 other key beats; leave it out for the rest.",
@@ -36,6 +44,8 @@ export function outlineSystem(today: string, sceneCount: number, style: VideoSty
     `narration: ONE spoken sentence, ${NARRATION_TARGET_CHARS.min}-${NARRATION_TARGET_CHARS.max} characters,`,
     `hard maximum ${NARRATION_MAX_CHARS}. Speech runs at ~${SPEECH_CHARS_PER_SEC} characters per second,`,
     "so a long sentence freezes the scene. One idea per beat, no filler.",
+    `The first beat (the hook) is shorter than the rest: ${HOOK_TARGET_CHARS.min}-${HOOK_TARGET_CHARS.max} characters,`,
+    "about 8-10 words, one shocking concrete fact, number or contradiction, no warm-up clause before it.",
     "",
     `intent: one of ${SceneIntentSchema.options.join(", ")}.`,
     'The first beat is "hook", the last is "takeaway".',
@@ -50,6 +60,11 @@ export function outlineSystem(today: string, sceneCount: number, style: VideoSty
     dateRule(today),
     "",
     skill("narration"),
+    "",
+    'Loop close: this is a short that replays. The last beat ("takeaway") does not summarize or moralize.',
+    'Write it so its final words flow straight into the first beat when the video repeats — a phrase like',
+    '"...and that\'s exactly why" right before a hook that opens with the fact. No spoken call to action',
+    '("subscribe", "follow").',
   ].join("\n");
 }
 

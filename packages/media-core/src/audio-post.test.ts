@@ -95,7 +95,8 @@ describe.skipIf(!hasFfmpeg)("postProcessNarration (реальный ffmpeg)", ()
       return Number(/mean_volume:\s*(-?[\d.]+)/.exec(stderr)![1]);
     };
     const levels: number[] = [];
-    for (const [name, volume] of [["quiet", 0.05], ["loud", 0.8]] as const) {
+    // Разница 12 дБ — как между тихим и громким дублем TTS.
+    for (const [name, volume] of [["quiet", 0.2], ["loud", 0.8]] as const) {
       const file = path.join(dir, `${name}.wav`);
       // 3 с «речи» (тон с модуляцией) — как фраза сцены.
       await execFileAsync("ffmpeg", ["-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=3", "-af", `volume=${volume},tremolo=f=4:d=0.6`, file]);
@@ -110,7 +111,7 @@ describe.skipIf(!hasFfmpeg)("postProcessNarration (реальный ffmpeg)", ()
   it("normalizeNarration: старая озвучка выравнивается без смены длины, повтор — пропуск", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "post-norm-"));
     const file = path.join(dir, "old.wav");
-    await execFileAsync("ffmpeg", ["-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=3", "-af", "volume=0.05,tremolo=f=4:d=0.6", file]);
+    await execFileAsync("ffmpeg", ["-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=3", "-af", "volume=0.2,tremolo=f=4:d=0.6", file]);
     const before = await probeDurationSec(file);
     expect(await normalizeNarration(file)).toBe("normalized");
     expect(Math.abs((await probeDurationSec(file)) - before)).toBeLessThan(0.02);

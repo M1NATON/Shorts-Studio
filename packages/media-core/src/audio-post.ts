@@ -10,8 +10,11 @@ const SILENCE_THRESHOLD_DB = -45;
 /** Запас перед первым/после последнего звука — резать впритык нельзя, слово "спотыкается". */
 const KEEP_MARGIN_SEC = 0.05;
 /** Целевая громкость речи (LUFS) и потолок пиков: одинаковая у всех сцен. */
-const TARGET_LUFS = -14;
-const LOUDNESS = `I=${TARGET_LUFS}:TP=-1.5:LRA=11`;
+// -16 LUFS — стандарт для речи; громче лимитер начал бы заметно давить пики у резких фраз.
+const TARGET_LUFS = -16;
+const PEAK_DB = -1.5;
+/** Только для замера (print_format=json): input_i — интегральная громкость фразы. */
+const LOUDNESS = `I=${TARGET_LUFS}:TP=${PEAK_DB}:LRA=11`;
 /** Плавный вход и выход фразы: без них стык сцен щёлкает и «режет слух». */
 const FADE_IN_SEC = 0.02;
 const FADE_OUT_SEC = 0.08;
@@ -39,8 +42,8 @@ export interface PostProcessResult {
 }
 
 /**
- * Обрезает тишину по краям, ускоряет речь, выравнивает громкость (замер + линейный
- * loudnorm) и сглаживает края фразы — трансформирующим ffmpeg-проходом во временный
+ * Обрезает тишину по краям, ускоряет речь, выравнивает громкость (замер + ровное
+ * усиление с лимитером) и сглаживает края фразы — трансформирующим ffmpeg-проходом во временный
  * файл с последующим rename поверх оригинала.
  *
  * Величину обрезки начала (нужна, чтобы сдвинуть тайминги слов) узнаём НАДЁЖНО заранее —
@@ -69,9 +72,7 @@ export async function postProcessNarration(filePath: string, options: PostProces
     const { leadTrimSec, tailEndSec } = parseSilence(stderr, originalDurationSec);
 
     const shape = `atrim=start=${leadTrimSec}:end=${tailEndSec},asetpts=PTS-STARTPTS,atempo=${tempo}`;
-    // Громкость в два прохода: однопроходный loudnorm на фразе в 2–5 с работает в
-    // динамическом режиме и даёт разный уровень от сцены к сцене. Сначала меряем,
-    // потом выставляем линейно (одним усилением на всю фразу) по замеру.
+    // Громкость в два прохода: сначала замер, потом одно ровное усиление на фразу (gainToTarget).
     const { stderr: measured } = await execFfmpeg([
       "-i", filePath,
       "-af", `${shape},loudnorm=${LOUDNESS}:print_format=json`,
@@ -82,8 +83,8 @@ export async function postProcessNarration(filePath: string, options: PostProces
     const tmpPath = `${filePath}.tmp.wav`;
     await execFfmpeg([
       "-y", "-i", filePath,
-      "-af", `${shape},${loudnormApply(measured)},${fades}`,
-      // loudnorm пересэмплирует в 192 кГц — возвращаем обычную частоту.
+      "-af", `${shape},${gainToTarget(measured)},${fades}`,
+      // Частота — стандартная для озвучки, независимо от того, что отдал TTS.
       "-ar", "44100",
       tmpPath,
     ]);
@@ -114,21 +115,22 @@ export async function normalizeNarration(
   const durationSec = await probe(filePath);
   const fades = `afade=t=in:d=${FADE_IN_SEC},afade=t=out:st=${Math.max(0, durationSec - FADE_OUT_SEC).toFixed(3)}:d=${FADE_OUT_SEC}`;
   const tmpPath = `${filePath}.tmp.wav`;
-  await execFfmpeg(["-y", "-i", filePath, "-af", `${loudnormApply(measured)},${fades}`, "-ar", "44100", tmpPath]);
+  await execFfmpeg(["-y", "-i", filePath, "-af", `${gainToTarget(measured)},${fades}`, "-ar", "44100", tmpPath]);
   await rename(tmpPath, filePath);
   return "normalized";
 }
 
-/** loudnorm с замером первого прохода (linear); без замера — обычный однопроходный. */
-function loudnormApply(stderr: string): string {
-  const json = /\{[^{}]*"input_i"[^{}]*\}/.exec(stderr)?.[0];
-  if (!json) return `loudnorm=${LOUDNESS}`;
-  const m = JSON.parse(json) as Record<string, string>;
-  const num = (key: string) => Number.isFinite(Number(m[key])) ? Number(m[key]) : undefined;
-  const [i, tp, lra, thresh, offset] = ["input_i", "input_tp", "input_lra", "input_thresh", "target_offset"].map(num);
-  // Тишина или слишком короткий кусок: замер -inf — линейный режим невозможен.
-  if ([i, tp, lra, thresh, offset].some((v) => v === undefined)) return `loudnorm=${LOUDNESS}`;
-  return `loudnorm=${LOUDNESS}:measured_I=${i}:measured_TP=${tp}:measured_LRA=${lra}:measured_thresh=${thresh}:offset=${offset}:linear=true`;
+/**
+ * Громкость по замеру первого прохода: ровное усиление до TARGET_LUFS + лимитер пиков.
+ * Не loudnorm-apply: на фразах в 2–5 с он уходит в динамический режим и даёт разброс в
+ * несколько дБ между сценами. Здесь результат предсказуем: одна цифра усиления на фразу.
+ * Нет замера (тишина, слишком короткий кусок) — усиление 0.
+ */
+function gainToTarget(stderr: string): string {
+  const inputI = Number(/"input_i"\s*:\s*"(-?[\d.]+)"/.exec(stderr)?.[1]);
+  const gainDb = Number.isFinite(inputI) ? Math.max(-30, Math.min(30, TARGET_LUFS - inputI)) : 0;
+  // limit в линейной шкале: -1.5 dBFS; level=0 — без автоподъёма, latency=1 — без сдвига звука.
+  return `volume=${gainDb.toFixed(2)}dB,alimiter=limit=${(10 ** (PEAK_DB / 20)).toFixed(4)}:level=0:latency=1`;
 }
 
 function parseSilence(stderr: string, originalDurationSec: number): { leadTrimSec: number; tailEndSec: number } {

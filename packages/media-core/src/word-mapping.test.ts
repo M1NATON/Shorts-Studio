@@ -30,6 +30,23 @@ describe("mapTimingsToOriginalText", () => {
     expect(byText.get("3.5x")!.end).toBe(provider[at("5x")]!.end);
   });
 
+  it("находит тайминг числа, озвученного словами (speakNumbers)", () => {
+    const { words, unmatched } = mapTimingsToOriginalText("A 2,000-year-old wreck in 1900.", [
+      { text: "A", start: 0, end: 0.1 },
+      { text: "two", start: 0.1, end: 0.3 },
+      { text: "thousand", start: 0.3, end: 0.6 },
+      { text: "year", start: 0.6, end: 0.8 },
+      { text: "old", start: 0.8, end: 1 },
+      { text: "wreck", start: 1, end: 1.3 },
+      { text: "in", start: 1.3, end: 1.4 },
+      { text: "nineteen", start: 1.4, end: 1.8 },
+      { text: "hundred", start: 1.8, end: 2.2 },
+    ]);
+    expect(unmatched).toBe(0);
+    expect(words[1]).toMatchObject({ text: "2,000-year-old", start: 0.1, end: 1 });
+    expect(words[4]).toMatchObject({ text: "1900.", start: 1.4, end: 2.2 });
+  });
+
   it("не склеивает соседние слова в чужое число", () => {
     const { words, unmatched } = mapTimingsToOriginalText("12 5", [
       { text: "12", start: 0, end: 0.4 },

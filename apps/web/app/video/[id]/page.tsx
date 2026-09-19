@@ -73,8 +73,7 @@ export default function VideoEditorPage() {
   const selectScene = useCallback((index: number) => {
     setSelected(index);
     const target = manifest?.scenes[index];
-    // В начале сцены блоки ещё не вошли — показываем момент, когда кадр собран.
-    if (target) player.current?.seekTo(target.startFrame + Math.round(target.durationInFrames * 0.6));
+    if (target) player.current?.seekTo(target.startFrame);
   }, [manifest]);
 
   // Во время воспроизведения выбранная сцена идёт за плейхедом.

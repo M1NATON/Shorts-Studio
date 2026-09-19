@@ -1,4 +1,5 @@
 import type { WordTiming } from "@shorts/contracts";
+import { speakNumbers } from "./spoken-numbers.js";
 
 /**
  * Перенос таймингов провайдера на ОРИГИНАЛЬНЫЙ текст озвучки.
@@ -39,7 +40,8 @@ export function mapTimingsToOriginalText(
     if (!key) continue;
 
     // Ищем следующее совпадение, допуская, что провайдер мог пропустить слово.
-    const match = findSpan(providerWords, cursor, key);
+    // Число в TTS ушло словами (speakNumbers): "1900" озвучено как "nineteen hundred".
+    const match = findSpan(providerWords, cursor, key) ?? findSpan(providerWords, cursor, normalize(speakNumbers(original)));
     if (!match) {
       // Нет совпадения — ставим заглушку, интерполируем ниже.
       words.push({ text: original, start: Number.NaN, end: Number.NaN });
@@ -57,8 +59,8 @@ export function mapTimingsToOriginalText(
 
 /** Сколько слов провайдера можно пропустить в поисках совпадения. */
 const LOOKAHEAD = 4;
-/** Из скольких слов провайдера может состоять одно слово оригинала: "1,000,000" → 1 000 000. */
-const MAX_SPAN = 4;
+/** Из скольких слов провайдера может состоять одно слово оригинала: "1,999" → "one thousand nine hundred ninety nine". */
+const MAX_SPAN = 8;
 
 /**
  * Слово оригинала — одно слово провайдера или несколько подряд.

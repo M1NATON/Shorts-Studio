@@ -1,11 +1,11 @@
 "use client";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { TriangleAlert } from "lucide-react";
 import { Thumbnail, type PlayerRef } from "@remotion/player";
 import type { Manifest } from "@shorts/contracts";
 import { ShortsVideo } from "@shorts/remotion/browser";
 import type { Scene } from "@/lib/api";
-import { timecode, usePlayerFrame } from "@/lib/player";
+import { timecode, usePlayerFrame, usePlaying } from "@/lib/player";
 import { layoutTimeline, rulerStep, type TimelineLayout } from "@/lib/timeline";
 import { sceneManifest } from "./VideoPlayer";
 
@@ -33,8 +33,16 @@ const ClipPoster = memo(function ClipPoster({ manifest, index, cover }: { manife
   );
 });
 
-function Playhead({ player, layout, scroller }: { player: PlayerRef | null; layout: TimelineLayout; scroller: HTMLDivElement | null }) {
+function Playhead({ player, layout, scroller, fps, dragging, onScrubStart }: {
+  player: PlayerRef | null;
+  layout: TimelineLayout;
+  scroller: HTMLDivElement | null;
+  fps: number;
+  dragging: boolean;
+  onScrubStart: (e: ReactPointerEvent) => void;
+}) {
   const frame = usePlayerFrame(player);
+  const playing = usePlaying(player);
   const x = layout.frameToX(frame);
   // Длинный ролик: плейхед не уходит за край — лента едет за ним.
   useEffect(() => {
@@ -42,7 +50,17 @@ function Playhead({ player, layout, scroller }: { player: PlayerRef | null; layo
     const view = scroller.clientWidth - 32;
     if (x < scroller.scrollLeft || x > scroller.scrollLeft + view) scroller.scrollLeft = Math.max(0, x - 40);
   }, [x, scroller]);
-  return <div className="playhead" style={{ left: x }} />;
+  return (
+    <div
+      className={`playhead${playing && !dragging ? " playing" : ""}${dragging ? " dragging" : ""}`}
+      // При воспроизведении переход длиной в кадр сглаживает шаги между кадрами.
+      style={{ transform: `translateX(${x}px)`, transitionDuration: playing && !dragging ? `${1000 / fps}ms` : undefined }}
+    >
+      <div className="playhead-knob" onPointerDown={onScrubStart} title="Перетащите, чтобы перемотать">
+        <span className="playhead-time">{timecode(frame, fps)}</span>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -98,18 +116,38 @@ export function Timeline({
   const step = rulerStep(layout.width / Math.max(1, seconds));
   const ticks = Array.from({ length: Math.floor(seconds / step) + 1 }, (_, i) => i * step);
 
+  // Перемотка перетаскиванием: с линейки или за ручку плейхеда. На время перетаскивания плеер на паузе.
+  const track = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const scrubStart = (e: ReactPointerEvent) => {
+    if (!player || !track.current || e.button !== 0) return;
+    e.preventDefault();
+    const wasPlaying = player.isPlaying();
+    if (wasPlaying) player.pause();
+    const seek = (clientX: number) => player.seekTo(layout.xToFrame(clientX - track.current!.getBoundingClientRect().left));
+    seek(e.clientX);
+    setDragging(true);
+    const move = (ev: PointerEvent) => seek(ev.clientX);
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setDragging(false);
+      if (wasPlaying) player.play();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
   return (
     <section className="timeline" aria-label="Таймлайн">
       <div className="timeline-scroll" ref={scroller}>
         {scenes.length === 0 ? (
           <p className="muted small" style={{ padding: 20 }}>Сцены появятся здесь, когда модель напишет план ролика.</p>
         ) : (
-          <div className="timeline-track" style={{ width: layout.width }}>
-            <div
-              className="ruler"
-              onClick={(e) => player?.seekTo(layout.xToFrame(e.clientX - e.currentTarget.getBoundingClientRect().left))}
-              title="Нажмите, чтобы перемотать"
-            >
+          <div className={`timeline-track${dragging ? " scrubbing" : ""}`} style={{ width: layout.width }} ref={track}>
+            <div className="ruler" onPointerDown={scrubStart} title="Нажмите или потяните, чтобы перемотать">
               {ticks.map((t) => (
                 <span key={t} style={{ left: layout.frameToX(t * fps) }}>{timecode(t * fps, fps, false)}</span>
               ))}
@@ -151,7 +189,7 @@ export function Timeline({
                 </div>
               ))}
             </div>
-            {manifest ? <Playhead player={player} layout={layout} scroller={scroller.current} /> : null}
+            {manifest ? <Playhead player={player} layout={layout} scroller={scroller.current} fps={fps} dragging={dragging} onScrubStart={scrubStart} /> : null}
           </div>
         )}
       </div>

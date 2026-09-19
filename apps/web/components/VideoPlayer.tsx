@@ -10,8 +10,8 @@ import { ShortsVideo } from "@shorts/remotion/browser";
  */
 export const VideoPlayer = forwardRef<
   PlayerRef,
-  { manifest: Manifest; controls?: boolean; muted?: boolean; autoPlay?: boolean; loop?: boolean; initialFrame?: number }
->(function VideoPlayer({ manifest, controls = true, muted = false, autoPlay = false, loop = false, initialFrame }, ref) {
+  { manifest: Manifest; controls?: boolean; muted?: boolean; autoPlay?: boolean; loop?: boolean }
+>(function VideoPlayer({ manifest, controls = true, muted = false, autoPlay = false, loop = false }, ref) {
     return (
       <Player
         ref={ref}
@@ -25,8 +25,6 @@ export const VideoPlayer = forwardRef<
         initiallyMuted={muted}
         autoPlay={autoPlay}
         loop={loop}
-        // Первый кадр сцены пуст: блоки ещё не вошли. Стартуем с момента, где хук уже виден.
-        initialFrame={initialFrame ?? Math.min(manifest.totalDurationInFrames - 1, Math.round((manifest.scenes[0]?.durationInFrames ?? 0) * 0.6))}
         acknowledgeRemotionLicense
         style={{ width: "100%", height: "100%" }}
       />

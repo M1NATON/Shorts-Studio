@@ -9,6 +9,7 @@ import path from "node:path";
 import type { WordTiming } from "@shorts/contracts";
 import { probeDurationSec } from "./ffprobe.js";
 import { assembleFishStream, parseSseEvents, type FishStreamResult } from "./fish-stream.js";
+import { speakNumbers } from "./spoken-numbers.js";
 import { estimateTimings, mapTimingsToOriginalText } from "./word-mapping.js";
 
 export interface FishOptions {
@@ -54,7 +55,8 @@ export async function voiceNarration(
   absPath: string,
   options: FishOptions & { synthesize?: typeof synthesizeFish; probe?: typeof probeDurationSec },
 ): Promise<VoicedNarration> {
-  const { audio, words } = await (options.synthesize ?? synthesizeFish)(narration, options);
+  // В TTS — числа словами (Fish путает "1900" и "2,000"); тайминги и субтитры — на оригинале с цифрами.
+  const { audio, words } = await (options.synthesize ?? synthesizeFish)(speakNumbers(narration), options);
   await mkdir(path.dirname(absPath), { recursive: true });
   await writeFile(absPath, audio);
   const durationSec = await (options.probe ?? probeDurationSec)(absPath);

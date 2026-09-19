@@ -10,7 +10,8 @@ const SILENCE_THRESHOLD_DB = -45;
 /** Запас перед первым/после последнего звука — резать впритык нельзя, слово "спотыкается". */
 const KEEP_MARGIN_SEC = 0.05;
 /** Целевая громкость речи (LUFS) и потолок пиков: одинаковая у всех сцен. */
-const LOUDNESS = "I=-14:TP=-1.5:LRA=11";
+const TARGET_LUFS = -14;
+const LOUDNESS = `I=${TARGET_LUFS}:TP=-1.5:LRA=11`;
 /** Плавный вход и выход фразы: без них стык сцен щёлкает и «режет слух». */
 const FADE_IN_SEC = 0.02;
 const FADE_OUT_SEC = 0.08;
@@ -94,6 +95,28 @@ export async function postProcessNarration(filePath: string, options: PostProces
     const durationSec = await probe(filePath).catch(() => 0);
     return { durationSec, leadTrimSec: 0, tempo: 1 };
   }
+}
+
+/**
+ * Выровнять громкость и сгладить края УЖЕ озвученной фразы — без обрезки и ускорения,
+ * поэтому тайминги слов остаются верными. Для озвучки, сделанной до postProcessNarration.
+ * Файл уже на целевой громкости (±0.5 LU) пропускается: повторный запуск ничего не портит.
+ */
+export async function normalizeNarration(
+  filePath: string,
+  options: Pick<PostProcessOptions, "execFfmpeg" | "probe"> = {},
+): Promise<"normalized" | "skipped"> {
+  const execFfmpeg = options.execFfmpeg ?? defaultExecFfmpeg;
+  const probe = options.probe ?? probeDurationSec;
+  const { stderr: measured } = await execFfmpeg(["-i", filePath, "-af", `loudnorm=${LOUDNESS}:print_format=json`, "-f", "null", "-"]);
+  const inputI = Number(/"input_i"\s*:\s*"(-?[\d.]+)"/.exec(measured)?.[1]);
+  if (Number.isFinite(inputI) && Math.abs(inputI - TARGET_LUFS) <= 0.5) return "skipped";
+  const durationSec = await probe(filePath);
+  const fades = `afade=t=in:d=${FADE_IN_SEC},afade=t=out:st=${Math.max(0, durationSec - FADE_OUT_SEC).toFixed(3)}:d=${FADE_OUT_SEC}`;
+  const tmpPath = `${filePath}.tmp.wav`;
+  await execFfmpeg(["-y", "-i", filePath, "-af", `${loudnormApply(measured)},${fades}`, "-ar", "44100", tmpPath]);
+  await rename(tmpPath, filePath);
+  return "normalized";
 }
 
 /** loudnorm с замером первого прохода (linear); без замера — обычный однопроходный. */

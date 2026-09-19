@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { postProcessNarration } from "./audio-post.js";
+import { normalizeNarration, postProcessNarration } from "./audio-post.js";
 import { probeDurationSec } from "./ffprobe.js";
 
 const execFileAsync = promisify(execFile);
@@ -105,5 +105,15 @@ describe.skipIf(!hasFfmpeg)("postProcessNarration (реальный ffmpeg)", ()
       expect(stdout.trim()).toBe("44100");
     }
     expect(Math.abs(levels[0]! - levels[1]!)).toBeLessThan(1);
+  }, 30000);
+
+  it("normalizeNarration: старая озвучка выравнивается без смены длины, повтор — пропуск", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "post-norm-"));
+    const file = path.join(dir, "old.wav");
+    await execFileAsync("ffmpeg", ["-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=3", "-af", "volume=0.05,tremolo=f=4:d=0.6", file]);
+    const before = await probeDurationSec(file);
+    expect(await normalizeNarration(file)).toBe("normalized");
+    expect(Math.abs((await probeDurationSec(file)) - before)).toBeLessThan(0.02);
+    expect(await normalizeNarration(file)).toBe("skipped");
   }, 30000);
 });

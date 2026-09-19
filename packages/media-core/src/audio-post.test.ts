@@ -87,4 +87,23 @@ describe.skipIf(!hasFfmpeg)("postProcessNarration (реальный ffmpeg)", ()
     expect(result.durationSec).toBeLessThan(before);
     expect(result.tempo).toBe(1.1);
   }, 20000);
+
+  it("тихая и громкая фраза выходят одной громкости, 44.1 кГц", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "post-loud-"));
+    const meanVolume = async (file: string) => {
+      const { stderr } = await execFileAsync("ffmpeg", ["-i", file, "-af", "volumedetect", "-f", "null", "-"]);
+      return Number(/mean_volume:\s*(-?[\d.]+)/.exec(stderr)![1]);
+    };
+    const levels: number[] = [];
+    for (const [name, volume] of [["quiet", 0.05], ["loud", 0.8]] as const) {
+      const file = path.join(dir, `${name}.wav`);
+      // 3 с «речи» (тон с модуляцией) — как фраза сцены.
+      await execFileAsync("ffmpeg", ["-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=3", "-af", `volume=${volume},tremolo=f=4:d=0.6`, file]);
+      await postProcessNarration(file, { tempo: 1 });
+      levels.push(await meanVolume(file));
+      const { stdout } = await execFileAsync("ffprobe", ["-v", "error", "-show_entries", "stream=sample_rate", "-of", "csv=p=0", file]);
+      expect(stdout.trim()).toBe("44100");
+    }
+    expect(Math.abs(levels[0]! - levels[1]!)).toBeLessThan(1);
+  }, 30000);
 });

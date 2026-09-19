@@ -9,6 +9,11 @@ const execFileAsync = promisify(execFile);
 const SILENCE_THRESHOLD_DB = -45;
 /** Запас перед первым/после последнего звука — резать впритык нельзя, слово "спотыкается". */
 const KEEP_MARGIN_SEC = 0.05;
+/** Целевая громкость речи (LUFS) и потолок пиков: одинаковая у всех сцен. */
+const LOUDNESS = "I=-14:TP=-1.5:LRA=11";
+/** Плавный вход и выход фразы: без них стык сцен щёлкает и «режет слух». */
+const FADE_IN_SEC = 0.02;
+const FADE_OUT_SEC = 0.08;
 /** Ускорение речи. `TTS_TEMPO` в env переопределяет для подбора без деплоя; 1 = выключено. */
 export const DEFAULT_TEMPO = Number(process.env.TTS_TEMPO) || 1.1;
 
@@ -33,9 +38,9 @@ export interface PostProcessResult {
 }
 
 /**
- * Обрезает тишину по краям, ускоряет речь и нормализует громкость — одним трансформирующим
- * ffmpeg-проходом (trim + atempo + loudnorm в одной цепочке фильтров) во временный файл
- * с последующим rename поверх оригинала.
+ * Обрезает тишину по краям, ускоряет речь, выравнивает громкость (замер + линейный
+ * loudnorm) и сглаживает края фразы — трансформирующим ffmpeg-проходом во временный
+ * файл с последующим rename поверх оригинала.
  *
  * Величину обрезки начала (нужна, чтобы сдвинуть тайминги слов) узнаём НАДЁЖНО заранее —
  * отдельным читающим проходом ffmpeg с фильтром silencedetect, без записи файла: сам
@@ -62,15 +67,23 @@ export async function postProcessNarration(filePath: string, options: PostProces
     ]);
     const { leadTrimSec, tailEndSec } = parseSilence(stderr, originalDurationSec);
 
-    if (tempo === 1 && leadTrimSec === 0 && tailEndSec >= originalDurationSec) {
-      // Резать и ускорять нечего — не гоняем лишний ffmpeg-проход.
-      return { durationSec: originalDurationSec, leadTrimSec: 0, tempo: 1 };
-    }
-
+    const shape = `atrim=start=${leadTrimSec}:end=${tailEndSec},asetpts=PTS-STARTPTS,atempo=${tempo}`;
+    // Громкость в два прохода: однопроходный loudnorm на фразе в 2–5 с работает в
+    // динамическом режиме и даёт разный уровень от сцены к сцене. Сначала меряем,
+    // потом выставляем линейно (одним усилением на всю фразу) по замеру.
+    const { stderr: measured } = await execFfmpeg([
+      "-i", filePath,
+      "-af", `${shape},loudnorm=${LOUDNESS}:print_format=json`,
+      "-f", "null", "-",
+    ]);
+    const outSec = (tailEndSec - leadTrimSec) / tempo;
+    const fades = `afade=t=in:d=${FADE_IN_SEC},afade=t=out:st=${Math.max(0, outSec - FADE_OUT_SEC).toFixed(3)}:d=${FADE_OUT_SEC}`;
     const tmpPath = `${filePath}.tmp.wav`;
     await execFfmpeg([
       "-y", "-i", filePath,
-      "-af", `atrim=start=${leadTrimSec}:end=${tailEndSec},asetpts=PTS-STARTPTS,atempo=${tempo},loudnorm=I=-14:TP=-1.5`,
+      "-af", `${shape},${loudnormApply(measured)},${fades}`,
+      // loudnorm пересэмплирует в 192 кГц — возвращаем обычную частоту.
+      "-ar", "44100",
       tmpPath,
     ]);
     await rename(tmpPath, filePath);
@@ -81,6 +94,18 @@ export async function postProcessNarration(filePath: string, options: PostProces
     const durationSec = await probe(filePath).catch(() => 0);
     return { durationSec, leadTrimSec: 0, tempo: 1 };
   }
+}
+
+/** loudnorm с замером первого прохода (linear); без замера — обычный однопроходный. */
+function loudnormApply(stderr: string): string {
+  const json = /\{[^{}]*"input_i"[^{}]*\}/.exec(stderr)?.[0];
+  if (!json) return `loudnorm=${LOUDNESS}`;
+  const m = JSON.parse(json) as Record<string, string>;
+  const num = (key: string) => Number.isFinite(Number(m[key])) ? Number(m[key]) : undefined;
+  const [i, tp, lra, thresh, offset] = ["input_i", "input_tp", "input_lra", "input_thresh", "target_offset"].map(num);
+  // Тишина или слишком короткий кусок: замер -inf — линейный режим невозможен.
+  if ([i, tp, lra, thresh, offset].some((v) => v === undefined)) return `loudnorm=${LOUDNESS}`;
+  return `loudnorm=${LOUDNESS}:measured_I=${i}:measured_TP=${tp}:measured_LRA=${lra}:measured_thresh=${thresh}:offset=${offset}:linear=true`;
 }
 
 function parseSilence(stderr: string, originalDurationSec: number): { leadTrimSec: number; tailEndSec: number } {

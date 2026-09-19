@@ -13,6 +13,43 @@ export interface Worker {
   stop(): Promise<void>;
   /** Дождаться, пока очередь опустеет (для тестов). */
   idle(): Promise<void>;
+  /** Отменить идущую задачу; false — такой задачи сейчас нет в работе. */
+  cancel(jobId: string): boolean;
+}
+
+export const CANCELLED = "Отменено";
+
+/**
+ * Зависимости одной задачи, которые перестают работать после отмены: следующий
+ * запрос к модели, озвучка, поиск и скачивание медиа, шаг прогресса бросают,
+ * рендер Remotion прерывается сам.
+ * Уже идущий запрос к модели дорабатывает, но записать результат в базу задача уже не сможет.
+ */
+function cancellable(deps: PipelineDeps, signal: AbortSignal): PipelineDeps {
+  const guard = <T extends { askJson: (...args: never[]) => unknown }>(client: T): T =>
+    ({ ...client, askJson: (...args: Parameters<T["askJson"]>) => (signal.throwIfAborted(), client.askJson(...args)) }) as T;
+  return {
+    ...deps,
+    // Любое обращение отменённой задачи к базе бросает: иначе запрос к модели, начатый до
+    // отмены, дописал бы сценарий (saveScript ставит проект в draft) поверх «Отменено».
+    repo: Object.fromEntries(
+      Object.entries(deps.repo).map(([name, method]) => [
+        name,
+        typeof method === "function"
+          ? (...args: unknown[]) => (signal.throwIfAborted(), (method as (...a: unknown[]) => unknown)(...args))
+          : method,
+      ]),
+    ) as PipelineDeps["repo"],
+    generationContext: async (onProgress) => {
+      const ctx = await deps.generationContext(onProgress);
+      return { ...ctx, llm: guard(ctx.llm), ...(ctx.llmFast ? { llmFast: guard(ctx.llmFast) } : {}) };
+    },
+    voice: (narration, absPath) => (signal.throwIfAborted(), deps.voice(narration, absPath)),
+    // Медиа ловит свои ошибки по сцене — после отмены каждый поиск и скачивание просто не начнутся.
+    searchMedia: (input) => (signal.throwIfAborted(), deps.searchMedia(input)),
+    downloadMedia: (url, dest) => (signal.throwIfAborted(), deps.downloadMedia(url, dest)),
+    render: (manifest, outputAbs, onProgress) => deps.render(manifest, outputAbs, onProgress, signal),
+  };
 }
 
 /**
@@ -47,6 +84,7 @@ export function startWorker(
   let kicked = false;
   let wake: (() => void) | undefined;
   const idleWaiters: (() => void)[] = [];
+  const controllers = new Map<string, AbortController>();
 
   const kick = () => {
     kicked = true;
@@ -55,12 +93,20 @@ export function startWorker(
 
   async function process(job: JobRecord): Promise<void> {
     deps.events.emit({ type: "job", job });
+    const controller = new AbortController();
+    controllers.set(job.id, controller);
     try {
-      const result = await JOB_HANDLERS[job.kind](deps, job);
+      const work = JOB_HANDLERS[job.kind](cancellable(deps, controller.signal), job);
+      // После отмены задача закрывается сразу; сам обработчик остановится на ближайшей проверке сигнала.
+      work.catch(() => undefined);
+      const aborted = new Promise<never>((_, reject) =>
+        controller.signal.addEventListener("abort", () => reject(new Error(CANCELLED)), { once: true }),
+      );
+      const result = await Promise.race([work, aborted]);
       const done = await deps.repo.updateJob(job.id, { status: "done", result: result ?? null, stage: "done", message: null });
       deps.events.emit({ type: "job", job: done });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = controller.signal.aborted ? CANCELLED : error instanceof Error ? error.message : String(error);
       options.log?.(`job ${job.kind} ${job.id} failed: ${message}`);
       const failed = await deps.repo.updateJob(job.id, { status: "failed", error: message });
       deps.events.emit({ type: "job", job: failed });
@@ -68,6 +114,8 @@ export function startWorker(
         await deps.repo.updateProject(job.projectId, { status: "failed", error: message });
         deps.events.emit({ type: "project", projectId: job.projectId });
       }
+    } finally {
+      controllers.delete(job.id);
     }
   }
 
@@ -103,6 +151,11 @@ export function startWorker(
       stopped = true;
       wake?.();
       await running;
+    },
+    cancel(jobId) {
+      const controller = controllers.get(jobId);
+      controller?.abort();
+      return Boolean(controller);
     },
     idle: () =>
       new Promise<void>((resolve) => {

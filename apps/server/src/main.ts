@@ -74,8 +74,8 @@ const deps: PipelineDeps = {
     const { tts } = await providers.current();
     return tts ? `fish:${tts.model}:${tts.referenceId}` : "none";
   },
-  render: async (manifest, outputPath, onProgress) => {
-    await renderSlot(() => renderVideo({ manifest, outputPath, storageDir: config.storageDir, onProgress }));
+  render: async (manifest, outputPath, onProgress, signal) => {
+    await renderSlot(() => (signal?.throwIfAborted(), renderVideo({ manifest, outputPath, storageDir: config.storageDir, onProgress, ...(signal ? { signal } : {}) })));
   },
   // Обложка — один кадр за пару секунд: без лимита, иначе генерация стояла бы за чужим рендером.
   still: async (manifest, frame, output) => {

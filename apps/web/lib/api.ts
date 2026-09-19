@@ -171,7 +171,8 @@ export const api = {
   jobs: (projectId?: string, active = false) =>
     request<Job[]>(`/api/jobs?${new URLSearchParams({ ...(projectId ? { projectId } : {}), ...(active ? { active: "1" } : {}) })}`),
   queue: () => request<Queue>("/api/queue"),
-  cancelJob: (jobId: string) => post<Job>(`/api/jobs/${jobId}/cancel`),
+  /** Задача из очереди отменяется сразу (Job); идущая — останавливается воркером, итог придёт событием. */
+  cancelJob: (jobId: string) => post<Job | { cancelling: true }>(`/api/jobs/${jobId}/cancel`),
   settings: () => request<Record<ProviderKind, ProviderInfo>>("/api/settings"),
   saveSettings: (kind: ProviderKind, fields: Record<string, string>) =>
     request<ProviderInfo>(`/api/settings/${kind}`, { method: "PUT", body: JSON.stringify(fields) }),

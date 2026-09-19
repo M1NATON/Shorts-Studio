@@ -437,8 +437,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   app.post<{ Params: { id: string } }>("/api/jobs/:id/cancel", async (request, reply) => {
+    // Идущую задачу останавливает воркер: статус «Отменено» и событие придут от него.
+    if (deps.worker?.cancel(request.params.id)) return reply.code(202).send({ cancelling: true });
     const job = await repo.cancelJob(request.params.id);
-    if (!job) return reply.code(409).send({ error: "only queued jobs can be cancelled" });
+    if (!job) return reply.code(409).send({ error: "job is not queued or running" });
     events.emit({ type: "job", job });
     if (job.kind === "generate" && job.projectId) events.emit({ type: "project", projectId: job.projectId });
     return job;

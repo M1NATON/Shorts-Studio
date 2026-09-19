@@ -149,7 +149,9 @@ svg { flex: none; }
 
 /* Карточка идущей задачи: крупнее строки списков, свой прогресс с процентом. */
 .queue-card { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
-.queue-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.queue-card-head { display: flex; align-items: center; gap: 8px; }
+.queue-card-head > a { flex: 1; }
+.queue-card-head > .btn { flex-shrink: 0; margin: -4px -4px -4px 0; }
 .queue-card-head a { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .queue-card-head > span, .queue-progress > span { white-space: nowrap; flex-shrink: 0; }
 .queue-card > .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

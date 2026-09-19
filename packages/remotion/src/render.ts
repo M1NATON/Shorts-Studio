@@ -1,6 +1,6 @@
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
-import { ensureBrowser, renderMedia, renderStill, selectComposition, type OpenGlRenderer } from "@remotion/renderer";
+import { ensureBrowser, makeCancelSignal, renderMedia, renderStill, selectComposition, type OpenGlRenderer } from "@remotion/renderer";
 import type { Manifest } from "@shorts/contracts";
 import { COMPOSITION_ID } from "./Root.js";
 
@@ -35,6 +35,8 @@ export interface RenderOptions {
   /** Точка входа Remotion. По умолчанию — entry этого пакета. */
   entryPoint?: string;
   onProgress?: (progress: number) => void;
+  /** Отмена задачи: прерывает рендер Remotion (Chromium и ffmpeg останавливаются). */
+  signal?: AbortSignal;
 }
 
 /**
@@ -65,8 +67,12 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
   const gl = process.env.RENDER_GL === "off" ? undefined : ((process.env.RENDER_GL as OpenGlRenderer | undefined) ?? "vulkan");
   const concurrency = process.env.RENDER_CONCURRENCY ? Number(process.env.RENDER_CONCURRENCY) : undefined;
 
+  const { cancelSignal, cancel } = makeCancelSignal();
+  options.signal?.addEventListener("abort", cancel, { once: true });
+
   const renderOnce = (withGl: boolean) =>
     renderMedia({
+      cancelSignal,
       composition,
       serveUrl,
       codec: "h264",
@@ -86,7 +92,7 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
   } catch (err) {
     // На машине без GPU (или без нужного драйвера) Chromium может не запуститься
     // с выбранным gl — тогда рендерим тем же процессом без него, а не роняем job.
-    if (!gl) throw err;
+    if (!gl || options.signal?.aborted) throw err;
     console.warn(`renderVideo: рендер с gl="${gl}" не запустился, повтор без GPU-рендера кадров: ${String(err)}`);
     await renderOnce(false);
   }

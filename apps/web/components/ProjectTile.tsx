@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Copy, Download, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
+import { CircleStop, Copy, Download, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
 import { api, mediaUrl, videoUrl, type Job, type Project } from "@/lib/api";
 import { formatDate, formatDuration, formatShortDate, STATUS_HINT, STATUS_LABEL } from "@/lib/format";
 import { GenerationProgress } from "./GenerationProgress";
@@ -22,6 +22,12 @@ export function ProjectTile({ project, job, onChange }: { project: Project; job?
     onChange();
   }
 
+  async function stop() {
+    if (!job || !window.confirm(`Остановить сборку «${title}»? Сделанное пропадёт, потом можно «Повторить».`)) return;
+    await api.cancelJob(job.id).catch((e: Error) => window.alert(e.message));
+    onChange();
+  }
+
   return (
     <article className="tile" aria-label={title}>
       <Link href={`/video/${project.id}`} className={`thumb${landscape ? " landscape" : ""}`} tabIndex={-1} aria-hidden="true">
@@ -40,6 +46,9 @@ export function ProjectTile({ project, job, onChange }: { project: Project; job?
             <>
               {canDownload ? (
                 <a href={videoUrl(project.id)} onClick={close}><Download size={16} strokeWidth={1.75} />Скачать MP4</a>
+              ) : null}
+              {building ? (
+                <button onClick={() => { close(); void stop(); }}><CircleStop size={16} strokeWidth={1.75} />Остановить</button>
               ) : null}
               {project.status === "failed" ? (
                 <button onClick={() => { close(); void api.retry(project.id).then(onChange); }}><RotateCcw size={16} strokeWidth={1.75} />Повторить</button>

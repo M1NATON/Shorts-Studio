@@ -61,7 +61,7 @@ export interface PipelineDeps {
   readonly voice: (narration: string, absPath: string) => Promise<VoicedNarration>;
   /** Идентификатор голоса для хеша озвучки: смена голоса = новая озвучка. */
   readonly voiceKey: () => Promise<string>;
-  readonly render: (manifest: Manifest, outputAbs: string, onProgress: (p: number) => void) => Promise<void>;
+  readonly render: (manifest: Manifest, outputAbs: string, onProgress: (p: number) => void, signal?: AbortSignal) => Promise<void>;
   readonly still: (manifest: Manifest, frame: number, outputAbs: string) => Promise<void>;
   /** Pexels apiKey, если провайдер настроен; undefined — шаги медиа молча пропускаются. */
   readonly mediaKey: () => Promise<string | undefined>;

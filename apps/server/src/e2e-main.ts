@@ -102,8 +102,8 @@ const deps: PipelineDeps = {
   generationContext: async (onProgress) => ({ llm, today: "2026-09-18", onProgress }),
   voice: silentVoice,
   voiceKey: async () => "e2e-silent",
-  render: async (manifest, outputPath, onProgress) => {
-    await renderVideo({ manifest, outputPath, storageDir: config.storageDir, onProgress });
+  render: async (manifest, outputPath, onProgress, signal) => {
+    await renderVideo({ manifest, outputPath, storageDir: config.storageDir, onProgress, ...(signal ? { signal } : {}) });
   },
   still: async (manifest, frame, output) => {
     await renderStills({ manifest, storageDir: config.storageDir, frames: [frame], outputPath: () => output });

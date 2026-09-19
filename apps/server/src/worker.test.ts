@@ -39,6 +39,48 @@ describe("воркер", () => {
     database.close();
   });
 
+  it("идущую задачу можно отменить: сразу «Отменено», дальше модель не зовётся", async () => {
+    const database = openDatabase(":memory:");
+    const repo = createRepository(database);
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const deps = {
+      repo,
+      events: new StudioEvents(),
+      storageDir: "/nonexistent",
+      // Модель «думает», пока тест её не отпустит; после отмены второй запрос уже не должен уйти.
+      generationContext: async () => ({
+        llm: {
+          askJson: async () => {
+            calls++;
+            await gate;
+            return {};
+          },
+        },
+        today: "2026-09-19",
+      }),
+    } as unknown as PipelineDeps;
+    const project = await repo.createProject({ topic: "a", format: "shorts" });
+    const job = await repo.createJob({ kind: "generate", projectId: project.id });
+
+    const worker = startWorker(deps, { concurrency: 1, pollMs: 10 });
+    await expect.poll(() => calls).toBe(1);
+    expect(worker.cancel(job.id)).toBe(true);
+    await expect.poll(async () => (await repo.getJob(job.id))?.status).toBe("failed");
+    expect((await repo.getJob(job.id))?.error).toBe("Отменено");
+    expect((await repo.requireProject(project.id)).status).toBe("failed");
+    release();
+    await worker.idle();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(calls).toBe(1);
+    // Поздний ответ модели ничего не записал поверх отмены.
+    expect((await repo.requireProject(project.id)).status).toBe("failed");
+    expect(worker.cancel(job.id)).toBe(false);
+    await worker.stop();
+    database.close();
+  });
+
   it("limiter держит не больше N вызовов сразу", async () => {
     const slot = limiter(2);
     let active = 0;

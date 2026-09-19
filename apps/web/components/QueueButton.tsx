@@ -24,7 +24,7 @@ const ProjectLink = ({ job }: { job: QueueJob }) =>
   job.projectId ? <Link href={`/video/${job.projectId}`}>{job.projectTitle ?? "Проект"}</Link> : <span>—</span>;
 
 /** Крупная карточка идущей задачи: этап, прогресс, сколько уже длится. */
-function RunningCard({ job, now }: { job: QueueJob; now: number }) {
+function RunningCard({ job, now, onCancel }: { job: QueueJob; now: number; onCancel: () => void }) {
   const elapsedSec = Math.max(0, Math.round((now - new Date(job.startedAt ?? job.createdAt).getTime()) / 1000));
   const pct = job.total ? Math.round(((job.done ?? 0) / job.total) * 100) : null;
   return (
@@ -33,6 +33,9 @@ function RunningCard({ job, now }: { job: QueueJob; now: number }) {
         <ProjectLink job={job} />
         {/* От перехода в running; createdAt — только у задач, взятых до миграции 8. */}
         <span className="small muted mono">идёт {formatDuration(elapsedSec) || "0:00"}</span>
+        <button className="btn ghost icon sm" aria-label={`Остановить: ${what(job)}`} title="Остановить" onClick={onCancel}>
+          <X size={14} strokeWidth={1.75} />
+        </button>
       </div>
       <div className="small muted">{what(job)} · {stageText(job)}</div>
       <div className="queue-progress">
@@ -113,6 +116,10 @@ export function QueueButton() {
   });
 
   const cancel = (id: string) => void api.cancelJob(id).catch(() => undefined).then(load);
+  // Остановка идущей задачи теряет сделанное, поэтому с подтверждением.
+  const stop = (job: QueueJob) => {
+    if (window.confirm(`Остановить «${what(job)}»${job.projectTitle ? ` — ${job.projectTitle}` : ""}? Сделанное в этой задаче пропадёт.`)) cancel(job.id);
+  };
   const retry = (projectId: string) => void api.retry(projectId).catch(() => undefined).then(load);
   const dialog = useRef<HTMLDialogElement>(null);
   // Упавшую генерацию можно повторить, если проект всё ещё в ошибке (сервер проверит сам).
@@ -167,7 +174,7 @@ export function QueueButton() {
             <>
               <h3 className="queue-title">Выполняется · {queue.running.length}</h3>
               {queue.running.length ? (
-                <ul className="queue-list cards">{queue.running.map((j) => <RunningCard key={j.id} job={j} now={now} />)}</ul>
+                <ul className="queue-list cards">{queue.running.map((j) => <RunningCard key={j.id} job={j} now={now} onCancel={() => stop(j)} />)}</ul>
               ) : (
                 <p className="small muted">Ничего не выполняется</p>
               )}

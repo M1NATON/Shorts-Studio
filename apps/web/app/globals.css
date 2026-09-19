@@ -135,7 +135,7 @@ svg { flex: none; }
 .queue-list.numbered { counter-reset: q; }
 .queue-list.numbered > .queue-row::before { counter-increment: q; content: counter(q); width: 18px; flex-shrink: 0; color: var(--muted); font-family: var(--mono); font-size: 12px; }
 .queue-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 10px 0 4px; }
-.queue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.queue-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .queue-list.cards { gap: 8px; }
 .queue-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .queue-row:last-child { border-bottom: 0; }
@@ -148,11 +148,13 @@ svg { flex: none; }
 .queue-empty { padding: 28px 4px; text-align: center; }
 
 /* Карточка идущей задачи: крупнее строки списков, свой прогресс с процентом. */
-.queue-card { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+.queue-card { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
 .queue-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .queue-card-head a { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.queue-card-head > span, .queue-progress > span { white-space: nowrap; flex-shrink: 0; }
+.queue-card > .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .queue-progress { display: flex; align-items: center; gap: 8px; }
-.queue-progress progress { flex: 1; height: 4px; accent-color: var(--accent); }
+.queue-progress progress { flex: 1; min-width: 40px; height: 4px; accent-color: var(--accent); }
 
 /* Точка на кнопке шапки: недавняя ошибка в очереди. */
 .queue-alert { width: 7px; height: 7px; border-radius: 50%; background: var(--bad); flex-shrink: 0; }

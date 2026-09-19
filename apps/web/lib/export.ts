@@ -59,6 +59,7 @@ export function exportMarkdown(project: Project, scenes: Scene[]): string {
 
   if (project.publish) {
     lines.push("## Для публикации", `Название: ${project.publish.title}`, `Описание: ${project.publish.description}`, `Хэштеги: ${project.publish.hashtags.join(" ")}`);
+    if (project.publish.thumbnailPrompt) lines.push(`Промпт для обложки: ${project.publish.thumbnailPrompt}`);
   }
 
   return `${lines.join("\n").trim()}\n`;

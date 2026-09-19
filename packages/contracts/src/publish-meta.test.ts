@@ -13,6 +13,12 @@ describe("PublishMetaSchema", () => {
     expect(PublishMetaSchema.safeParse(valid).success).toBe(true);
   });
 
+  it("промпт обложки необязателен, но не пустышка", () => {
+    const prompt = "A close-up of an ancient bronze gear mechanism glowing under a diver's torch, bold text \"LOST TECH\"";
+    expect(PublishMetaSchema.safeParse({ ...valid, thumbnailPrompt: prompt }).success).toBe(true);
+    expect(PublishMetaSchema.safeParse({ ...valid, thumbnailPrompt: "gears" }).success).toBe(false);
+  });
+
   it("отклоняет слишком короткий заголовок и описание", () => {
     expect(PublishMetaSchema.safeParse({ ...valid, title: "Short" }).success).toBe(false);
     expect(PublishMetaSchema.safeParse({ ...valid, description: "Too short." }).success).toBe(false);

@@ -18,6 +18,7 @@ import {
   type SceneVisualKind,
   type VideoFormat,
 } from "@shorts/contracts";
+import { extractNumbers } from "../fact-check.js";
 
 export interface Beat {
   readonly narration: string;
@@ -132,6 +133,17 @@ export const BACKDROP_BY_HERO: Record<HeroBlock, SceneBackdrop> = {
 
 export const DATA_HEROES: ReadonlySet<HeroBlock> = new Set(["ring", "number", "bars"]);
 
+/**
+ * В озвучке есть число для кадра: не год и не порядковая мелочь («3 reasons»).
+ *
+ * Та же проверка, которой валидатор кадра отклоняет выдуманную цифру
+ * (compositionIssues в fill.ts: «the narration has no figure») — переиспользуется
+ * здесь, чтобы план не назначал герой/скелет, которые заведомо не пройдут.
+ */
+export function narrationHasFigure(narration: string): boolean {
+  return extractNumbers(narration).some((n) => !n.isYear && !(Number.isInteger(n.value) && n.value <= 12 && n.step === 1));
+}
+
 /** Какие блоки засчитываются за главный: вместо кольца годится любой блок данных. */
 export function heroAlternatives(hero: HeroBlock): BlockType[] {
   return DATA_HEROES.has(hero) ? [...DATA_BLOCKS] : [hero];
@@ -139,8 +151,9 @@ export function heroAlternatives(hero: HeroBlock): BlockType[] {
 
 /**
  * Какие блоки данных честно подходят фразе. Кольцо — только доле («62%», «a third»),
- * столбцы — только нескольким числам. Иначе модель рисовала кольцо «100%» на фразе
- * про «+$500 к цене»: блок назначен, а доли в тексте нет.
+ * столбцы — только нескольким числам, число — только реальной цифре. Иначе модель
+ * рисовала кольцо «100%» на фразе про «+$500 к цене» или число на фразе вовсе без
+ * цифры: блок назначен, а показать в нём нечего.
  */
 export function dataHeroesFor(narration: string): HeroBlock[] {
   const text = narration.toLowerCase();
@@ -149,7 +162,7 @@ export function dataHeroesFor(narration: string): HeroBlock[] {
   const fits: HeroBlock[] = [];
   if (share) fits.push("ring");
   if (numbers.length >= 2) fits.push("bars");
-  fits.push("number");
+  if (narrationHasFigure(narration)) fits.push("number");
   return fits;
 }
 
@@ -270,7 +283,10 @@ export function planScenes(beats: readonly Beat[], format: VideoFormat = "shorts
   const kinds: TemplateKind[] = beats.map((beat, index) => {
     if (index === 0) return "hook-statement";
     if (index === beats.length - 1) return "outro-cta";
-    return KIND_BY_INTENT[beat.intent] ?? "icon-list";
+    const kind = KIND_BY_INTENT[beat.intent] ?? "icon-list";
+    // stat-counter без цифры в озвучке нечего считать — сцена всё равно уйдёт в
+    // откат по валидации; назначаем шаблон сразу, без лишнего запроса к модели.
+    return kind === "stat-counter" && !narrationHasFigure(beat.narration) ? "icon-list" : kind;
   });
   const isOrdered = (index: number) => ORDERED_INTENTS.has(beats[index]?.intent ?? "fact");
 

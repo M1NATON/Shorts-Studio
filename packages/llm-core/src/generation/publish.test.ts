@@ -53,6 +53,23 @@ describe("generatePublishMeta", () => {
     expect(llm.calls[0]!.system).toMatch(/3 to 5 relevant hashtags/);
   });
 
+  it("короткий промпт обложки отбрасывается, название и описание остаются", async () => {
+    const llm = fakeLlm(() => ({ ...validAnswer, thumbnailPrompt: "gears" }));
+    const meta = await generatePublishMeta(llm, input);
+    expect(llm.calls).toHaveLength(1);
+    expect(meta.thumbnailPrompt).toBeUndefined();
+    expect(meta.title).toBe(validAnswer.title);
+  });
+
+  it("промпт обложки: вертикальный для shorts, горизонтальный для landscape", async () => {
+    const shorts = fakeLlm(() => validAnswer);
+    await generatePublishMeta(shorts, input);
+    expect(shorts.calls[0]!.system).toMatch(/thumbnailPrompt: .*vertical 9:16/s);
+    const landscape = fakeLlm(() => validAnswer);
+    await generatePublishMeta(landscape, { ...input, format: "landscape" });
+    expect(landscape.calls[0]!.system).toMatch(/horizontal 16:9/);
+  });
+
   it("промпт требует ключевое слово темы в начале title и вопрос в конце description", async () => {
     const llm = fakeLlm(() => validAnswer);
     await generatePublishMeta(llm, input);

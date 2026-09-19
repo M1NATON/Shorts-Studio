@@ -18,7 +18,8 @@ describe("longShape", () => {
 
 describe("planScenes: 16:9", () => {
   const intents: SceneIntent[] = ["hook", "number", "list", "contrast", "fact", "list", "number", "takeaway"];
-  const beats: Beat[] = intents.map((intent) => ({ intent, narration: "x" }));
+  // "number" получает настоящую цифру: без неё план не назначает ей stat-counter/герой с данными.
+  const beats: Beat[] = intents.map((intent) => ({ intent, narration: intent === "number" ? "Costs fell to $140 per unit" : "x" }));
 
   it("split только у сцен из блоков со скелетом «текст + визуал»; top и stacked не используются", () => {
     const plans = planScenes(beats, "landscape");

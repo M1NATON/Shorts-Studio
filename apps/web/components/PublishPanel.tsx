@@ -36,24 +36,29 @@ export function PublishPanel({ projectId, value, onChanged }: { projectId: strin
   const [title, setTitle] = useState(value?.title ?? "");
   const [description, setDescription] = useState(value?.description ?? "");
   const [hashtagsText, setHashtagsText] = useState(value?.hashtags.join(" ") ?? "");
+  const [thumbnailPrompt, setThumbnailPrompt] = useState(value?.thumbnailPrompt ?? "");
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string>();
 
   const dirty = saved
-    ? title !== saved.title || description !== saved.description || hashtagsText !== saved.hashtags.join(" ")
-    : Boolean(title || description || hashtagsText);
+    ? title !== saved.title || description !== saved.description || hashtagsText !== saved.hashtags.join(" ") || thumbnailPrompt !== (saved.thumbnailPrompt ?? "")
+    : Boolean(title || description || hashtagsText || thumbnailPrompt);
+
+  const apply = (meta: PublishMeta) => {
+    setSaved(meta);
+    setTitle(meta.title);
+    setDescription(meta.description);
+    setHashtagsText(meta.hashtags.join(" "));
+    setThumbnailPrompt(meta.thumbnailPrompt ?? "");
+  };
 
   const generate = async () => {
     if (dirty && !window.confirm("Есть несохранённые правки — сгенерировать заново и потерять их?")) return;
     setGenerating(true);
     setError(undefined);
     try {
-      const meta = await api.regeneratePublish(projectId);
-      setSaved(meta);
-      setTitle(meta.title);
-      setDescription(meta.description);
-      setHashtagsText(meta.hashtags.join(" "));
+      apply(await api.regeneratePublish(projectId));
       onChanged();
     } catch (e) {
       setError(describeError(e));
@@ -63,7 +68,12 @@ export function PublishPanel({ projectId, value, onChanged }: { projectId: strin
   };
 
   const save = async () => {
-    const candidate = { title: title.trim(), description: description.trim(), hashtags: hashtagsText.trim().split(/\s+/).filter(Boolean) };
+    const candidate = {
+      title: title.trim(),
+      description: description.trim(),
+      hashtags: hashtagsText.trim().split(/\s+/).filter(Boolean),
+      ...(thumbnailPrompt.trim() ? { thumbnailPrompt: thumbnailPrompt.trim() } : {}),
+    };
     const parsed = PublishMetaSchema.safeParse(candidate);
     if (!parsed.success) {
       setError(parsed.error.issues.map((i) => i.message).join("; "));
@@ -73,10 +83,7 @@ export function PublishPanel({ projectId, value, onChanged }: { projectId: strin
     setError(undefined);
     try {
       await api.setPublish(projectId, parsed.data);
-      setSaved(parsed.data);
-      setTitle(parsed.data.title);
-      setDescription(parsed.data.description);
-      setHashtagsText(parsed.data.hashtags.join(" "));
+      apply(parsed.data);
       onChanged();
     } catch (e) {
       setError(describeError(e));
@@ -126,6 +133,24 @@ export function PublishPanel({ projectId, value, onChanged }: { projectId: strin
           <input id="pub-hashtags" className="input" style={{ flex: 1 }} disabled={generating} value={hashtagsText} onChange={(e) => setHashtagsText(e.target.value)} />
           <CopyButton text={hashtagsText}>Копировать</CopyButton>
         </div>
+      </div>
+
+      <div className="stack" style={{ gap: 4 }}>
+        <label className="section-title" htmlFor="pub-thumbnail">Промпт для обложки</label>
+        <div className="row" style={{ alignItems: "flex-start" }}>
+          <textarea
+            id="pub-thumbnail"
+            className="textarea"
+            rows={5}
+            maxLength={2000}
+            disabled={generating}
+            placeholder="Появится после «Сгенерировать заново»"
+            value={thumbnailPrompt}
+            onChange={(e) => setThumbnailPrompt(e.target.value)}
+          />
+          <CopyButton text={thumbnailPrompt}>Копировать</CopyButton>
+        </div>
+        <p className="small muted">Вставьте в генератор картинок (Midjourney, Nano Banana, DALL·E и т.п.).</p>
       </div>
 
       {error ? <div className="issues">{error}</div> : null}

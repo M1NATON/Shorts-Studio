@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Block, SceneIntent } from "@shorts/contracts";
 import { assignHeroes, assignSkeletons, dataHeroesFor, planScenes, SKELETONS, type Beat, type HeroBlock } from "./plan.js";
 
-const beats = (intents: SceneIntent[]): Beat[] => intents.map((intent, i) => ({ intent, narration: `Beat ${i}` }));
+// "number" получает настоящую цифру: без неё план больше не назначает ей stat-counter/герой с данными.
+const beats = (intents: SceneIntent[]): Beat[] =>
+  intents.map((intent, i) => ({ intent, narration: intent === "number" ? `Beat ${i} costs $${140 + i}` : `Beat ${i}` }));
 const TYPICAL = beats(["hook", "number", "list", "contrast", "fact", "list", "number", "takeaway"]);
 
 describe("planScenes", () => {
@@ -104,5 +106,35 @@ describe("dataHeroesFor", () => {
       ["hook-statement", "stat-counter", "stat-counter", "outro-cta"],
     );
     expect(heroes.slice(1, 3)).toEqual(["number", "number"]);
+  });
+
+  it("без цифры в тексте не подходит даже число — данных блоков не остаётся вовсе", () => {
+    // Реальный случай из лога: «the narration has no figure» на фразе без единой цифры.
+    expect(dataHeroesFor("Lower-cost LFP chemistry pushed pack prices down further.")).toEqual([]);
+  });
+
+  it("замысел «number» без цифры в озвучке не получает главный блок с данными", () => {
+    const heroes = assignHeroes(
+      [
+        { intent: "hook", narration: "x" },
+        { intent: "number", narration: "Lower-cost LFP chemistry pushed pack prices down further." },
+        { intent: "takeaway", narration: "y" },
+      ],
+      ["hook-statement", "stat-counter", "outro-cta"],
+    );
+    expect(heroes[1]).toBeUndefined();
+  });
+});
+
+describe("planScenes: intent «number» без цифры", () => {
+  it("не даёт ни stat-counter, ни сборку из блоков — сцена уходит в другой шаблон", () => {
+    const beats: Beat[] = [
+      { intent: "hook", narration: "x" },
+      { intent: "number", narration: "Lower-cost LFP chemistry pushed pack prices down further." },
+      { intent: "takeaway", narration: "y" },
+    ];
+    const plans = planScenes(beats);
+    expect(plans[1]!.kind).not.toBe("stat-counter");
+    expect(plans[1]!.hero).toBeUndefined();
   });
 });

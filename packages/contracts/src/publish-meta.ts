@@ -8,5 +8,7 @@ export const PublishMetaSchema = z.object({
   title: z.string().trim().min(10).max(100),
   description: z.string().trim().min(50).max(3000),
   hashtags: z.array(z.string().regex(/^#[\p{L}\p{N}_]{2,30}$/u)).min(3).max(8),
+  /** Промпт для генератора картинок (обложка). Необязателен: у роликов, сгенерированных раньше, его нет. */
+  thumbnailPrompt: z.string().trim().min(40).max(2000).optional(),
 });
 export type PublishMeta = z.infer<typeof PublishMetaSchema>;

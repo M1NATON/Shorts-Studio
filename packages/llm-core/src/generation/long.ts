@@ -18,7 +18,7 @@ import {
 import { z } from "zod";
 import { buildResearchBrief, searchMany, type ResearchSource } from "../firecrawl.js";
 import { dateRule, log, withFeedback, type GenerationContext } from "./context.js";
-import { acceptComposed, fillScene, videoNoun, type SceneFillInput } from "./fill.js";
+import { acceptComposed, fillScene, fillStatsSummary, newFillStats, videoNoun, type SceneFillInput } from "./fill.js";
 import { mapLimited } from "./llm-client.js";
 import { beatTells, MEDIA_QUERY_HINT, sourcesBlock } from "./outline.js";
 import { skill } from "./skills.js";
@@ -250,8 +250,13 @@ export async function fillChapterBatch(
       const answers = Array.isArray(raw?.scenes) ? raw.scenes : [];
       composed.forEach((input, n) => {
         const result = acceptComposed(answers[n], input);
-        if (result.visual) accepted.set(input.index, result.visual);
-        else log(ctx, `scene ${input.index + 1} из пачки: ${result.issues.slice(0, 2).join("; ")} — наполняю отдельно`);
+        if (result.visual) {
+          accepted.set(input.index, result.visual);
+          // Пачка приняла кадр с первого запроса на всю главу — как «с первой попытки».
+          if (input.stats) { input.stats.attempts = 1; input.stats.fellBack = false; }
+        } else {
+          log(ctx, `scene ${input.index + 1} из пачки: ${result.issues.slice(0, 2).join("; ")} — наполняю отдельно`);
+        }
       });
     } catch (error) {
       log(ctx, `пачка сцен ${composed.map((c) => c.index + 1).join(",")}: ${(error as Error).message} — по одной`);
@@ -330,6 +335,8 @@ export async function generateLongScript(
   });
   slots.push({ kind: "beat", beat: cursor++, chapter: -1 });
 
+  // Счётчик исхода на весь ролик, по номеру тезиса — заполняется fillScene по ссылке.
+  const stats = beats.map(() => newFillStats());
   const fillInputs = (chapter: number): SceneFillInput[] =>
     slots.flatMap((slot, position) =>
       slot.kind === "beat" && slot.chapter === chapter
@@ -340,6 +347,7 @@ export async function generateLongScript(
             plan: plans[slot.beat]! as ScenePlan,
             index: position,
             format: "landscape" as const,
+            stats: stats[slot.beat]!,
           }]
         : [],
     );
@@ -354,6 +362,7 @@ export async function generateLongScript(
     filled += inputs.length;
     progress({ stage: "fill", message: group >= 0 ? `Глава ${group + 1}` : "Вступление и финал", done: filled, total: beats.length });
   }
+  log(ctx, fillStatsSummary(stats));
 
   const chapters: { title: string; firstScene: number }[] = [];
   const scenes = slots.map((slot, position) => {

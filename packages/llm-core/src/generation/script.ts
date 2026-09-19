@@ -2,7 +2,7 @@ import { ScriptSchema, themeStyle, type Script, type VideoTheme } from "@shorts/
 import { collectVisualTexts, extractNumbers, findUnsupportedNumbers } from "../fact-check.js";
 import type { ResearchSource } from "../firecrawl.js";
 import { log, type GenerationContext } from "./context.js";
-import { fillScene } from "./fill.js";
+import { fillScene, fillStatsSummary, newFillStats } from "./fill.js";
 import { mapLimited } from "./llm-client.js";
 import { DEFAULT_SCENE_COUNT, outline } from "./outline.js";
 import { planScenes } from "./plan.js";
@@ -68,13 +68,15 @@ export async function generateScript(
   );
 
   let done = 0;
+  const stats = beats.map(() => newFillStats());
   progress({ stage: "fill", message: "Сцены", done, total: beats.length });
   const visuals = await mapLimited(beats, ctx.concurrency ?? 2, async (beat, index) => {
-    const visual = await fillScene(ctx, { topic, narration: beat.narration, brief, plan: plans[index]!, index });
+    const visual = await fillScene(ctx, { topic, narration: beat.narration, brief, plan: plans[index]!, index, stats: stats[index]! });
     done++;
     progress({ stage: "fill", message: "Сцены", done, total: beats.length });
     return visual;
   });
+  log(ctx, fillStatsSummary(stats));
 
   const script = ScriptSchema.parse({
     title,

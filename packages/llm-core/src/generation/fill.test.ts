@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compositionIssues, fillComposed, fillScene } from "./fill.js";
+import { acceptComposed, compositionIssues, fillComposed, fillScene, fillStatsSummary, fillTemplate, newFillStats, repairIcon } from "./fill.js";
 import type { ScenePlan } from "./plan.js";
 import { fakeLlm, testContext } from "./test-helpers.js";
 
@@ -104,5 +104,144 @@ describe("кольцо без доли в озвучке", () => {
   it("доля есть в тексте — кольцо замечаний не получает", () => {
     const issues = compositionIssues(ringBlocks as never, numberPlan, true, "Battery prices fell 20% this year.");
     expect(issues.some((i) => i.includes('"ring"'))).toBe(false);
+  });
+});
+
+describe("ремонт сырого JSON перед валидацией", () => {
+  it("пустая строка в необязательном поле шаблона удаляется — сцена проходит с первой попытки", async () => {
+    const plan: ScenePlan = { kind: "stat-counter", fallbackKind: "stat-counter", presentation };
+    const llm = fakeLlm(() => ({ label: "Pack price", fromValue: 0, toValue: 139, unit: "", decimals: 0 }));
+    const visual = await fillTemplate(testContext(llm), {
+      ...input,
+      narration: "Battery packs now cost $139 per kWh.",
+      plan,
+    });
+    expect(llm.calls).toHaveLength(1);
+    expect(visual.kind === "stat-counter" && visual.unit).toBeUndefined();
+  });
+
+  it("неизвестная иконка меняется на ближайшую из реестра, а не уходит в повтор", async () => {
+    const plan: ScenePlan = { kind: "composed", fallbackKind: "icon-list", hero: "icon", presentation };
+    const llm = fakeLlm(() => ({
+      blocks: [
+        { block: "icon", icon: "chart-bar", caption: "Costs", at: 0 },
+        { block: "caption", text: "Falling fast", at: 0.3 },
+      ],
+    }));
+    const visual = await fillComposed(testContext(llm), { ...input, plan });
+    expect(llm.calls).toHaveLength(1);
+    expect(visual.kind === "composed" && visual.blocks[0]).toMatchObject({ block: "icon", icon: "chart-column" });
+  });
+
+  it("repairIcon: точное совпадение, иначе подстрока/общее слово, иначе нейтральный fallback", () => {
+    expect(repairIcon("Zap")).toBe("zap");
+    expect(repairIcon("chart-bar")).toBe("chart-column");
+    expect(repairIcon("nonexistent-symbol")).toBe("sparkles");
+  });
+
+  it("блок неизвестного типа отбрасывается вместо отказа всей композиции", async () => {
+    const plan: ScenePlan = { kind: "composed", fallbackKind: "icon-list", hero: "row", presentation };
+    const llm = fakeLlm(() => ({
+      blocks: [
+        { block: "row", text: "Bigger plants", emphasis: false, at: 0 },
+        { block: "stat", value: 42, at: 0.2 }, // тип, которого нет в BLOCK_TYPES
+      ],
+    }));
+    const visual = await fillComposed(testContext(llm), { ...input, plan });
+    expect(llm.calls).toHaveLength(1);
+    expect(visual.kind === "composed" && visual.blocks).toHaveLength(1);
+  });
+
+  it("divider в начале и конце удаляется — стоять он должен только между блоками", async () => {
+    const plan: ScenePlan = { kind: "composed", fallbackKind: "comparison", hero: "row", presentation };
+    const llm = fakeLlm(() => ({
+      blocks: [
+        { block: "divider", variant: "line", at: 0 },
+        { block: "row", text: "Point one", at: 0 },
+        { block: "row", text: "Point two", emphasis: true, at: 0.3 },
+        { block: "divider", variant: "line", at: 0.6 },
+      ],
+    }));
+    const visual = await fillComposed(testContext(llm), { ...input, plan });
+    expect(llm.calls).toHaveLength(1);
+    expect(visual.kind === "composed" && visual.blocks.every((b) => b.block !== "divider")).toBe(true);
+  });
+
+  it("подряд идущие divider'ы схлопываются в один", async () => {
+    const plan: ScenePlan = { kind: "composed", fallbackKind: "comparison", hero: "divider", presentation };
+    const llm = fakeLlm(() => ({
+      blocks: [
+        { block: "row", text: "Before", at: 0 },
+        { block: "divider", variant: "vs", at: 0.2 },
+        { block: "divider", variant: "vs", at: 0.2 },
+        { block: "row", text: "After", at: 0.3 },
+      ],
+    }));
+    const visual = await fillComposed(testContext(llm), { ...input, plan });
+    expect(llm.calls).toHaveLength(1);
+    expect(visual.kind === "composed" && visual.blocks.filter((b) => b.block === "divider")).toHaveLength(1);
+  });
+
+  it("пакетная приёмка глав (acceptComposed) чинит так же", () => {
+    const plan: ScenePlan = { kind: "composed", fallbackKind: "comparison", hero: "row", presentation };
+    const result = acceptComposed(
+      {
+        blocks: [
+          { block: "divider", variant: "line", at: 0 },
+          { block: "row", text: "Point one", at: 0.1 },
+          { block: "row", text: "Point two", emphasis: true, at: 0.3 },
+        ],
+      },
+      { ...input, plan },
+    );
+    expect(result.issues).toEqual([]);
+    expect(result.visual?.kind === "composed" && result.visual.blocks.every((b) => b.block !== "divider")).toBe(true);
+  });
+});
+
+describe("итог по ролику: попытки и откаты", () => {
+  it("успех с первой попытки", async () => {
+    const plan: ScenePlan = { kind: "hook-statement", fallbackKind: "hook-statement", presentation };
+    const llm = fakeLlm(() => ({ variant: "statement", text: "Batteries got cheap" }));
+    const stats = newFillStats();
+    await fillTemplate(testContext(llm), { ...input, plan, stats });
+    expect(stats).toEqual({ attempts: 1, fellBack: false });
+  });
+
+  it("успех после повтора — не «с первой попытки», но и не откат", async () => {
+    const plan: ScenePlan = { kind: "hook-statement", fallbackKind: "hook-statement", presentation };
+    const llm = fakeLlm((_, call) => (call === 1 ? { text: "" } : { variant: "statement", text: "Batteries got cheap" }));
+    const stats = newFillStats();
+    await fillTemplate(testContext(llm), { ...input, plan, stats });
+    expect(stats).toEqual({ attempts: 2, fellBack: false });
+  });
+
+  it("три неудачи шаблона — откат, попытки не в счёт", async () => {
+    const plan: ScenePlan = { kind: "timeline", fallbackKind: "timeline", presentation };
+    const llm = fakeLlm(() => new Error("LLM HTTP 504"));
+    const stats = newFillStats();
+    await fillTemplate(testContext(llm), { ...input, plan, stats });
+    expect(stats.fellBack).toBe(true);
+  });
+
+  it("композиция не собралась — откат считается, даже если наполнение шаблоном после этого проходит сразу", async () => {
+    const plan: ScenePlan = { kind: "composed", fallbackKind: "stat-counter", hero: "ring", presentation };
+    const llm = fakeLlm((req) =>
+      req.system.includes("Scene kind: stat-counter")
+        ? { label: "EV share", fromValue: 0, toValue: 22, unit: "%", decimals: 0 }
+        : { blocks: [{ block: "heading", text: "EVs" }] }, // без кольца — три попытки провалены
+    );
+    const stats = newFillStats();
+    await fillComposed(testContext(llm), { ...input, plan, stats });
+    expect(stats.fellBack).toBe(true);
+  });
+
+  it("fillStatsSummary формирует итоговую строку по трём категориям", () => {
+    const line = fillStatsSummary([
+      { attempts: 1, fellBack: false },
+      { attempts: 2, fellBack: false },
+      { attempts: 3, fellBack: true },
+    ]);
+    expect(line).toBe("кадры: 1 с первой попытки, 1 с повторами, 1 откатов из 3");
   });
 });

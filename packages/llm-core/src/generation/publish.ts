@@ -14,7 +14,7 @@ function publishSystem(format: VideoFormat): string {
   return [
     "You write the YouTube publish metadata for one finished video. Return JSON only.",
     "",
-    'Fields: { "title": string, "description": string, "hashtags": string[] }',
+    'Fields: { "title": string, "description": string, "hashtags": string[], "thumbnailPrompt": string }',
     "",
     "Rules:",
     "- title: a strong hook, ideally under 60 characters (hard limit 100), specific to what is",
@@ -27,6 +27,13 @@ function publishSystem(format: VideoFormat): string {
     '  the topic that invites viewers to comment — not a generic "what do you think?". Do not repeat the',
     "  hashtags inside the description.",
     `- hashtags: ${hashtagsRule}`,
+    `- thumbnailPrompt: one English prompt (60-160 words) for an AI image generator that makes the video's`,
+    `  ${format === "shorts" ? "vertical 9:16" : "horizontal 16:9"} thumbnail. Describe: one clear focal subject taken from the most striking`,
+    "  moment of the narration, what makes it intriguing, composition (subject large, close-up, simple",
+    "  uncluttered background, strong depth), dramatic lighting, high contrast, saturated colors, photorealistic",
+    "  or cinematic style, emotion. Include a short bold overlay text of 2-4 words in quotes that teases the hook",
+    "  without repeating the title, and where it sits (large, top or side, clear space for it). Accurate to the",
+    "  facts — no invented events; no logos, brand names or watermarks; no likeness of a real living person.",
   ].join("\n");
 }
 
@@ -51,6 +58,13 @@ function userPrompt(input: PublishMetaInput): string {
   return lines.join("\n");
 }
 
+/** Негодный промпт обложки не должен валить название и описание: он необязателен — просто отбрасываем. */
+function dropBadThumbnailPrompt(content: unknown): unknown {
+  if (!content || typeof content !== "object") return content;
+  const { thumbnailPrompt, ...rest } = content as { thumbnailPrompt?: unknown };
+  return PublishMetaSchema.shape.thumbnailPrompt.safeParse(thumbnailPrompt).success ? content : rest;
+}
+
 /** Shorts всегда должны нести #Shorts первым тегом — это решает код, а не повторный запрос. */
 function withShortsTag(meta: PublishMeta, format: VideoFormat): PublishMeta {
   if (format !== "shorts" || meta.hashtags[0] === "#Shorts") return meta;
@@ -70,10 +84,10 @@ export async function generatePublishMeta(llm: LlmClient, input: PublishMetaInpu
       const raw = await llm.askJson({
         system: publishSystem(input.format),
         user: withFeedback(user, feedback),
-        maxTokens: 900,
+        maxTokens: 1400,
         timeoutMs: 150000,
       });
-      const parsed = PublishMetaSchema.safeParse(unwrapContent(raw, "publish"));
+      const parsed = PublishMetaSchema.safeParse(dropBadThumbnailPrompt(unwrapContent(raw, "publish")));
       if (parsed.success) return withShortsTag(parsed.data, input.format);
       feedback.splice(0, feedback.length, ...issuesOf(parsed.error));
       lastError = feedback.join("; ");

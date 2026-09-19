@@ -29,7 +29,8 @@ describe("skills", () => {
     const system = outlineSystem("2026-09-19", 8);
     expect(system).toContain(`${HOOK_TARGET_CHARS.min}-${HOOK_TARGET_CHARS.max} characters`);
     expect(system).toMatch(/8-10 words/);
-    expect(system).toMatch(/Loop close/);
+    expect(system).toMatch(/Ending:/);
+    expect(system).toMatch(/never a dangling fragment/);
     expect(system).toMatch(/No spoken call to action/);
   });
 

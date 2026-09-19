@@ -54,6 +54,12 @@ describe("recomputeTimeline", () => {
     expect(() => recomputeTimeline([{ sceneId: "x", audioDurationSec: -1 }], 30)).toThrow();
   });
 
+  it("хвост только у последней сцены", () => {
+    const { slots, totalDurationInFrames } = recomputeTimeline(scenes(1, 1), 30, { gapFrames: 5, tailFrames: 21 });
+    expect(slots.map((s) => s.durationInFrames)).toEqual([35, 51]);
+    expect(totalDurationInFrames).toBe(86);
+  });
+
   it("отвергает нецелый gapFrames", () => {
     expect(() => recomputeTimeline(scenes(1), 30, { gapFrames: 1.5 })).toThrow();
   });

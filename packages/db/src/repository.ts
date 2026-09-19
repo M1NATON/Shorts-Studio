@@ -520,7 +520,7 @@ export function createRepository(database: Database) {
       const { slots, totalDurationInFrames } = recomputeTimeline(
         list.map((s) => ({ sceneId: s.id, audioDurationSec: s.version.audio!.durationSec })),
         fps,
-        { gapFrames: Math.round(SCENE_PAUSE_SEC * fps) },
+        { gapFrames: Math.round(SCENE_PAUSE_SEC * fps), tailFrames: Math.round(END_HOLD_SEC[project.format] * fps) },
       );
       const size = FORMATS[project.format];
       const draft = {
@@ -795,6 +795,11 @@ export function createRepository(database: Database) {
 
 /** Вдох между фразами соседних сцен. ponytail: одна на все ролики; в настройки — если захочется крутить. */
 export const SCENE_PAUSE_SEC = 0.12;
+/**
+ * Хвост после последней фразы: без него ролик обрывается на последнем слове.
+ * Shorts зациклен — короткая точка перед повтором; длинный ролик успевает погаснуть с музыкой (fade 2 с).
+ */
+export const END_HOLD_SEC: Record<Manifest["format"], number> = { shorts: 0.7, landscape: 2.5 };
 
 export type Repository = ReturnType<typeof createRepository>;
 

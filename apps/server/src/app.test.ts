@@ -362,9 +362,9 @@ describe("API", () => {
     const manifest = async () => (await app.inject({ url: `/api/projects/${id}/manifest` })).json().manifest;
     const first = await manifest();
     expect(first.music).toEqual({ src: "music/calm-drift.mp3", volume: 0.12 });
-    // Озвучка 2 с = 60 кадров, плюс 0.12 с паузы у всех сцен, кроме последней.
+    // Озвучка 2 с = 60 кадров, плюс 0.12 с паузы у всех сцен, кроме последней; у последней — хвост 0.7 с (shorts).
     expect(first.scenes[0].durationInFrames).toBe(64);
-    expect(first.scenes.at(-1).durationInFrames).toBe(60);
+    expect(first.scenes.at(-1).durationInFrames).toBe(81);
 
     const patch = (music: unknown) => app.inject({ method: "PATCH", url: `/api/projects/${id}`, payload: { music } });
     expect((await patch({ track: "../studio.sqlite", volume: 0.2 })).statusCode).toBe(400);

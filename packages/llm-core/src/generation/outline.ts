@@ -61,10 +61,11 @@ export function outlineSystem(today: string, sceneCount: number, style: VideoSty
     "",
     skill("narration"),
     "",
-    'Loop close: this is a short that replays. The last beat ("takeaway") does not summarize or moralize.',
-    'Write it so its final words flow straight into the first beat when the video repeats — a phrase like',
-    '"...and that\'s exactly why" right before a hook that opens with the fact. No spoken call to action',
-    '("subscribe", "follow").',
+    'Ending: the last beat ("takeaway") is the payoff, not a summary or a moral — one complete, punchy',
+    "sentence that lands the most surprising consequence or twist, so the video ends on a high note.",
+    "It is a finished sentence (never a dangling fragment like \"...and that's why\"). The short replays, so",
+    "make the last line echo the hook's key image or word — the replay then feels like a callback, not a cut.",
+    'No spoken call to action ("subscribe", "follow").',
   ].join("\n");
 }
 

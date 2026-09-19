@@ -24,6 +24,8 @@ export interface TimelineOptions {
    * Пауза входит в durationInFrames сцены, а не пустая дыра между сценами. По умолчанию 0.
    */
   gapFrames?: number;
+  /** Хвост после озвучки последней сцены, в кадрах: ролик не обрывается на последнем слове. По умолчанию 0. */
+  tailFrames?: number;
 }
 
 /**
@@ -42,8 +44,9 @@ export function recomputeTimeline(
   options: TimelineOptions = {},
 ): TimelineResult {
   const gapFrames = options.gapFrames ?? 0;
-  if (gapFrames < 0 || !Number.isInteger(gapFrames)) {
-    throw new Error(`gapFrames must be a non-negative integer, got ${gapFrames}`);
+  const tailFrames = options.tailFrames ?? 0;
+  for (const [name, value] of [["gapFrames", gapFrames], ["tailFrames", tailFrames]] as const) {
+    if (value < 0 || !Number.isInteger(value)) throw new Error(`${name} must be a non-negative integer, got ${value}`);
   }
 
   let cursor = 0;
@@ -54,7 +57,7 @@ export function recomputeTimeline(
       throw new Error(`Scene ${scene.sceneId}: invalid audioDurationSec ${scene.audioDurationSec}`);
     }
     // Сцена всегда занимает минимум 1 кадр: нулевая длительность сломала бы Remotion Sequence.
-    const pause = index < scenes.length - 1 ? gapFrames : 0;
+    const pause = index < scenes.length - 1 ? gapFrames : tailFrames;
     const durationInFrames = Math.max(1, Math.ceil(scene.audioDurationSec * fps)) + pause;
     slots.push({ sceneId: scene.sceneId, startFrame: cursor, durationInFrames });
     cursor += durationInFrames;

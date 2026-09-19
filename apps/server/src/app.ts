@@ -19,7 +19,6 @@ import {
   type JobKind,
 } from "@shorts/db";
 import { fallbackStatement, presentationAt } from "@shorts/llm-core";
-import { ensureSfx } from "@shorts/remotion";
 import { z } from "zod";
 import type { ServerConfig } from "./config.js";
 import type { ProviderKind, ProviderStore } from "@shorts/db";
@@ -133,14 +132,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(fastifyStatic, {
     root: path.join(deps.config.storageDir, "music"),
     prefix: "/music/",
-    decorateReply: false,
-  });
-
-  // Звуки склеек: storage/sfx (копирует ensureSfx из пакета), в манифесте — "sfx/<файл>".
-  await ensureSfx(deps.config.storageDir);
-  await app.register(fastifyStatic, {
-    root: path.join(deps.config.storageDir, "sfx"),
-    prefix: "/sfx/",
     decorateReply: false,
   });
 

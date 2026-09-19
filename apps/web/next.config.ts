@@ -21,8 +21,6 @@ const config: NextConfig = {
       { source: "/projects/:path*", destination: `${API}/projects/:path*` },
       // Фоновая музыка: "/music/<файл>" из storage/music.
       { source: "/music/:path*", destination: `${API}/music/:path*` },
-      // Звуки склеек: "/sfx/<файл>" из storage/sfx.
-      { source: "/sfx/:path*", destination: `${API}/sfx/:path*` },
     ];
   },
 };

@@ -68,8 +68,6 @@ export const ShortsVideo: React.FC<{ manifest: Manifest }> = ({ manifest }) => {
               name={`${scene.sceneId} · ${scene.visual.kind}`}
             >
               <Audio src={staticFile(scene.audioSrc)} />
-              {/* Склейка: тихий whoosh на входе каждой сцены, кроме первой. */}
-              {index > 0 ? <Audio src={staticFile("sfx/whoosh.mp3")} volume={0.3} /> : null}
               {scene.media ? <SceneMedia media={scene.media} durationInFrames={scene.durationInFrames} /> : null}
               <ScenePositionContext.Provider
                 value={{ isFirst: index === 0, isLast: loop && index === manifest.scenes.length - 1 }}

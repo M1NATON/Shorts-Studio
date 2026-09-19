@@ -1,4 +1,3 @@
-import { copyFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
 import { ensureBrowser, renderMedia, renderStill, selectComposition, type OpenGlRenderer } from "@remotion/renderer";
@@ -11,17 +10,6 @@ import { COMPOSITION_ID } from "./Root.js";
  * Код компонентов меняется только с перезапуском процесса — кеш этому не мешает.
  */
 const bundles = new Map<string, Promise<string>>();
-/** Звук склейки сцен: лежит в пакете (assets/, пересоздать — scripts/generate-sfx.sh), копируется в storage/sfx. */
-const SFX_FILES = ["whoosh.mp3"];
-
-/** storage — publicDir Remotion и корень статики сервера, поэтому SFX должен лежать там. */
-export async function ensureSfx(storageDir: string): Promise<void> {
-  const from = path.join(path.dirname(new URL(import.meta.url).pathname), "..", "assets");
-  const to = path.join(storageDir, "sfx");
-  await mkdir(to, { recursive: true });
-  await Promise.all(SFX_FILES.map((file) => copyFile(path.join(from, file), path.join(to, file))));
-}
-
 function cachedBundle(entryPoint: string, publicDir: string): Promise<string> {
   const key = `${entryPoint}|${publicDir}`;
   let serveUrl = bundles.get(key);
@@ -31,7 +19,7 @@ function cachedBundle(entryPoint: string, publicDir: string): Promise<string> {
     // озвучка, записанная после сборки бандла (новый текст сцены), в кеше
     // отсутствовала — рендер падал с 404, — а копия storage с сотней роликов
     // занимала бы гигабайты на каждую сборку.
-    serveUrl = ensureSfx(publicDir).then(() => bundle({ entryPoint, publicDir, symlinkPublicDir: true, onProgress: () => undefined }));
+    serveUrl = bundle({ entryPoint, publicDir, symlinkPublicDir: true, onProgress: () => undefined });
     // Упавшая сборка не должна закешироваться навсегда.
     serveUrl.catch(() => bundles.delete(key));
     bundles.set(key, serveUrl);

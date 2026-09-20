@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { Captions, Download, ExternalLink, FileDown, Library, Megaphone, Music, RotateCcw, ScanLine, TriangleAlert, Upload } from "lucide-react";
+import { Captions, Download, ExternalLink, FileDown, FolderDown, Library, Megaphone, Music, RotateCcw, ScanLine, TriangleAlert, Upload } from "lucide-react";
 import type { PlayerRef } from "@remotion/player";
 import { FORMATS, type CaptionStyle, type Manifest } from "@shorts/contracts";
 import { CaptionPicker } from "@/components/CaptionPicker";
@@ -197,6 +197,9 @@ export default function VideoEditorPage() {
               <RotateCcw {...ICON} />
             </button>
             <a className="btn pri" href={videoUrl(id)}><Download {...ICON} />Скачать MP4</a>
+            <button className="btn" onClick={() => act(() => api.exportToFolder(id).then(({ dir }) => window.alert(`Сохранено в ${dir}`)))}>
+              <FolderDown {...ICON} />Сохранить в папку
+            </button>
           </>
         ) : (
           <>

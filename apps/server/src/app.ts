@@ -4,7 +4,7 @@
  * приходит через SSE (/api/events).
  */
 import { createReadStream, existsSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -17,6 +17,7 @@ import {
   projectPaths,
   savePreferences,
   type JobKind,
+  type Repository,
 } from "@shorts/db";
 import { fallbackStatement, presentationAt } from "@shorts/llm-core";
 import { z } from "zod";
@@ -93,6 +94,27 @@ function isLocal(value: string, withScheme = false): boolean {
   } catch {
     return false;
   }
+}
+
+/** Имя файла/папки ролика: буквы, цифры, пробел, «_»/«-»; иначе «video». */
+function videoName(project: { title: string | null; topic: string }): string {
+  return (project.title ?? project.topic).replace(/[^\p{L}\p{N} _-]+/gu, "").slice(0, 80).trim() || "video";
+}
+
+/**
+ * Папка ролика внутри папки экспорта. Своя папка запоминается за проектом: повторный
+ * экспорт после пересборки обновляет ту же папку, а «Ещё версия» с тем же названием
+ * получает соседнюю («Название 2»), а не затирает чужие файлы — в папке лежат обложка
+ * и черновики пользователя.
+ */
+async function exportDirFor(repo: Repository, projectId: string, base: string, name: string): Promise<string> {
+  const key = `export.dir.${projectId}`;
+  const remembered = await repo.getSetting<string>(key);
+  if (remembered && path.dirname(remembered) === base) return remembered;
+  let dir = path.join(base, name);
+  for (let i = 2; i < 100 && existsSync(dir); i++) dir = path.join(base, `${name} ${i}`);
+  await repo.setSetting(key, dir);
+  return dir;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -297,11 +319,36 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const render = await repo.latestRender(project.id);
     const file = render ? path.join(deps.config.storageDir, render.path) : undefined;
     if (!file || !existsSync(file)) return reply.code(404).send({ error: "no rendered video yet" });
-    const name = (project.title ?? project.topic).replace(/[^\p{L}\p{N} _-]+/gu, "").slice(0, 80).trim() || "video";
+    const name = videoName(project);
     return reply
       .header("Content-Type", "video/mp4")
       .header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(name)}.mp4`)
       .send(createReadStream(file));
+  });
+
+  /** Кладёт готовый MP4 (и описание для публикации) в подпапку папки экспорта — студия локальная, файл нужен на диске пользователя. */
+  app.post<{ Params: { id: string } }>("/api/projects/:id/export", async (request, reply) => {
+    const prefs = await loadPreferences(repo);
+    if (!prefs.exportDir) return reply.code(400).send({ error: "Папка для экспорта не задана — укажите её в Настройках" });
+    const project = await repo.requireProject(request.params.id);
+    const render = await repo.latestRender(project.id);
+    const file = render ? path.join(deps.config.storageDir, render.path) : undefined;
+    if (!file || !existsSync(file)) return reply.code(404).send({ error: "no rendered video yet" });
+    const name = videoName(project);
+    const dir = await exportDirFor(repo, project.id, prefs.exportDir, name);
+    await mkdir(dir, { recursive: true });
+    await copyFile(file, path.join(dir, `${name}.mp4`));
+    if (project.publish) {
+      const { title, description, hashtags, thumbnailPrompt } = project.publish;
+      const text = [
+        `Название:\n${title}`,
+        `Описание:\n${description}`,
+        `Хэштеги:\n${hashtags.join(" ")}`,
+        ...(thumbnailPrompt ? [`Промпт для обложки:\n${thumbnailPrompt}`] : []),
+      ].join("\n\n");
+      await writeFile(path.join(dir, "описание.txt"), text, "utf8");
+    }
+    return { dir };
   });
 
   // ── сцены ─────────────────────────────────────────────────────────────────

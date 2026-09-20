@@ -7,7 +7,7 @@ import { CAPTION_LABEL, MINUTES_OPTIONS, plural } from "@/lib/format";
 import { CaptionPicker } from "./CaptionPicker";
 import { Popover } from "./Popover";
 
-const DEFAULTS: Preferences = { format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true };
+const DEFAULTS: Preferences = { format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true, exportDir: "" };
 
 /**
  * Создание ролика одной строкой. Несколько тем — по одной на строку: они встают

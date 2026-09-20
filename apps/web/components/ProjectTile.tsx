@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { CircleStop, Copy, Download, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
+import { CircleStop, Copy, Download, Ellipsis, FolderDown, RotateCcw, Trash2 } from "lucide-react";
 import { api, mediaUrl, videoUrl, type Job, type Project } from "@/lib/api";
 import { formatDate, formatDuration, formatShortDate, STATUS_HINT, STATUS_LABEL } from "@/lib/format";
 import { GenerationProgress } from "./GenerationProgress";
@@ -28,6 +28,15 @@ export function ProjectTile({ project, job, onChange }: { project: Project; job?
     onChange();
   }
 
+  async function exportToFolder() {
+    try {
+      const { dir } = await api.exportToFolder(project.id);
+      window.alert(`Сохранено в ${dir}`);
+    } catch (e) {
+      window.alert((e as Error).message);
+    }
+  }
+
   return (
     <article className="tile" aria-label={title}>
       <Link href={`/video/${project.id}`} className={`thumb${landscape ? " landscape" : ""}`} tabIndex={-1} aria-hidden="true">
@@ -46,6 +55,10 @@ export function ProjectTile({ project, job, onChange }: { project: Project; job?
             <>
               {canDownload ? (
                 <a href={videoUrl(project.id)} onClick={close}><Download size={16} strokeWidth={1.75} />Скачать MP4</a>
+              ) : null}
+              {/* Только актуальный рендер: устаревший MP4 в папку класть незачем — как и на странице ролика. */}
+              {project.status === "ready" ? (
+                <button onClick={() => { close(); void exportToFolder(); }}><FolderDown size={16} strokeWidth={1.75} />Сохранить в папку</button>
               ) : null}
               {building ? (
                 <button onClick={() => { close(); void stop(); }}><CircleStop size={16} strokeWidth={1.75} />Остановить</button>

@@ -162,7 +162,6 @@ export async function refreshPublishMeta(deps: PipelineDeps, projectId: string):
     title: project.title ?? project.topic,
     format: project.format,
     narration: scenes.map((s) => s.version.narration),
-    sources: project.sources.map((s) => ({ title: s.title, url: s.url })),
   });
   await deps.repo.setPublish(projectId, meta);
   return meta;

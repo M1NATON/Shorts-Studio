@@ -7,7 +7,6 @@ const input = {
   title: "Why batteries got cheap",
   format: "shorts" as const,
   narration: ["Batteries got ninety percent cheaper in a decade.", "Packs cost 115 dollars per kWh in 2024."],
-  sources: [{ title: "Battery price report", url: "https://x.test/report" }],
 };
 
 const validAnswer = {
@@ -18,13 +17,31 @@ const validAnswer = {
 };
 
 describe("generatePublishMeta", () => {
-  it("промпт содержит narration и источники", async () => {
+  it("промпт содержит narration и не содержит источников", async () => {
     const llm = fakeLlm(() => validAnswer);
     await generatePublishMeta(llm, input);
     const user = llm.calls[0]!.user;
     expect(user).toContain("Batteries got ninety percent cheaper in a decade.");
     expect(user).toContain("Packs cost 115 dollars per kWh in 2024.");
-    expect(user).toContain("Battery price report: https://x.test/report");
+    expect(user).not.toMatch(/https?:\/\//);
+    expect(llm.calls[0]!.system).toMatch(/No links, no URLs, no list of sources/);
+  });
+
+  it("ссылки и блок источников вырезаются из описания", async () => {
+    const description = [
+      "Batteries got dramatically cheaper over a single decade.",
+      "Bigger factories, better chemistry and fierce competition did it.",
+      "",
+      "Sources:",
+      "- Battery price report: https://x.test/report",
+      "",
+      "Which part surprised you most?",
+    ].join("\n");
+    const llm = fakeLlm(() => ({ ...validAnswer, description }));
+    const meta = await generatePublishMeta(llm, input);
+    expect(llm.calls).toHaveLength(1);
+    expect(meta.description).not.toMatch(/Sources:|x\.test/);
+    expect(meta.description).toMatch(/Which part surprised you most\?$/);
   });
 
   it("shorts без #Shorts в ответе — добавляется первым и список обрезается до 8", async () => {
@@ -68,6 +85,15 @@ describe("generatePublishMeta", () => {
     const landscape = fakeLlm(() => validAnswer);
     await generatePublishMeta(landscape, { ...input, format: "landscape" });
     expect(landscape.calls[0]!.system).toMatch(/horizontal 16:9/);
+  });
+
+  it("промпт обложки требует живое фото и запрещает приметы ИИ-картинки", async () => {
+    const llm = fakeLlm(() => validAnswer);
+    await generatePublishMeta(llm, input);
+    const system = llm.calls[0]!.system;
+    expect(system).toMatch(/real photograph/);
+    expect(system).toMatch(/digital art, illustration, 3D render/);
+    expect(system).toMatch(/imperfections/);
   });
 
   it("промпт требует ключевое слово темы в начале title и вопрос в конце description", async () => {

@@ -7,6 +7,7 @@
  * Ключи хранятся в базе (storage/, в .gitignore) и читаются только здесь. Наружу —
  * в API, логи и ошибки — уходит маска «••••1234». Тест на это есть в app.test.ts.
  */
+import path from "node:path";
 import { CaptionStyleSchema, VideoFormatSchema } from "@shorts/contracts";
 import { z } from "zod";
 import type { Repository } from "./repository.js";
@@ -130,6 +131,13 @@ export const PreferencesSchema = z.object({
   captionStyle: CaptionStyleSchema.default("karaoke"),
   /** Искать источники (Firecrawl). Выключено — факты только из модели. */
   research: z.boolean().default(true),
+  /** Папка на диске для «Сохранить в папку»; пусто — не задано, иначе обязан быть абсолютный путь. */
+  exportDir: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === "" || path.isAbsolute(v), "Укажите абсолютный путь, например /home/user/Видео")
+    .default(""),
 });
 export type Preferences = z.infer<typeof PreferencesSchema>;
 

@@ -140,11 +140,63 @@ function ProviderForm({ spec, info, onSaved }: { spec: (typeof PROVIDERS)[number
   );
 }
 
+/** Папка на диске для «Сохранить в папку» — студия локальная, сервер сам кладёт туда MP4. */
+function ExportForm({ value, onSaved }: { value: string; onSaved: (exportDir: string) => void }) {
+  const [dir, setDir] = useState(value);
+  const [status, setStatus] = useState<{ ok: boolean; message: string }>();
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    setStatus(undefined);
+    try {
+      const next = await api.savePreferences({ exportDir: dir });
+      onSaved(next.exportDir);
+      setStatus({ ok: true, message: "Сохранено" });
+    } catch (e) {
+      setStatus({ ok: false, message: e instanceof ApiError && e.issues.length ? e.issues.map((i) => `${i.path}: ${i.message}`).join("; ") : (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section aria-labelledby="p-export">
+      <h2 id="p-export">Экспорт</h2>
+      <label className="field">
+        <span>Папка для готовых роликов</span>
+        <input
+          className="input"
+          type="text"
+          autoComplete="off"
+          placeholder="/home/ars/Видео/YouTube"
+          value={dir}
+          onChange={(e) => setDir(e.target.value)}
+        />
+      </label>
+      <p className="small muted" style={{ paddingLeft: 188 }}>
+        Абсолютный путь, например /home/ars/Видео/YouTube. В ней для каждого ролика создаётся своя папка с MP4 и описанием.
+      </p>
+      <div className="row" style={{ paddingLeft: 188 }}>
+        <button className="btn pri" disabled={busy} onClick={() => void save()}>Сохранить</button>
+        {status ? (
+          <span className={`small row ${status.ok ? "" : "error"}`} style={{ gap: 4 }} role="status">
+            {status.ok ? <Check size={14} strokeWidth={2} style={{ color: "var(--ok)" }} /> : null}
+            {status.message}
+          </span>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const [data, setData] = useState<Record<ProviderKind, ProviderInfo>>();
+  const [exportDir, setExportDir] = useState<string>();
   const [error, setError] = useState<string>();
   useEffect(() => {
     api.settings().then(setData).catch((e: Error) => setError(e.message));
+    api.preferences().then((p) => setExportDir(p.exportDir)).catch((e: Error) => setError(e.message));
   }, []);
 
   return (
@@ -162,6 +214,7 @@ export default function SettingsPage() {
               <ProviderForm key={spec.kind} spec={spec} info={data[spec.kind]} onSaved={(info) => setData({ ...data, [spec.kind]: info })} />
             ))
           : null}
+        {exportDir !== undefined ? <ExportForm value={exportDir} onSaved={setExportDir} /> : null}
       </main>
     </>
   );

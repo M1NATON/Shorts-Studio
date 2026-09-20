@@ -110,6 +110,7 @@ export interface Preferences {
   freshness: Freshness | "auto";
   captionStyle: CaptionStyle;
   research: boolean;
+  exportDir: string;
 }
 
 export class ApiError extends Error {
@@ -159,6 +160,7 @@ export const api = {
   duplicate: (id: string) => post<{ project: Project }>(`/api/projects/${id}/duplicate`),
   retry: (id: string) => post<{ job: Job }>(`/api/projects/${id}/retry`),
   render: (id: string) => post<{ job: Job }>(`/api/projects/${id}/render`),
+  exportToFolder: (id: string) => post<{ dir: string }>(`/api/projects/${id}/export`),
   versions: (sceneId: string) => request<{ scene: Scene; versions: SceneVersion[] }>(`/api/scenes/${sceneId}/versions`),
   saveVisual: (sceneId: string, visual: unknown) =>
     request<{ ok: true; versionId: string }>(`/api/scenes/${sceneId}/visual`, { method: "PUT", body: JSON.stringify({ visual }) }),

@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -171,7 +171,7 @@ describe("защита локального API", () => {
 describe("API", () => {
   it("предпочтения: по умолчанию, частичное сохранение, применяются к новому ролику", async () => {
     expect((await app.inject({ url: "/api/preferences" })).json()).toEqual({
-      format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true,
+      format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true, exportDir: "",
     });
     const bad = await app.inject({ method: "PUT", url: "/api/preferences", payload: { captionStyle: "neon" } });
     expect(bad.statusCode).toBe(400);
@@ -267,6 +267,32 @@ describe("API", () => {
     const res = await app.inject({ method: "PUT", url: `/api/scenes/${scene.id}/visual`, payload: { visual: edited } });
     expect(res.statusCode).toBe(200);
     expect((await app.inject({ url: `/api/projects/${id}` })).json().project.status).toBe("stale");
+  });
+
+  it("экспорт в папку: MP4 и описание.txt в подпапке с названием ролика, без exportDir и без рендера — ошибки", async () => {
+    const { id } = await createGenerated();
+    expect((await app.inject({ method: "POST", url: `/api/projects/${id}/export` })).statusCode).toBe(400);
+
+    const exportDir = mkdtempSync(path.join(tmpdir(), "export-"));
+    await app.inject({ method: "PUT", url: "/api/preferences", payload: { exportDir } });
+    expect((await app.inject({ method: "POST", url: `/api/projects/${id}/export` })).statusCode).toBe(404);
+
+    await app.inject({ method: "POST", url: `/api/projects/${id}/render` });
+    await worker.idle();
+    const res = await app.inject({ method: "POST", url: `/api/projects/${id}/export` });
+    expect(res.statusCode).toBe(200);
+    const { dir } = res.json();
+    expect(dir).toBe(path.join(exportDir, "Why batteries got cheap"));
+    expect(existsSync(path.join(dir, "Why batteries got cheap.mp4"))).toBe(true);
+    expect(readFileSync(path.join(dir, "описание.txt"), "utf8")).toMatch(/Название:.*Описание:.*Хэштеги:/s);
+
+    // Повторный экспорт обновляет свою же папку, а второй ролик с тем же названием получает соседнюю.
+    expect((await app.inject({ method: "POST", url: `/api/projects/${id}/export` })).json().dir).toBe(dir);
+    const other = await createGenerated();
+    await app.inject({ method: "POST", url: `/api/projects/${other.id}/render` });
+    await worker.idle();
+    const second = await app.inject({ method: "POST", url: `/api/projects/${other.id}/export` });
+    expect(second.json().dir).toBe(path.join(exportDir, "Why batteries got cheap 2"));
   });
 
   it("ручная правка с переполненным кадром — 422 с замечанием валидатора", async () => {

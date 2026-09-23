@@ -343,7 +343,10 @@ export async function runGenerate(deps: PipelineDeps, job: JobRecord): Promise<u
   const ctx = await deps.generationContext((p) => {
     void report({ stage: p.stage, message: p.message, done: p.done ?? null, total: p.total ?? null });
   });
-  const options = { ...(project.freshnessRequested ? { freshness: project.freshnessRequested } : {}) };
+  const options = {
+    ...(project.freshnessRequested ? { freshness: project.freshnessRequested } : {}),
+    ...(project.style !== "auto" ? { style: project.style } : {}),
+  };
   const result =
     project.format === "landscape"
       ? await generateLongScript(ctx, project.topic, { ...options, minutes: project.minutes ?? 3 })

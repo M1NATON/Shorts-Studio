@@ -23,6 +23,7 @@ import {
   type SceneMedia,
   type SceneVisualSpec,
   type Script,
+  type StyleChoice,
   type VideoFormat,
   type VideoTheme,
   type WordTiming,
@@ -62,6 +63,8 @@ export interface ProjectRecord {
   readonly title: string | null;
   readonly format: VideoFormat;
   readonly captionStyle: CaptionStyle;
+  /** Стиль оформления, выбранный при создании; "auto" — решала модель. Только для генерации, не для рестайла. */
+  readonly style: StyleChoice;
   readonly status: ProjectStatus;
   readonly freshnessRequested: Freshness | null;
   readonly freshness: Freshness | null;
@@ -290,6 +293,7 @@ export function createRepository(database: Database) {
       freshness?: Freshness;
       minutes?: number;
       captionStyle?: CaptionStyle;
+      style?: StyleChoice;
     }): Promise<ProjectRecord> {
       const id = randomUUID();
       await db.insert(projects).values({
@@ -300,6 +304,7 @@ export function createRepository(database: Database) {
         freshnessRequested: input.freshness ?? null,
         minutes: input.minutes ?? null,
         ...(input.captionStyle ? { captionStyle: input.captionStyle } : {}),
+        ...(input.style ? { style: input.style } : {}),
       });
       return requireProject(id);
     },

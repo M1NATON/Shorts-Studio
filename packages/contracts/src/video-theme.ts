@@ -55,6 +55,10 @@ export const VIDEO_STYLES = [
 export const VideoStyleSchema = z.enum(VIDEO_STYLES);
 export type VideoStyle = z.infer<typeof VideoStyleSchema>;
 
+/** Выбор пользователя при создании ролика: "auto" — решает модель, иначе конкретный стиль. */
+export const StyleChoiceSchema = z.enum(["auto", ...VIDEO_STYLES]);
+export type StyleChoice = z.infer<typeof StyleChoiceSchema>;
+
 function channel(value: number): number {
   const c = value / 255;
   return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;

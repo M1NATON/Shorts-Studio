@@ -1,4 +1,4 @@
-import { ScriptSchema, themeStyle, type Script, type VideoTheme } from "@shorts/contracts";
+import { ScriptSchema, themeStyle, type Script, type VideoStyle, type VideoTheme } from "@shorts/contracts";
 import { collectVisualTexts, extractNumbers, findUnsupportedNumbers } from "../fact-check.js";
 import type { ResearchSource } from "../firecrawl.js";
 import { log, type GenerationContext } from "./context.js";
@@ -13,6 +13,8 @@ export interface GenerateScriptOptions {
   /** Переопределяет режим свежести, который выбрала модель. */
   readonly freshness?: Freshness;
   readonly sceneCount?: number;
+  /** Стиль оформления по выбору пользователя; без него стиль выбирает модель. */
+  readonly style?: VideoStyle;
 }
 
 export interface GeneratedScript {
@@ -55,7 +57,7 @@ export async function generateScript(
   progress({ stage: "research", message: "Поиск источников и дизайн" });
   const [{ sources, brief, freshness }, theme] = await Promise.all([
     research(ctx, topic, options.freshness),
-    generateTheme(ctx, topic),
+    generateTheme(ctx, topic, options.style),
   ]);
 
   progress({ stage: "outline", message: "План ролика" });

@@ -8,7 +8,7 @@
  * в API, логи и ошибки — уходит маска «••••1234». Тест на это есть в app.test.ts.
  */
 import path from "node:path";
-import { CaptionStyleSchema, VideoFormatSchema } from "@shorts/contracts";
+import { CaptionStyleSchema, StyleChoiceSchema, VideoFormatSchema } from "@shorts/contracts";
 import { z } from "zod";
 import type { Repository } from "./repository.js";
 
@@ -129,6 +129,8 @@ export const PreferencesSchema = z.object({
   minutes: z.number().int().min(1).max(20).default(3),
   freshness: z.enum(["auto", "current", "evergreen"]).default("auto"),
   captionStyle: CaptionStyleSchema.default("karaoke"),
+  /** Стиль оформления; "auto" — решает модель под тему. */
+  style: StyleChoiceSchema.default("auto"),
   /** Искать источники (Firecrawl). Выключено — факты только из модели. */
   research: z.boolean().default(true),
   /** Папка на диске для «Сохранить в папку»; пусто — не задано, иначе обязан быть абсолютный путь. */

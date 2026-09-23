@@ -13,6 +13,7 @@ import {
   SceneVisualSpecSchema,
   SPEECH_CHARS_PER_SEC,
   type SceneVisualSpec,
+  type VideoStyle,
   type VideoTheme,
 } from "@shorts/contracts";
 import { z } from "zod";
@@ -38,6 +39,8 @@ const SCENES_PER_MINUTE = 7;
 export interface LongVideoOptions {
   readonly minutes?: number;
   readonly freshness?: Freshness;
+  /** Стиль оформления по выбору пользователя; без него стиль выбирает модель. */
+  readonly style?: VideoStyle;
 }
 
 export interface ChapterPlan {
@@ -298,7 +301,7 @@ export async function generateLongScript(
   progress({ stage: "research", message: "Поиск источников и дизайн" });
   const [{ sources, brief, freshness }, theme]: [Awaited<ReturnType<typeof research>>, VideoTheme] = await Promise.all([
     research(ctx, topic, options.freshness),
-    generateTheme(ctx, topic),
+    generateTheme(ctx, topic, options.style),
   ]);
 
   progress({ stage: "outline", message: "План глав" });

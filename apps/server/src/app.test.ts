@@ -171,7 +171,7 @@ describe("защита локального API", () => {
 describe("API", () => {
   it("предпочтения: по умолчанию, частичное сохранение, применяются к новому ролику", async () => {
     expect((await app.inject({ url: "/api/preferences" })).json()).toEqual({
-      format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true, exportDir: "",
+      format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", style: "auto", research: true, exportDir: "",
     });
     const bad = await app.inject({ method: "PUT", url: "/api/preferences", payload: { captionStyle: "neon" } });
     expect(bad.statusCode).toBe(400);
@@ -179,9 +179,11 @@ describe("API", () => {
     expect(saved.json()).toMatchObject({ format: "landscape", minutes: 5, captionStyle: "boxed", research: true });
 
     const created = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps explained" } });
-    expect(created.json().project).toMatchObject({ format: "landscape", minutes: 5, captionStyle: "boxed" });
-    const explicit = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps short", format: "shorts", captionStyle: "clean" } });
-    expect(explicit.json().project).toMatchObject({ format: "shorts", minutes: null, captionStyle: "clean" });
+    expect(created.json().project).toMatchObject({ format: "landscape", minutes: 5, captionStyle: "boxed", style: "auto" });
+    const explicit = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Heat pumps short", format: "shorts", captionStyle: "clean", style: "tech" } });
+    expect(explicit.json().project).toMatchObject({ format: "shorts", minutes: null, captionStyle: "clean", style: "tech" });
+    const badStyle = await app.inject({ method: "POST", url: "/api/projects", payload: { topic: "Bad style topic", style: "neon" } });
+    expect(badStyle.statusCode).toBe(400);
     await worker.idle();
   });
 

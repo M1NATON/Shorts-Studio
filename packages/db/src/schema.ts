@@ -27,6 +27,10 @@ export const projects = sqliteTable(
     title: text("title"),
     format: text("format", { enum: ["shorts", "landscape"] }).notNull(),
     captionStyle: text("caption_style", { enum: ["clean", "karaoke", "boxed", "outline"] }).notNull().default("karaoke"),
+    /** Стиль оформления, выбранный при создании; "auto" — решает модель. Влияет только на генерацию темы. */
+    style: text("style", { enum: ["auto", "tech", "editorial", "poster", "kinetic", "notebook", "documentary", "paper"] })
+      .notNull()
+      .default("auto"),
     status: text("status", { enum: PROJECT_STATUSES }).notNull(),
     /** Режим, который просил пользователь; null — выбирает модель. */
     freshnessRequested: text("freshness_requested", { enum: ["current", "evergreen"] }),

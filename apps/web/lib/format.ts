@@ -1,4 +1,4 @@
-import type { CaptionStyle } from "@shorts/contracts";
+import type { CaptionStyle, StyleChoice } from "@shorts/contracts";
 import type { Job, ProjectStatus } from "./api";
 
 /** Длины 16:9 в минутах — одинаковый список в форме создания и в Предпочтениях. */
@@ -9,6 +9,17 @@ export const CAPTION_LABEL: Record<CaptionStyle, string> = {
   clean: "чистые",
   boxed: "на плашке",
   outline: "с обводкой",
+};
+
+export const STYLE_LABEL: Record<StyleChoice, string> = {
+  auto: "Авто",
+  tech: "Техно",
+  editorial: "Журнал",
+  poster: "Постер",
+  kinetic: "Кинетика",
+  notebook: "Тетрадь",
+  documentary: "Документальный",
+  paper: "Бумага",
 };
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {

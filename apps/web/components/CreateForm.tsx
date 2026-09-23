@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Captions, Sparkles } from "lucide-react";
-import type { CaptionStyle } from "@shorts/contracts";
+import { Captions, Palette, Sparkles } from "lucide-react";
+import type { CaptionStyle, StyleChoice } from "@shorts/contracts";
 import { api, ApiError, type Preferences } from "@/lib/api";
-import { CAPTION_LABEL, MINUTES_OPTIONS, plural } from "@/lib/format";
+import { CAPTION_LABEL, MINUTES_OPTIONS, plural, STYLE_LABEL } from "@/lib/format";
 import { CaptionPicker } from "./CaptionPicker";
 import { Popover } from "./Popover";
+import { StylePicker } from "./StylePicker";
 
-const DEFAULTS: Preferences = { format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", research: true, exportDir: "" };
+const DEFAULTS: Preferences = { format: "shorts", minutes: 3, freshness: "auto", captionStyle: "karaoke", style: "auto", research: true, exportDir: "" };
 
 /**
  * Создание ролика одной строкой. Несколько тем — по одной на строку: они встают
@@ -39,6 +40,7 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
         topics,
         format: prefs.format,
         captionStyle: prefs.captionStyle,
+        style: prefs.style,
         ...(prefs.freshness !== "auto" ? { freshness: prefs.freshness } : {}),
         ...(prefs.format === "landscape" ? { minutes: prefs.minutes } : {}),
       });
@@ -100,6 +102,15 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
           >
             {(close) => (
               <CaptionPicker value={prefs.captionStyle} onChange={(style: CaptionStyle) => { change({ captionStyle: style }); close(); }} />
+            )}
+          </Popover>
+          <Popover
+            menuClass="menu wide"
+            label={`Стиль: ${STYLE_LABEL[prefs.style]}`}
+            button={<><Palette size={16} strokeWidth={1.75} />{STYLE_LABEL[prefs.style]}</>}
+          >
+            {(close) => (
+              <StylePicker value={prefs.style} onChange={(style: StyleChoice) => { change({ style }); close(); }} />
             )}
           </Popover>
           <button className="btn pri" disabled={busy || topics.length === 0} onClick={() => void submit()}>

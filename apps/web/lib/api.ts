@@ -2,7 +2,7 @@
  * Клиент API студии. Типы ответов описаны здесь, а не импортом из @shorts/db:
  * база тянет node:sqlite, в браузерный бандл она попасть не должна.
  */
-import type { CaptionStyle, Manifest, PublishMeta, SceneIntent, SceneMedia, SceneVisualSpec, VideoFormat, VideoTheme, WordTiming } from "@shorts/contracts";
+import type { CaptionStyle, Manifest, PublishMeta, SceneIntent, SceneMedia, SceneVisualSpec, StyleChoice, VideoFormat, VideoTheme, WordTiming } from "@shorts/contracts";
 
 export type { PublishMeta } from "@shorts/contracts";
 
@@ -15,6 +15,7 @@ export interface Project {
   title: string | null;
   format: VideoFormat;
   captionStyle: CaptionStyle;
+  style: StyleChoice;
   status: ProjectStatus;
   freshnessRequested: Freshness | null;
   freshness: Freshness | null;
@@ -109,6 +110,7 @@ export interface Preferences {
   minutes: number;
   freshness: Freshness | "auto";
   captionStyle: CaptionStyle;
+  style: StyleChoice;
   research: boolean;
   exportDir: string;
 }
@@ -142,7 +144,7 @@ export const api = {
     for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value));
     return request<{ items: Project[]; total: number }>(`/api/projects?${params}`);
   },
-  createProjects: (input: { topics: string[]; format?: VideoFormat; captionStyle?: CaptionStyle; freshness?: Freshness; minutes?: number }) =>
+  createProjects: (input: { topics: string[]; format?: VideoFormat; captionStyle?: CaptionStyle; style?: StyleChoice; freshness?: Freshness; minutes?: number }) =>
     input.topics.length === 1
       ? post<{ project: Project }>("/api/projects", { ...input, topic: input.topics[0], topics: undefined }).then((r) => [r.project])
       : post<{ items: { project: Project }[] }>("/api/projects/batch", input).then((r) => r.items.map((i) => i.project)),

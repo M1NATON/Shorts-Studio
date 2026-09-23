@@ -8,6 +8,7 @@ const project: Project = {
   title: "Марс за 60 секунд",
   format: "shorts",
   captionStyle: "karaoke",
+  style: "auto",
   status: "ready",
   freshnessRequested: "current",
   freshness: "current",

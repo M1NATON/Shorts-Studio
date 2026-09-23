@@ -5,6 +5,7 @@ import {
   paperTheme,
   VIDEO_STYLES,
   VideoThemeSchema,
+  type VideoStyle,
   type VideoTheme,
 } from "@shorts/contracts";
 import { issuesOf, log, unwrapContent, withFeedback, type GenerationContext } from "./context.js";
@@ -62,21 +63,27 @@ export const THEME_SYSTEM = [
  * проверяется. Контраст считается по WCAG прямо в схеме, и нечитаемая тема уходит
  * на повтор вместе с конкретными цифрами контраста. Три неудачи — дефолтная тема.
  */
-export async function generateTheme(ctx: GenerationContext, topic: string): Promise<VideoTheme> {
+export async function generateTheme(ctx: GenerationContext, topic: string, style?: VideoStyle): Promise<VideoTheme> {
   const feedback: string[] = [];
+  const user = style
+    ? `Video topic: ${topic}\nRequired style: ${style} (mandatory).`
+    : `Video topic: ${topic}`;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const raw = await ctx.llm.askJson({
         system: THEME_SYSTEM,
-        user: withFeedback(`Video topic: ${topic}`, feedback),
+        user: withFeedback(user, feedback),
         maxTokens: 900,
         timeoutMs: 150000,
       });
       const content = unwrapContent(raw, "theme");
+      // Стиль обязателен, если задан пользователем: модель может проигнорировать инструкцию,
+      // поэтому форсируем поле сами — тот же приём, что и с фиксированной палитрой paper ниже.
+      const forced = style && content && typeof content === "object" && !Array.isArray(content) ? { ...content, style } : content;
       // У paper палитра и шрифты фиксированы и подставляются до проверки: иначе цвета модели,
       // которые всё равно заменятся, могли бы завалить тему на контрасте. Остальное проверяет схема.
-      const isPaper = (content as { style?: unknown } | null)?.style === "paper";
-      const parsed = VideoThemeSchema.safeParse(isPaper ? paperTheme(content as VideoTheme) : content);
+      const isPaper = (forced as { style?: unknown } | null)?.style === "paper";
+      const parsed = VideoThemeSchema.safeParse(isPaper ? paperTheme(forced as VideoTheme) : forced);
       if (parsed.success) {
         log(ctx, `тема: ${parsed.data.mood} · ${parsed.data.fontFamily} · ${parsed.data.canvas}`);
         return parsed.data;
@@ -88,5 +95,29 @@ export async function generateTheme(ctx: GenerationContext, topic: string): Prom
     }
   }
   log(ctx, "тема: откат на дефолтную");
-  return DEFAULT_VIDEO_THEME;
+  return fallbackTheme(style);
+}
+
+/** Светлая запасная палитра для стилей, которым нужна бумага (STYLE_CANVAS min). */
+const LIGHT_FALLBACK = {
+  canvas: "#F5F1E8",
+  surface: "#FFFFFF",
+  surfaceStrong: "#E9E2D3",
+  border: "#D2C8B6",
+  text: "#1F1B16",
+  muted: "#6B6358",
+  accent: "#9A4A1F",
+  accentSoft: "#F0DFD2",
+} as const;
+
+/**
+ * Запасная тема. Стиль, выбранный пользователем, сохраняется: иначе после трёх неудач
+ * он молча превратился бы в tech дефолтной темы.
+ */
+export function fallbackTheme(style?: VideoStyle): VideoTheme {
+  if (!style || style === "tech") return DEFAULT_VIDEO_THEME;
+  if (style === "paper") return paperTheme(DEFAULT_VIDEO_THEME);
+  if (style === "editorial") return { ...DEFAULT_VIDEO_THEME, ...LIGHT_FALLBACK, fontFamily: "Lora", style };
+  if (style === "notebook") return { ...DEFAULT_VIDEO_THEME, ...LIGHT_FALLBACK, fontFamily: "Caveat", style };
+  return { ...DEFAULT_VIDEO_THEME, style };
 }

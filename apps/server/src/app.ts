@@ -30,6 +30,7 @@ import type { Worker } from "./worker.js";
 const CreateOptions = {
   format: z.enum(["shorts", "landscape"]).optional(),
   captionStyle: z.enum(["clean", "karaoke", "boxed", "outline"]).optional(),
+  style: z.enum(["auto", "tech", "editorial", "poster", "kinetic", "notebook", "documentary", "paper"]).optional(),
   freshness: z.enum(["current", "evergreen"]).optional(),
   minutes: z.number().min(1).max(20).optional(),
 };
@@ -206,6 +207,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   async function createOptions(body: {
     format?: "shorts" | "landscape";
     captionStyle?: "clean" | "karaoke" | "boxed" | "outline";
+    style?: "auto" | "tech" | "editorial" | "poster" | "kinetic" | "notebook" | "documentary" | "paper";
     freshness?: "current" | "evergreen";
     minutes?: number;
   }) {
@@ -215,6 +217,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return {
       format,
       captionStyle: body.captionStyle ?? prefs.captionStyle,
+      style: body.style ?? prefs.style,
       ...(freshness ? { freshness } : {}),
       ...(format === "landscape" ? { minutes: body.minutes ?? prefs.minutes } : {}),
     };
@@ -285,6 +288,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const project = await repo.createProject({
       topic: source.topic,
       format: source.format,
+      style: source.style,
       ...(source.freshnessRequested ? { freshness: source.freshnessRequested } : {}),
       ...(source.minutes ? { minutes: source.minutes } : {}),
     });

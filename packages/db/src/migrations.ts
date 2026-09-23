@@ -106,4 +106,6 @@ export const MIGRATIONS: readonly string[] = [
   `ALTER TABLE projects ADD COLUMN publish TEXT;`,
   // 8: когда задача стала running — панель очереди показывает «идёт 1:32», а не время с постановки.
   `ALTER TABLE jobs ADD COLUMN started_at TEXT;`,
+  // 9: стиль оформления, выбранный при создании ролика; "auto" — решает модель (как раньше).
+  `ALTER TABLE projects ADD COLUMN style TEXT NOT NULL DEFAULT 'auto';`,
 ];

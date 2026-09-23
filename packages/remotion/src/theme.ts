@@ -11,9 +11,21 @@ import { DEFAULT_VIDEO_THEME, FORMATS, SCENE_ZONE, stageSize, type FormatSpec, t
 export const ThemeContext = createContext<VideoTheme>(DEFAULT_VIDEO_THEME);
 export const useTheme = (): VideoTheme => useContext(ThemeContext);
 
-/** Шрифтовые данные считаются один раз в ShortsVideo и раздаются сюда. */
-export const FontContext = createContext<{ fontFamily: string; headingWeight: number; bodyWeight: number }>({
+/**
+ * Шрифтовые данные считаются один раз в ShortsVideo и раздаются сюда.
+ *
+ * `headingFamily` отдельно от `fontFamily` нужен только стилю paper: заголовки и
+ * числа там рисуются Lilita One, а тело и субтитры — Patrick Hand. У всех
+ * остальных стилей headingFamily равен fontFamily, поэтому их рендер не меняется.
+ */
+export const FontContext = createContext<{
+  fontFamily: string;
+  headingFamily: string;
+  headingWeight: number;
+  bodyWeight: number;
+}>({
   fontFamily: "Inter, system-ui, sans-serif",
+  headingFamily: "Inter, system-ui, sans-serif",
   headingWeight: 800,
   bodyWeight: 400,
 });

@@ -4,6 +4,7 @@ import {
   DEFAULT_VIDEO_THEME,
   VideoThemeSchema,
   contrastRatio,
+  paperTheme,
   relativeLuminance,
   themeStyle,
 } from "./video-theme.js";
@@ -128,5 +129,22 @@ describe("VideoThemeSchema", () => {
     expect(VideoThemeSchema.safeParse({ ...DEFAULT_VIDEO_THEME, style: undefined }).success).toBe(true);
     expect(themeStyle({ style: undefined })).toBe("tech");
     expect(themeStyle({ style: "editorial" })).toBe("editorial");
+  });
+});
+
+describe("paperTheme", () => {
+  it("форсирует палитру и стиль paper, но проходит валидацию", () => {
+    const theme = paperTheme(DEFAULT_VIDEO_THEME);
+    expect(VideoThemeSchema.safeParse(theme).success).toBe(true);
+    expect(theme.style).toBe("paper");
+    expect(theme.fontFamily).toBe("PatrickHand");
+  });
+
+  it("сохраняет mood, musicMood и motion исходной темы", () => {
+    const base = { ...DEFAULT_VIDEO_THEME, mood: "playful science", musicMood: "playful" as const };
+    const theme = paperTheme(base);
+    expect(theme.mood).toBe(base.mood);
+    expect(theme.musicMood).toBe(base.musicMood);
+    expect(theme.motion).toEqual(base.motion);
   });
 });

@@ -2,6 +2,7 @@ import {
   DEFAULT_VIDEO_THEME,
   FONT_FAMILIES,
   MUSIC_MOODS,
+  paperTheme,
   VIDEO_STYLES,
   VideoThemeSchema,
   type VideoTheme,
@@ -43,6 +44,9 @@ export const THEME_SYSTEM = [
   "- kinetic — typography only, big words, minimal decoration; quotes, motivation, psychology.",
   "- notebook — light grid paper, handwritten look (Caveat); explainers and \"how it works\".",
   "- documentary — dark cinematic, for science, nature, places, people.",
+  "- paper — hand-drawn illustrated storybook with wobbly ink outlines; explainers, \"why\" and",
+  "  \"how it works\", kids-friendly science. Its palette and fonts are fixed: pick only mood,",
+  "  musicMood and motion, colors you give are replaced.",
   "- Prefer non-tech styles unless the topic is genuinely about technology; tech is overused.",
   "- The canvas must match the style: editorial and notebook need a light canvas, tech and",
   "  documentary need a dark canvas (this is checked and enforced, same as contrast).",
@@ -68,7 +72,11 @@ export async function generateTheme(ctx: GenerationContext, topic: string): Prom
         maxTokens: 900,
         timeoutMs: 150000,
       });
-      const parsed = VideoThemeSchema.safeParse(unwrapContent(raw, "theme"));
+      const content = unwrapContent(raw, "theme");
+      // У paper палитра и шрифты фиксированы и подставляются до проверки: иначе цвета модели,
+      // которые всё равно заменятся, могли бы завалить тему на контрасте. Остальное проверяет схема.
+      const isPaper = (content as { style?: unknown } | null)?.style === "paper";
+      const parsed = VideoThemeSchema.safeParse(isPaper ? paperTheme(content as VideoTheme) : content);
       if (parsed.success) {
         log(ctx, `тема: ${parsed.data.mood} · ${parsed.data.fontFamily} · ${parsed.data.canvas}`);
         return parsed.data;

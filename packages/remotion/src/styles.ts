@@ -31,6 +31,9 @@ export const STYLES: Record<VideoStyle, StyleSpec> = {
   notebook: { maxZoom: 1.5, surface: "sticker", background: "grid" },
   kinetic: { maxZoom: 1.6, surface: "none", background: "flat" },
   poster: { maxZoom: 1.6, surface: "none", background: "flat" },
+  // surface "sticker" переиспользован: бордер + тень уже читаются как бумажная
+  // карточка, отдельный kind не нужен (см. paper/Shape.tsx для рисованных фигур).
+  paper: { maxZoom: 1.4, surface: "sticker", background: "paper" },
 };
 
 export const useStyle = (): StyleSpec => STYLES[themeStyle(useTheme())];

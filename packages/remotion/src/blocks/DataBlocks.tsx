@@ -1,15 +1,26 @@
 import React from "react";
 import { interpolate, useVideoConfig } from "remotion";
-import { BLOCK_TYPE } from "@shorts/contracts";
+import { BLOCK_TYPE, PAPER, themeStyle } from "@shorts/contracts";
 import { useTheme, useThemeFont } from "../theme.js";
 import { useMotionProfile } from "../motion.js";
 import { useAccent } from "../presentation.js";
 import { useSurface } from "../styles.js";
+import { rectPoints, Shape } from "../paper/index.js";
 import type { BlockProps } from "./types.js";
 
 const T = BLOCK_TYPE;
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+
+/**
+ * Единица viewBox для бумажных столбцов: реальная ширина блока известна только
+ * в разметке (100% родителя), а Shape рисует полигон в фиксированных
+ * координатах. 1000 — приближение типичной ширины сцены в дизайн-пикселях
+ * (900–1100), поэтому единица viewBox ≈ 1px кадра и amount дрожания (px)
+ * выглядит одинаково при любой реальной ширине блока (см. preserveAspectRatio="none").
+ */
+const BAR_UNIT = 1000;
+const PAPER_BAR_COLORS = [PAPER.mustard, PAPER.sage, PAPER.grey, PAPER.blush] as const;
 
 /** Разделители разрядов фиксированной локалью: рендер не зависит от машины. */
 const format = (value: number, decimals: number): string =>
@@ -171,6 +182,7 @@ export const BarsBlock: React.FC<BlockProps<"bars">> = ({ block, localFrame, rem
   // столбик перестаёт быть пилюлей.
   const track = surface(false, accent);
   const trackRadius = Math.min(typeof track.borderRadius === "number" ? track.borderRadius : 0, T.bars.barHeight / 2);
+  const isPaper = themeStyle(theme) === "paper";
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: T.bars.rowGap }}>
@@ -204,23 +216,51 @@ export const BarsBlock: React.FC<BlockProps<"bars">> = ({ block, localFrame, rem
                 {block.unit ? ` ${block.unit}` : ""}
               </span>
             </div>
-            <div
-              style={{
-                height: T.bars.barHeight,
-                overflow: "hidden",
-                ...track,
-                borderRadius: trackRadius,
-              }}
-            >
+            {isPaper ? (
+              <div style={{ position: "relative", height: T.bars.barHeight }}>
+                <Shape
+                  points={rectPoints(0, 0, BAR_UNIT, T.bars.barHeight, 3)}
+                  width={BAR_UNIT}
+                  height={T.bars.barHeight}
+                  seed={`bar-track-${index}-${item.label}`}
+                  fill={theme.surface}
+                  stroke={theme.border}
+                  strokeWidth={3}
+                  wobbleAmount={2}
+                  preserveAspectRatio="none"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                />
+                <Shape
+                  points={rectPoints(0, 0, Math.max(6, (max > 0 ? (item.value / max) * grow : 0) * BAR_UNIT), T.bars.barHeight, 3)}
+                  width={BAR_UNIT}
+                  height={T.bars.barHeight}
+                  seed={`bar-fill-${index}-${item.label}`}
+                  fill={isMax ? accent : PAPER_BAR_COLORS[index % PAPER_BAR_COLORS.length]!}
+                  stroke={theme.border}
+                  strokeWidth={4}
+                  preserveAspectRatio="none"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                />
+              </div>
+            ) : (
               <div
                 style={{
-                  height: "100%",
-                  width: `${max > 0 ? (item.value / max) * grow * 100 : 0}%`,
-                  backgroundColor: isMax ? accent : theme.muted,
-                  opacity: isMax ? 1 : 0.55,
+                  height: T.bars.barHeight,
+                  overflow: "hidden",
+                  ...track,
+                  borderRadius: trackRadius,
                 }}
-              />
-            </div>
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${max > 0 ? (item.value / max) * grow * 100 : 0}%`,
+                    backgroundColor: isMax ? accent : theme.muted,
+                    opacity: isMax ? 1 : 0.55,
+                  }}
+                />
+              </div>
+            )}
           </div>
         );
       })}

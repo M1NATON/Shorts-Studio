@@ -32,6 +32,8 @@ export const FONT_FAMILIES = [
   "Caveat",
   "JetBrainsMono",
   "BebasNeue",
+  "LilitaOne",
+  "PatrickHand",
 ] as const;
 export const FontFamilySchema = z.enum(FONT_FAMILIES);
 export type FontFamilyName = z.infer<typeof FontFamilySchema>;
@@ -41,7 +43,15 @@ export type FontFamilyName = z.infer<typeof FontFamilySchema>;
  * карточки, крупность типографики. Модель выбирает стиль под тему, палитра и стиль
  * подбираются независимо (кроме требования к яркости фона, см. STYLE_CANVAS).
  */
-export const VIDEO_STYLES = ["tech", "editorial", "poster", "kinetic", "notebook", "documentary"] as const;
+export const VIDEO_STYLES = [
+  "tech",
+  "editorial",
+  "poster",
+  "kinetic",
+  "notebook",
+  "documentary",
+  "paper",
+] as const;
 export const VideoStyleSchema = z.enum(VIDEO_STYLES);
 export type VideoStyle = z.infer<typeof VideoStyleSchema>;
 
@@ -81,6 +91,7 @@ export const STYLE_CANVAS: Partial<Record<VideoStyle, { min?: number; max?: numb
   notebook: { min: 0.6 },
   tech: { max: 0.08 },
   documentary: { max: 0.08 },
+  paper: { min: 0.6 },
 };
 
 /**
@@ -206,3 +217,46 @@ export const DEFAULT_VIDEO_THEME: VideoTheme = {
   musicMood: "calm",
   style: "tech",
 };
+
+/**
+ * Дизайн-токены «бумажного» стиля: рисованные фигуры и текстура бумаги живут в
+ * @shorts/remotion (packages/remotion/src/paper), а конкретные значения цвета —
+ * здесь, рядом с остальными темами, чтобы валидатор и рендер видели одни числа.
+ */
+export const PAPER = {
+  ink: "#2B2622",
+  paper: "#FAF6EC",
+  mustard: "#ECB846",
+  terracotta: "#C4544E",
+  sage: "#6EAA96",
+  grey: "#B0B0BA",
+  blush: "#EC968C",
+  dawn: "#EED8B4",
+  day: "#C8DAE2",
+  sunset: "#E8BEA0",
+  deep: "#16304A",
+  mint: "#D6E2DE",
+} as const;
+
+/**
+ * Тема, форсированная под бумажный стиль: настроение, музыку и профиль движения
+ * модель по-прежнему выбирает под тему видео (см. base), а палитра, шрифт и
+ * устройство кадра фиксированы — иначе «бумага» перестаёт быть узнаваемым стилем.
+ * muted — тёплый тёмно-серый, а не приглушённый ink: проходит порог ≥3:1, но
+ * заметно светлее текста.
+ */
+export function paperTheme(base: VideoTheme): VideoTheme {
+  return {
+    ...base,
+    canvas: PAPER.paper,
+    surface: "#FFFDF6",
+    surfaceStrong: PAPER.mustard,
+    border: PAPER.ink,
+    text: PAPER.ink,
+    muted: "#7A6F63",
+    accent: PAPER.terracotta,
+    accentSoft: PAPER.blush,
+    fontFamily: "PatrickHand",
+    style: "paper",
+  };
+}

@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
 import { AbsoluteFill, Audio, interpolate, Sequence, staticFile } from "remotion";
-import { DEFAULT_VIDEO_THEME, type Manifest } from "@shorts/contracts";
+import { DEFAULT_VIDEO_THEME, themeStyle, type Manifest } from "@shorts/contracts";
 import { Background } from "./Background.js";
 import { loadThemeFont } from "./fonts.js";
 import { ScenePositionContext } from "./motion.js";
+import { PaperTexture } from "./paper/index.js";
 import { HasSceneMediaContext } from "./presentation.js";
 import { SceneMedia } from "./SceneMedia.js";
 import { SceneVisual } from "./scenes/index.js";
@@ -43,11 +44,23 @@ export const ShortsVideo: React.FC<{ manifest: Manifest }> = ({ manifest }) => {
     () => loadThemeFont(theme.fontFamily, theme.headingWeight),
     [theme.fontFamily, theme.headingWeight],
   );
+  // paper — единственный стиль с двумя семействами: Lilita One для заголовков и
+  // чисел поверх Patrick Hand для тела. Остальные стили используют одно семейство,
+  // поэтому headingFamily у них совпадает с fontFamily и рендер не меняется.
+  const isPaper = themeStyle(theme) === "paper";
+  const headingFont = useMemo(
+    () => (isPaper ? loadThemeFont("LilitaOne", theme.headingWeight) : null),
+    [isPaper, theme.headingWeight],
+  );
+  const fontContext = useMemo(
+    () => ({ ...font, headingFamily: headingFont ? headingFont.fontFamily : font.fontFamily }),
+    [font, headingFont],
+  );
 
   return (
     <FormatContext.Provider value={manifest.format}>
     <ThemeContext.Provider value={theme}>
-      <FontContext.Provider value={font}>
+      <FontContext.Provider value={fontContext}>
         <AbsoluteFill style={{ backgroundColor: theme.canvas, fontFamily: font.fontFamily }}>
           <Background />
           {manifest.music ? (
@@ -79,6 +92,8 @@ export const ShortsVideo: React.FC<{ manifest: Manifest }> = ({ manifest }) => {
               <Subtitles words={scene.words} captionStyle={manifest.captionStyle} />
             </Sequence>
           ))}
+          {/* Поверх всего, включая сток-медиа и субтитры — фактура бумаги живёт над кадром. */}
+          {isPaper ? <PaperTexture /> : null}
         </AbsoluteFill>
       </FontContext.Provider>
     </ThemeContext.Provider>

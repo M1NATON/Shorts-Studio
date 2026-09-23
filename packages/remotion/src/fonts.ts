@@ -4,9 +4,11 @@ import * as BebasNeue from "@remotion/google-fonts/BebasNeue";
 import * as Caveat from "@remotion/google-fonts/Caveat";
 import * as Inter from "@remotion/google-fonts/Inter";
 import * as JetBrainsMono from "@remotion/google-fonts/JetBrainsMono";
+import * as LilitaOne from "@remotion/google-fonts/LilitaOne";
 import * as Lora from "@remotion/google-fonts/Lora";
 import * as Manrope from "@remotion/google-fonts/Manrope";
 import * as Oswald from "@remotion/google-fonts/Oswald";
+import * as PatrickHand from "@remotion/google-fonts/PatrickHand";
 import * as PlayfairDisplay from "@remotion/google-fonts/PlayfairDisplay";
 import * as Sora from "@remotion/google-fonts/Sora";
 import * as SpaceGrotesk from "@remotion/google-fonts/SpaceGrotesk";
@@ -79,6 +81,14 @@ const REGISTRY: Record<FontFamilyName, FontEntry> = {
   },
   BebasNeue: {
     load: () => BebasNeue.loadFont("normal", { weights: ["400"], subsets: ["latin"] }),
+    weights: [400],
+  },
+  LilitaOne: {
+    load: () => LilitaOne.loadFont("normal", { weights: ["400"], subsets: ["latin"] }),
+    weights: [400],
+  },
+  PatrickHand: {
+    load: () => PatrickHand.loadFont("normal", { weights: ["400"], subsets: ["latin"] }),
     weights: [400],
   },
 };

@@ -28,6 +28,7 @@ const Body: React.FC<{ spec: OutroCtaSpec }> = ({ spec }) => {
       <div
         style={{
           fontSize: outroFontSize(spec.text),
+          fontFamily: font.headingFamily,
           fontWeight: font.headingWeight,
           color: theme.text,
           lineHeight: 1.1,

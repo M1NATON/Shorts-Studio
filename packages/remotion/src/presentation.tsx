@@ -2,6 +2,7 @@ import React, { createContext, useContext } from "react";
 import { AbsoluteFill, interpolate } from "remotion";
 import { LAYOUT_ZONE_PADDING, stageSize, themeStyle, type Presentation, type SceneMotionKind } from "@shorts/contracts";
 import { Backdrop } from "./Backdrop.js";
+import { paperMediaZone } from "./paper/index.js";
 import { useFormat, useTheme } from "./theme.js";
 import { EASE_OUT, useMotionProfile, useSceneMotion } from "./motion.js";
 
@@ -58,6 +59,24 @@ const HasSceneMediaContext = createContext<boolean>(false);
 /** Есть ли у текущей сцены фон-медиа (см. SceneMedia.tsx): подавляет Backdrop и poster-плашку. */
 export const useHasSceneMedia = (): boolean => useContext(HasSceneMediaContext);
 export { HasSceneMediaContext };
+
+/**
+ * Резерв под бумажный полароид для zoom-fit текстовых сцен (HookStatement,
+ * KineticText, OutroCta, Composed) — те же числа, что SceneFrame использует
+ * для сдвига/сужения своего бокса (см. paper/mediaZone.ts), только в общем
+ * виде height/width, а не top/side: вызывающей сцене неважна ориентация,
+ * только сколько пикселей вычесть из высоты или ширины при расчёте zoom.
+ */
+export function usePaperMediaReserve(): { extraHeight: number; extraWidth: number } {
+  const theme = useTheme();
+  const format = useFormat();
+  const hasMedia = useHasSceneMedia();
+  const mediaZone = themeStyle(theme) === "paper" && hasMedia ? paperMediaZone(format) : null;
+  return {
+    extraHeight: mediaZone?.orientation === "top" ? mediaZone.reserve : 0,
+    extraWidth: mediaZone?.orientation === "side" ? mediaZone.reserve : 0,
+  };
+}
 
 /**
  * Смещение и масштаб элемента по характеру движения.
@@ -146,7 +165,24 @@ export const SceneFrame: React.FC<{
   const isLeft = presentation.layout === "left";
   const stage = stageSize(format.name, zoom);
   const scale = format.scale * zoom;
-  const maxWidth = wide ? stage.width : Math.min(stage.width, format.templateMaxWidth / zoom);
+
+  // Бумага с медиа: полароид (см. SceneMedia.tsx) живёт в своей полосе зоны
+  // контента (paper/mediaZone.ts), а сцена рисуется в оставшейся части той же
+  // зоны — сдвигается вниз в shorts, сужается сбоку в landscape. Поэтому текст
+  // сцены никогда не оказывается под фото и не вылезает за кадр.
+  const mediaZone = themeStyle(theme) === "paper" && hasMedia ? paperMediaZone(format) : null;
+  let boxTop = format.zone.top;
+  let boxWidthPx = stage.width * scale;
+  let boxHeightPx = stage.height * scale;
+  if (mediaZone?.orientation === "top") {
+    boxTop += mediaZone.reserve;
+    boxHeightPx -= mediaZone.reserve;
+  } else if (mediaZone?.orientation === "side") {
+    boxWidthPx -= mediaZone.reserve;
+  }
+  const designWidth = boxWidthPx / scale;
+  const designHeight = boxHeightPx / scale;
+  const maxWidth = wide ? designWidth : Math.min(designWidth, format.templateMaxWidth / zoom);
 
   return (
     <AccentContext.Provider value={accent}>
@@ -157,10 +193,10 @@ export const SceneFrame: React.FC<{
       <div
         style={{
           position: "absolute",
-          top: format.zone.top,
+          top: boxTop,
           left: format.zone.side,
-          width: stage.width,
-          height: stage.height,
+          width: designWidth,
+          height: designHeight,
           transform: scale === 1 ? undefined : `scale(${scale})`,
           transformOrigin: "top left",
           display: "flex",

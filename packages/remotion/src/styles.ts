@@ -43,15 +43,24 @@ export const useStyle = (): StyleSpec => STYLES[themeStyle(useTheme())];
  * шаблона и его ширине (templateMaxWidth / zoom). `extra` — высота прочих элементов
  * (подпись, кавычка, отступы) в дизайн-пикселях.
  */
+/**
+ * `reserveWidth` — реальные пиксели, отданные под полароид сбоку (paper +
+ * медиа в landscape, см. paper/mediaZone.ts). Переводится в дизайн-пиксели тут
+ * же, внутри цикла: реальный отступ один и тот же на каждом пробуемом zoom, а
+ * дизайн-пиксельный эквивалент от zoom зависит (см. stageSize).
+ */
 export function textZoom(
   lines: readonly string[],
   fontSize: number,
   format: VideoFormat,
   maxZoom: number,
   extra = 0,
+  reserveWidth = 0,
 ): number {
   for (let zoom = Math.max(1, maxZoom); zoom > 1; zoom -= 0.05) {
-    const width = Math.min(stageSize(format, zoom).width, FORMATS[format].templateMaxWidth / zoom);
+    const width =
+      Math.min(stageSize(format, zoom).width, FORMATS[format].templateMaxWidth / zoom) -
+      reserveWidth / (FORMATS[format].scale * zoom);
     const height = lines.reduce((sum, line) => sum + estimateLines(line, fontSize, width) * fontSize * 1.15, 0) + extra;
     if (height <= compositionCapacity("center", format, zoom)) return zoom;
   }

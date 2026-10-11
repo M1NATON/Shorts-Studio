@@ -1,10 +1,11 @@
 import React from "react";
 import { interpolate } from "remotion";
 import { ArrowDown } from "lucide-react";
-import { BLOCK_TYPE } from "@shorts/contracts";
+import { BLOCK_TYPE, themeStyle } from "@shorts/contracts";
 import { useTheme, useThemeFont } from "../theme.js";
 import { useMotionProfile, useStagger } from "../motion.js";
 import { useAccent } from "../presentation.js";
+import { PaperCard, rectPoints, Shape } from "../paper/index.js";
 import { normalizeWord, type BlockProps } from "./types.js";
 
 const T = BLOCK_TYPE;
@@ -28,6 +29,7 @@ export const HeadingBlock: React.FC<BlockProps<"heading">> = ({ block, localFram
         justifyContent: align === "left" ? "flex-start" : "center",
         gap: `0px ${Math.round(size * 0.26)}px`,
         fontSize: size,
+        fontFamily: font.headingFamily,
         fontWeight: font.headingWeight,
         lineHeight: T.heading.lineHeight,
         letterSpacing: `${theme.letterSpacing}em`,
@@ -72,22 +74,27 @@ export const BadgeBlock: React.FC<BlockProps<"badge">> = ({ block }) => {
   const theme = useTheme();
   const font = useThemeFont();
   const accent = useAccent();
+  const isPaper = themeStyle(theme) === "paper";
   return (
     <div
       style={{
+        position: "relative",
         display: "inline-block",
         fontSize: T.badge.size,
         lineHeight: 1.2,
         padding: `${T.badge.padY}px ${T.badge.padX}px`,
-        borderRadius: 999,
-        backgroundColor: theme.accentSoft,
+        borderRadius: isPaper ? undefined : 999,
+        backgroundColor: isPaper ? undefined : theme.accentSoft,
         color: accent,
         fontWeight: font.headingWeight,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
       }}
     >
-      {block.text}
+      {isPaper ? (
+        <PaperCard seed={`badge-${block.text}`} fill={theme.accentSoft} stroke={theme.border} strokeWidth={5} perSide={2} />
+      ) : null}
+      <span style={{ position: "relative" }}>{block.text}</span>
     </div>
   );
 };
@@ -96,25 +103,31 @@ export const QuoteBlock: React.FC<BlockProps<"quote">> = ({ block, localFrame })
   const theme = useTheme();
   const font = useThemeFont();
   const accent = useAccent();
+  const isPaper = themeStyle(theme) === "paper";
   const { enterFrames } = useMotionProfile();
   const attributionIn = interpolate(localFrame, [enterFrames, enterFrames * 2], [0, 1], clamp);
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ position: "relative", width: "100%", padding: isPaper ? 44 : 0, boxSizing: "border-box" }}>
+      {isPaper ? (
+        <PaperCard seed={`quote-plaque-${block.text.slice(0, 24)}`} fill={theme.surface} stroke={theme.border} />
+      ) : null}
       <div
         style={{
+          position: "relative",
           height: T.quote.markHeight,
           fontSize: 200,
           lineHeight: 0.8,
           color: accent,
           opacity: 0.6,
-          fontFamily: "Georgia, serif",
+          fontFamily: isPaper ? font.headingFamily : "Georgia, serif",
         }}
       >
         “
       </div>
       <div
         style={{
+          position: "relative",
           fontSize: T.quote.size,
           lineHeight: T.quote.lineHeight,
           fontWeight: Math.min(font.headingWeight, 700),
@@ -127,6 +140,7 @@ export const QuoteBlock: React.FC<BlockProps<"quote">> = ({ block, localFrame })
       {block.attribution ? (
         <div
           style={{
+            position: "relative",
             marginTop: T.quote.attributionGap,
             fontSize: T.quote.attributionSize,
             color: theme.muted,
@@ -149,6 +163,7 @@ export const DividerBlock: React.FC<BlockProps<"divider">> = ({ block, localFram
   const theme = useTheme();
   const font = useThemeFont();
   const accent = useAccent();
+  const isPaper = themeStyle(theme) === "paper";
   const { enterFrames, easing } = useMotionProfile();
   const grow = interpolate(localFrame, [0, enterFrames * 1.6], [0, 1], { ...clamp, easing });
 
@@ -185,21 +200,36 @@ export const DividerBlock: React.FC<BlockProps<"divider">> = ({ block, localFram
       {line}
       <div
         style={{
+          position: "relative",
           width: T.divider.vs,
           height: T.divider.vs,
-          borderRadius: "50%",
-          border: `3px solid ${accent}`,
+          borderRadius: isPaper ? undefined : "50%",
+          border: isPaper ? undefined : `3px solid ${accent}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: 40,
+          fontFamily: isPaper ? font.headingFamily : undefined,
           fontWeight: font.headingWeight,
           color: accent,
           letterSpacing: "0.04em",
           scale: interpolate(grow, [0, 1], [0.5, 1], { output: "perceptual-scale" }),
         }}
       >
-        VS
+        {isPaper ? (
+          <Shape
+            points={rectPoints(0, 0, T.divider.vs, T.divider.vs, 3)}
+            width={T.divider.vs}
+            height={T.divider.vs}
+            seed="divider-vs"
+            fill={theme.canvas}
+            stroke={theme.border}
+            strokeWidth={4}
+            wobbleAmount={2}
+            style={{ position: "absolute", inset: 0 }}
+          />
+        ) : null}
+        <span style={{ position: "relative" }}>VS</span>
       </div>
       {line}
     </div>
@@ -248,6 +278,7 @@ export const ChapterBlock: React.FC<BlockProps<"chapter">> = ({ block, localFram
           fontSize: C.indexSize,
           lineHeight: 1,
           height: C.indexSize,
+          fontFamily: font.headingFamily,
           fontWeight: font.headingWeight,
           color: accent,
           fontVariantNumeric: "tabular-nums",
@@ -261,6 +292,7 @@ export const ChapterBlock: React.FC<BlockProps<"chapter">> = ({ block, localFram
         style={{
           fontSize: C.titleSize,
           lineHeight: C.lineHeight,
+          fontFamily: font.headingFamily,
           fontWeight: font.headingWeight,
           letterSpacing: `${theme.letterSpacing}em`,
           color: theme.text,

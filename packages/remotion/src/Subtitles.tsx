@@ -4,11 +4,29 @@ import {
   buildCaptionPages,
   findActivePageIndex,
   findActiveWordIndex,
+  themeStyle,
   type CaptionStyle,
   type VideoTheme,
   type WordTiming,
 } from "@shorts/contracts";
 import { useFormat, useTheme } from "./theme.js";
+import { Line, PaperCard, type Point } from "./paper/index.js";
+
+/** Волнистая подчёркивающая линия под активным словом — само дрожание кадр-за-кадром даёт Line. */
+const UNDERLINE_POINTS: Point[] = Array.from({ length: 9 }, (_, i) => {
+  const t = i / 8;
+  return { x: t * 100, y: 12 + Math.sin(t * Math.PI * 2) * 8 };
+});
+
+/**
+ * Появление страницы субтитров в paper: overshoot вместо spring — плашка чуть
+ * «перепрыгивает» финальный размер и оседает, как наклеенная бумажка.
+ * Чистая функция от прогресса 0..1 — тестируется без рендера.
+ */
+export function paperOvershoot(u: number): number {
+  const clamped = Math.max(0, Math.min(1, u));
+  return 1 + 0.08 * Math.sin(clamped * Math.PI);
+}
 
 /**
  * Субтитры страницами: 2–3 слова держатся ~1.2 с, внутри страницы меняется только
@@ -83,6 +101,7 @@ export const Subtitles: React.FC<{ words: WordTiming[]; captionStyle?: CaptionSt
 
   if (!page) return null;
 
+  const isPaper = themeStyle(theme) === "paper";
   const pageStartFrame = Math.round(page.startSec * fps);
   const entrance = spring({
     frame: frame - pageStartFrame,
@@ -90,6 +109,13 @@ export const Subtitles: React.FC<{ words: WordTiming[]; captionStyle?: CaptionSt
     durationInFrames: 8,
     config: { damping: 200 },
   });
+  // paper: плашка «перепрыгивает» финальный размер вместо пружины — читается как
+  // наклеенная бумажка, а не как обычный UI-попап (см. paperOvershoot).
+  const overshootU = interpolate(frame - pageStartFrame, [0, 8], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const overshoot = paperOvershoot(overshootU);
 
   return (
     <div
@@ -104,8 +130,20 @@ export const Subtitles: React.FC<{ words: WordTiming[]; captionStyle?: CaptionSt
         justifyContent: "center",
       }}
     >
+      {isPaper ? (
+        <PaperCard
+          seed={`subtitle-plaque-${pageIndex}`}
+          fill={theme.surface}
+          stroke={theme.border}
+          strokeWidth={5}
+          wobbleAmount={4}
+          perSide={2}
+          style={{ opacity: entrance }}
+        />
+      ) : null}
       <div
         style={{
+          position: "relative",
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "center",
@@ -118,11 +156,14 @@ export const Subtitles: React.FC<{ words: WordTiming[]; captionStyle?: CaptionSt
           lineHeight: 1.15,
           letterSpacing: "-0.01em",
           textAlign: "center",
+          padding: isPaper ? "0 32px" : undefined,
           opacity: entrance,
-          transform: `translateY(${interpolate(entrance, [0, 1], [18, 0])}px)`,
+          transform: isPaper
+            ? `translateY(${interpolate(entrance, [0, 1], [18, 0])}px) scale(${overshoot})`
+            : `translateY(${interpolate(entrance, [0, 1], [18, 0])}px)`,
           willChange: "transform, opacity",
           // boxed: вся страница на плашке — читается поверх любого кадра.
-          ...(captionStyle === "boxed"
+          ...(captionStyle === "boxed" && !isPaper
             ? { background: "rgba(0,0,0,0.62)", padding: `${Math.round(captions.fontSize * 0.14)}px ${Math.round(captions.fontSize * 0.36)}px`, borderRadius: Math.round(captions.fontSize * 0.3) }
             : {}),
         }}
@@ -132,9 +173,26 @@ export const Subtitles: React.FC<{ words: WordTiming[]; captionStyle?: CaptionSt
           return (
             <span
               key={`${page.firstWordIndex + i}-${word.text}`}
-              style={{ display: "inline-block", ...wordStyle(captionStyle, isActive, theme, captions.fontSize) }}
+              style={{
+                position: "relative",
+                display: "inline-block",
+                ...wordStyle(captionStyle, isActive, theme, captions.fontSize),
+              }}
             >
               {word.text}
+              {isPaper && isActive ? (
+                <Line
+                  points={UNDERLINE_POINTS}
+                  width={100}
+                  height={24}
+                  seed={`subtitle-underline-${page.firstWordIndex + i}`}
+                  stroke={theme.accent}
+                  strokeWidth={4}
+                  wobbleAmount={2}
+                  preserveAspectRatio="none"
+                  style={{ position: "absolute", left: 0, right: 0, bottom: -10, width: "100%", height: 12 }}
+                />
+              ) : null}
             </span>
           );
         })}

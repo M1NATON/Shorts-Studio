@@ -1,11 +1,12 @@
 import React from "react";
 
-import type { IconListSpec } from "@shorts/contracts";
+import { themeStyle, type IconListSpec } from "@shorts/contracts";
 import { useTheme } from "../theme.js";
 import { useSceneMotion, useStagger } from "../motion.js";
 import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
 import { useStyle, useSurface } from "../styles.js";
 import { Icon } from "../Icon.js";
+import { PaperCard } from "../paper/index.js";
 
 /**
  * Список тезисов с иконками — самый универсальный тип сцены (27% сцен в замере).
@@ -22,6 +23,7 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
   const accent = useAccent();
   const style = useStyle();
   const surface = useSurface();
+  const isPaper = themeStyle(theme) === "paper";
   const flatIconBox = style.surface === "none" || style.surface === "rule";
   const count = spec.items.length;
   // Раздаём сцену по числу пунктов, оставляя последнюю четверть на «весь список целиком».
@@ -55,23 +57,32 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
             <div
               key={`${index}-${item.text}`}
               style={{
+                position: "relative",
                 display: "flex",
                 alignItems: "center",
                 gap: 30,
                 padding: "22px 30px",
                 textAlign: "left",
-                ...surface(isFocused, accent),
+                ...(isPaper ? {} : surface(isFocused, accent)),
                 ...motionStyle(spec.motion, appear, -1),
                 opacity: appear * (isFocused ? 1 : 0.62),
               }}
             >
+              {isPaper ? (
+                <PaperCard
+                  seed={`iconlist-card-${index}-${item.text}`}
+                  fill={isFocused ? theme.accentSoft : theme.surface}
+                  stroke={theme.border}
+                />
+              ) : null}
               <div
                 style={{
+                  position: "relative",
                   width: 92,
                   height: 92,
                   flexShrink: 0,
                   borderRadius: Math.round(theme.cornerRadius * 0.8),
-                  backgroundColor: flatIconBox
+                  backgroundColor: flatIconBox || isPaper
                     ? "transparent"
                     : isFocused
                       ? theme.accentSoft
@@ -83,7 +94,7 @@ const Body: React.FC<{ spec: IconListSpec }> = ({ spec }) => {
               >
                 <Icon name={item.icon} size={52} color={isFocused ? accent : theme.muted} />
               </div>
-              <div style={{ fontSize, fontWeight: 700, color: theme.text, lineHeight: 1.15 }}>
+              <div style={{ position: "relative", fontSize, fontWeight: 700, color: theme.text, lineHeight: 1.15 }}>
                 {item.text}
               </div>
             </div>

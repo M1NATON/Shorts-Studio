@@ -4,7 +4,7 @@ import { DEFAULT_VIDEO_THEME, themeStyle, type Manifest } from "@shorts/contract
 import { Background } from "./Background.js";
 import { loadThemeFont } from "./fonts.js";
 import { ScenePositionContext } from "./motion.js";
-import { PaperTexture } from "./paper/index.js";
+import { PaperSheetTransition, PaperTexture } from "./paper/index.js";
 import { HasSceneMediaContext } from "./presentation.js";
 import { SceneMedia } from "./SceneMedia.js";
 import { SceneVisual } from "./scenes/index.js";
@@ -90,6 +90,9 @@ export const ShortsVideo: React.FC<{ manifest: Manifest }> = ({ manifest }) => {
                 </HasSceneMediaContext.Provider>
               </ScenePositionContext.Provider>
               <Subtitles words={scene.words} captionStyle={manifest.captionStyle} />
+              {/* Переход «лист бумаги»: только paper, и только со второй сцены — первой не
+                  из чего переезжать (см. paper/PaperSheetTransition.tsx). */}
+              {isPaper && index > 0 ? <PaperSheetTransition seed={scene.sceneId} fill={theme.canvas} /> : null}
             </Sequence>
           ))}
           {/* Поверх всего, включая сток-медиа и субтитры — фактура бумаги живёт над кадром. */}

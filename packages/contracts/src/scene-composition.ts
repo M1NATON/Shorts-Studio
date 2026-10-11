@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IconNameSchema } from "./icons.js";
-import { stageSize, type VideoFormat } from "./format.js";
+import { FORMATS, stageSize, type VideoFormat } from "./format.js";
 import {
   LAYOUT_ZONE_PADDING,
   SceneMotionKindSchema,
@@ -264,20 +264,31 @@ export function estimateLines(value: string, fontSize: number, width: number): n
 }
 
 /**
- * Ширина зоны контента для композиции, в дизайн-пикселях формата.
- * У split — ширина одной колонки. `zoom` > 1 — сцена увеличена на кадре, поэтому
- * в дизайн-пикселях ширина зоны меньше (см. stageSize).
+ * Реальные пиксели → дизайн-пиксели формата при данном zoom (см. stageSize).
+ * Нужна только для `reservePx` — полосы кадра, отданной под бумажный полароид
+ * (paper + медиа, см. packages/remotion/src/paper/mediaZone.ts): полоса
+ * фиксирована в реальных пикселях, а дизайн-эквивалент зависит от zoom.
  */
-export function contentWidth(layout: SceneLayout, format: VideoFormat = "shorts", zoom = 1): number {
-  const stage = stageSize(format, zoom);
-  if (layout === "split") return Math.floor((stage.width - T.splitGutter) / 2);
-  return stage.width - LAYOUT_ZONE_PADDING[layout].left;
+function designReserve(format: VideoFormat, zoom: number, reservePx: number): number {
+  if (reservePx === 0) return 0;
+  return reservePx / (FORMATS[format].scale * zoom);
 }
 
-/** Доступная высота под блоки с учётом сдвига оптического центра. */
-export function compositionCapacity(layout: SceneLayout, format: VideoFormat = "shorts", zoom = 1): number {
+/**
+ * Ширина зоны контента для композиции, в дизайн-пикселях формата.
+ * У split — ширина одной колонки. `zoom` > 1 — сцена увеличена на кадре, поэтому
+ * в дизайн-пикселях ширина зоны меньше (см. stageSize). `reservePx` — см. designReserve.
+ */
+export function contentWidth(layout: SceneLayout, format: VideoFormat = "shorts", zoom = 1, reservePx = 0): number {
+  const available = stageSize(format, zoom).width - designReserve(format, zoom, reservePx);
+  if (layout === "split") return Math.floor((available - T.splitGutter) / 2);
+  return available - LAYOUT_ZONE_PADDING[layout].left;
+}
+
+/** Доступная высота под блоки с учётом сдвига оптического центра и `reservePx` (см. designReserve). */
+export function compositionCapacity(layout: SceneLayout, format: VideoFormat = "shorts", zoom = 1, reservePx = 0): number {
   const pad = LAYOUT_ZONE_PADDING[layout];
-  return stageSize(format, zoom).height - pad.top - pad.bottom;
+  return stageSize(format, zoom).height - pad.top - pad.bottom - designReserve(format, zoom, reservePx);
 }
 
 /**
@@ -394,16 +405,17 @@ export function estimateCompositionHeight(
   layout: SceneLayout,
   format: VideoFormat = "shorts",
   zoom = 1,
+  reserveWidthPx = 0,
 ): number {
   if (layout === "split") {
     const { text, visual } = splitColumns(blocks);
     if (text.length > 0 && visual.length > 0) {
-      const width = contentWidth("split", format, zoom);
+      const width = contentWidth("split", format, zoom, reserveWidthPx);
       return Math.round(Math.max(stackHeight(text, width), stackHeight(visual, width)));
     }
-    return Math.round(stackHeight(blocks, contentWidth("center", format, zoom)));
+    return Math.round(stackHeight(blocks, contentWidth("center", format, zoom, reserveWidthPx)));
   }
-  return Math.round(stackHeight(blocks, contentWidth(layout, format, zoom)));
+  return Math.round(stackHeight(blocks, contentWidth(layout, format, zoom, reserveWidthPx)));
 }
 
 /**
@@ -411,17 +423,23 @@ export function estimateCompositionHeight(
  * (комментарий по-русски: валидатор гарантирует, что при zoom=1 влезает; крупнее —
  * меньше ширина сцены в дизайн-пикселях, текст переносится, высота растёт; ищем максимум)
  */
+/**
+ * `reserve` — полоса кадра под бумажный полароид (paper + медиа), в реальных
+ * пикселях: по ширине (landscape, сцена сужается) или по высоте (shorts, сцена
+ * сдвигается вниз). См. packages/remotion/src/paper/mediaZone.ts.
+ */
 export function fitZoom(
   blocks: readonly Block[],
   layout: SceneLayout,
   format: VideoFormat,
   maxZoom: number,
+  reserve: { widthPx?: number; heightPx?: number } = {},
 ): number {
   const top = Math.max(1, maxZoom);
   for (let zoom = top; zoom > 1; zoom -= 0.05) {
-    if (estimateCompositionHeight(blocks, layout, format, zoom) <= compositionCapacity(layout, format, zoom)) {
-      return zoom;
-    }
+    const height = estimateCompositionHeight(blocks, layout, format, zoom, reserve.widthPx ?? 0);
+    const capacity = compositionCapacity(layout, format, zoom, reserve.heightPx ?? 0);
+    if (height <= capacity) return zoom;
   }
   return 1;
 }

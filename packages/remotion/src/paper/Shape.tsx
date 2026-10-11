@@ -48,6 +48,10 @@ export const Shape: React.FC<{
         strokeWidth={strokeWidth}
         strokeLinejoin="round"
         strokeLinecap="round"
+        // Контур должен читаться как постоянные 6px чернил независимо от того,
+        // что viewBox растянут неравномерно (preserveAspectRatio="none" у столбцов
+        // и плашек): без этого атрибута толщина обводки растягивается вместе с формой.
+        vectorEffect="non-scaling-stroke"
       />
     </svg>
   );

@@ -49,6 +49,7 @@ const Body: React.FC<{ spec: KineticTextSpec }> = ({ spec }) => {
             key={`${index}-${line}`}
             style={{
               fontSize,
+              fontFamily: font.headingFamily,
               fontWeight: font.headingWeight,
               lineHeight: 1.02,
               letterSpacing: `${theme.letterSpacing}em`,

@@ -3,7 +3,7 @@ import { interpolate } from "remotion";
 import type { HookStatementSpec } from "@shorts/contracts";
 import { useFormat, useTheme, useThemeFont } from "../theme.js";
 import { useSceneMotion, useScenePosition, useStagger } from "../motion.js";
-import { SceneFrame, useAccent, useMotionStyle } from "../presentation.js";
+import { SceneFrame, useAccent, useMotionStyle, usePaperMediaReserve } from "../presentation.js";
 import { textZoom, useStyle } from "../styles.js";
 
 /** Нормализация для сравнения с emphasisWords: регистр и пунктуация не должны мешать. */
@@ -70,6 +70,7 @@ const Body: React.FC<{ spec: HookStatementSpec }> = ({ spec }) => {
           gap: `${Math.round(fontSize * 0.18)}px ${Math.round(fontSize * 0.26)}px`,
           justifyContent: spec.layout === "left" ? "flex-start" : "center",
           fontSize,
+          fontFamily: font.headingFamily,
           fontWeight: font.headingWeight,
           lineHeight: 1.08,
           letterSpacing: `${theme.letterSpacing}em`,

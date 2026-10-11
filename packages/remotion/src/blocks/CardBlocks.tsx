@@ -1,11 +1,12 @@
 import React from "react";
 import { interpolate } from "remotion";
-import { BLOCK_TYPE } from "@shorts/contracts";
+import { BLOCK_TYPE, themeStyle } from "@shorts/contracts";
 import { useTheme, useThemeFont } from "../theme.js";
 import { useMotionProfile, useStagger } from "../motion.js";
 import { useAccent, useMotionStyle } from "../presentation.js";
 import { useStyle, useSurface } from "../styles.js";
 import { Icon } from "../Icon.js";
+import { PaperCard } from "../paper/index.js";
 import type { BlockProps } from "./types.js";
 
 const T = BLOCK_TYPE;
@@ -21,10 +22,12 @@ export const RowBlock: React.FC<BlockProps<"row">> = ({ block }) => {
   const accent = useAccent();
   const style = useStyle();
   const surface = useSurface();
+  const isPaper = themeStyle(theme) === "paper";
 
   return (
     <div
       style={{
+        position: "relative",
         width: "100%",
         display: "flex",
         alignItems: "center",
@@ -32,16 +35,24 @@ export const RowBlock: React.FC<BlockProps<"row">> = ({ block }) => {
         padding: T.row.padding,
         boxSizing: "border-box",
         textAlign: "left",
-        ...surface(block.emphasis, accent),
+        ...(isPaper ? {} : surface(block.emphasis, accent)),
       }}
     >
+      {isPaper ? (
+        <PaperCard
+          seed={`row-card-${block.text}`}
+          fill={block.emphasis ? theme.accentSoft : theme.surface}
+          stroke={theme.border}
+        />
+      ) : null}
       <div
         style={{
+          position: "relative",
           width: T.row.iconBox,
           height: T.row.iconBox,
           flexShrink: 0,
           borderRadius: Math.round(theme.cornerRadius * 0.8),
-          backgroundColor: flatIconBox(style.surface)
+          backgroundColor: flatIconBox(style.surface) || isPaper
             ? "transparent"
             : block.emphasis
               ? theme.accentSoft
@@ -57,7 +68,7 @@ export const RowBlock: React.FC<BlockProps<"row">> = ({ block }) => {
           <div style={{ width: 18, height: 18, borderRadius: "50%", backgroundColor: accent }} />
         )}
       </div>
-      <div>
+      <div style={{ position: "relative" }}>
         {block.label ? (
           <div
             style={{
@@ -95,6 +106,7 @@ export const ChipsBlock: React.FC<BlockProps<"chips">> = ({ block, localFrame, a
   const motionStyle = useMotionStyle();
   const style = useStyle();
   const surface = useSurface();
+  const isPaper = themeStyle(theme) === "paper";
   // tech/documentary — прежняя «таблетка»; у остальных стилей чип рисуется как их карточка.
   const pill = (first: boolean): React.CSSProperties =>
     style.surface === "fill"
@@ -119,16 +131,26 @@ export const ChipsBlock: React.FC<BlockProps<"chips">> = ({ block, localFrame, a
         <div
           key={`${index}-${item}`}
           style={{
+            position: "relative",
             fontSize: T.chips.size,
             lineHeight: 1.2,
             fontWeight: 600,
             padding: `${T.chips.padY}px ${T.chips.padX}px`,
             color: index === 0 ? accent : theme.text,
-            ...pill(index === 0),
+            ...(isPaper ? {} : pill(index === 0)),
             ...motionStyle("pop", stagger(localFrame, index, 5)),
           }}
         >
-          {item}
+          {isPaper ? (
+            <PaperCard
+              seed={`chip-card-${index}-${item}`}
+              fill={index === 0 ? theme.accentSoft : theme.surface}
+              stroke={theme.border}
+              strokeWidth={5}
+              perSide={2}
+            />
+          ) : null}
+          <span style={{ position: "relative" }}>{item}</span>
         </div>
       ))}
     </div>
@@ -198,6 +220,7 @@ export const PairBlock: React.FC<BlockProps<"pair">> = ({ block, localFrame }) =
   const accent = useAccent();
   const motionStyle = useMotionStyle();
   const surface = useSurface();
+  const isPaper = themeStyle(theme) === "paper";
   const { enterFrames, easing, staggerFrames } = useMotionProfile();
 
   return (
@@ -221,22 +244,31 @@ export const PairBlock: React.FC<BlockProps<"pair">> = ({ block, localFrame }) =
           <div
             key={`${index}-${item.label}`}
             style={{
+              position: "relative",
               padding: T.pair.padding,
               textAlign: "left",
               display: "flex",
               flexDirection: "column",
               gap: 10,
-              ...surface(highlighted, accent),
+              ...(isPaper ? {} : surface(highlighted, accent)),
               ...motionStyle("slide", appear, index === 0 ? -1 : 1),
             }}
           >
+            {isPaper ? (
+              <PaperCard
+                seed={`pair-card-${index}-${item.label}`}
+                fill={highlighted ? theme.accentSoft : theme.surface}
+                stroke={theme.border}
+              />
+            ) : null}
             {item.icon ? (
-              <div style={{ marginBottom: 2 }}>
+              <div style={{ position: "relative", marginBottom: 2 }}>
                 <Icon name={item.icon} size={T.pair.iconSize} color={highlighted ? accent : theme.muted} />
               </div>
             ) : null}
             <div
               style={{
+                position: "relative",
                 fontSize: T.pair.labelSize,
                 lineHeight: 1.2,
                 color: highlighted ? accent : theme.muted,
@@ -249,8 +281,10 @@ export const PairBlock: React.FC<BlockProps<"pair">> = ({ block, localFrame }) =
             </div>
             <div
               style={{
+                position: "relative",
                 fontSize: T.pair.valueSize,
                 lineHeight: T.pair.lineHeight,
+                fontFamily: isPaper ? font.headingFamily : undefined,
                 fontWeight: font.headingWeight,
                 color: theme.text,
                 letterSpacing: `${theme.letterSpacing}em`,

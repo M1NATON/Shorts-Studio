@@ -66,6 +66,7 @@ export const NumberBlock: React.FC<BlockProps<"number">> = ({
           style={{
             fontSize: size,
             lineHeight: 1,
+            fontFamily: font.headingFamily,
             fontWeight: font.headingWeight,
             color: theme.text,
             letterSpacing: `${theme.letterSpacing}em`,
@@ -75,7 +76,15 @@ export const NumberBlock: React.FC<BlockProps<"number">> = ({
           {shown}
         </span>
         {block.unit ? (
-          <span style={{ fontSize: Math.round(size * 0.46), fontWeight: 700, color: accent, lineHeight: 1 }}>
+          <span
+            style={{
+              fontSize: Math.round(size * 0.46),
+              fontFamily: font.headingFamily,
+              fontWeight: 700,
+              color: accent,
+              lineHeight: 1,
+            }}
+          >
             {block.unit}
           </span>
         ) : null}
@@ -140,6 +149,7 @@ export const RingBlock: React.FC<BlockProps<"ring">> = ({ block, localFrame, rem
             alignItems: "center",
             justifyContent: "center",
             fontSize: T.ring.valueSize,
+            fontFamily: font.headingFamily,
             fontWeight: font.headingWeight,
             color: theme.text,
             fontVariantNumeric: "tabular-nums",
@@ -208,6 +218,7 @@ export const BarsBlock: React.FC<BlockProps<"bars">> = ({ block, localFrame, rem
               <span
                 style={{
                   color: isMax ? accent : theme.text,
+                  fontFamily: isPaper ? font.headingFamily : undefined,
                   fontWeight: font.headingWeight,
                   fontVariantNumeric: "tabular-nums",
                 }}
